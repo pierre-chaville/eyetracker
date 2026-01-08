@@ -72,5 +72,17 @@ export const usersAPI = {
   },
 };
 
+export const configAPI = {
+  get: async () => {
+    const response = await apiClient.get('/api/config');
+    return response.data;
+  },
+  
+  update: async (configData) => {
+    const response = await apiClient.put('/api/config', configData);
+    return response.data;
+  },
+};
+
 export default apiClient;
 

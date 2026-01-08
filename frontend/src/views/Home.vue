@@ -19,15 +19,40 @@
           <div class="flex items-center space-x-2">
             <div :class="[
               'w-3 h-3 rounded-full',
-              isTracking ? 'bg-green-500 animate-pulse' : 'bg-gray-300'
+              isConnected ? 'bg-green-500 animate-pulse' : 'bg-gray-300'
             ]"></div>
             <span class="text-sm font-medium text-gray-600 dark:text-gray-300">
-              {{ isTracking ? $t('home.active') : $t('home.inactive') }}
+              {{ isConnected ? $t('home.active') : $t('home.inactive') }}
             </span>
           </div>
         </div>
         
         <div class="space-y-4">
+          <!-- Connection Status -->
+          <div class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+            <div class="flex items-center space-x-3">
+              <div :class="[
+                'w-3 h-3 rounded-full',
+                isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'
+              ]"></div>
+              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {{ isConnected ? $t('common.connected') : $t('common.disconnected') }}
+              </span>
+            </div>
+            <button
+              @click="toggleConnection"
+              :class="[
+                'px-4 py-2 rounded-lg font-medium transition-colors text-sm',
+                isConnected
+                  ? 'bg-red-600 hover:bg-red-700 text-white'
+                  : 'bg-green-600 hover:bg-green-700 text-white'
+              ]"
+            >
+              {{ isConnected ? $t('common.disconnect') : $t('common.connect') }}
+            </button>
+          </div>
+          
+          <!-- Start/Stop Eye Tracking Button -->
           <button
             @click="toggleTracking"
             :class="[
@@ -36,43 +61,91 @@
                 ? 'bg-red-500 hover:bg-red-600 text-white'
                 : 'bg-primary-600 hover:bg-primary-700 text-white'
             ]"
+            :disabled="!isConnected"
           >
             <span v-if="!isTracking">{{ $t('home.startEyeTracking') }}</span>
             <span v-else>{{ $t('home.stopEyeTracking') }}</span>
           </button>
+          
+          <!-- Connection Error -->
+          <div v-if="error" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p class="text-sm text-red-800 dark:text-red-200">{{ error }}</p>
+          </div>
         </div>
       </div>
 
-      <!-- Features Grid -->
-        <div class="grid md:grid-cols-3 gap-6 mb-12">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
-          <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center mb-4">
-            <EyeIcon class="w-6 h-6 text-primary-600 dark:text-primary-400" />
+      <!-- Select User Card -->
+      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 mb-8 max-w-2xl mx-auto">
+        <div class="flex items-center justify-between mb-6">
+          <h3 class="text-2xl font-semibold text-gray-900 dark:text-white">{{ $t('home.selectUser') }}</h3>
+          <div v-if="selectedUser" class="flex items-center space-x-2">
+            <div class="w-3 h-3 rounded-full bg-green-500"></div>
+            <span class="text-sm font-medium text-gray-600 dark:text-gray-300">
+              {{ selectedUser.name }}
+            </span>
           </div>
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">{{ $t('home.features.eyeTracking.title') }}</h3>
-          <p class="text-gray-600 dark:text-gray-300">
-            {{ $t('home.features.eyeTracking.description') }}
-          </p>
         </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
-          <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center mb-4">
-            <SparklesIcon class="w-6 h-6 text-primary-600 dark:text-primary-400" />
+        
+        <div class="space-y-4">
+          <!-- User Selection -->
+          <div v-if="!selectedUser || showUserList">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {{ $t('home.selectUserLabel') }}
+            </label>
+            <select
+              v-model="selectedUserId"
+              @change="onUserSelected"
+              class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">{{ $t('home.noUserSelected') }}</option>
+              <option
+                v-for="user in users"
+                :key="user.id"
+                :value="user.id"
+              >
+                {{ user.name }} {{ user.is_active ? '' : `(${$t('users.inactive')})` }}
+              </option>
+            </select>
           </div>
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">{{ $t('home.features.aiAssistance.title') }}</h3>
-          <p class="text-gray-600 dark:text-gray-300">
-            {{ $t('home.features.aiAssistance.description') }}
-          </p>
-        </div>
-
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-md p-6 hover:shadow-lg transition-shadow">
-          <div class="w-12 h-12 bg-primary-100 dark:bg-primary-900 rounded-lg flex items-center justify-center mb-4">
-            <HeartIcon class="w-6 h-6 text-primary-600 dark:text-primary-400" />
+          
+          <!-- Selected User Info -->
+          <div v-if="selectedUser" class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="font-semibold text-gray-900 dark:text-white">{{ selectedUser.name }}</p>
+                <p v-if="selectedUser.notes" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {{ selectedUser.notes }}
+                </p>
+                <span
+                  :class="[
+                    'inline-block mt-2 px-2 py-1 rounded-full text-xs font-medium',
+                    selectedUser.is_active
+                      ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+                      : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+                  ]"
+                >
+                  {{ selectedUser.is_active ? $t('users.active') : $t('users.inactive') }}
+                </span>
+              </div>
+              <button
+                @click="showUserList = true"
+                class="px-3 py-1 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
+              >
+                {{ $t('home.changeUser') }}
+              </button>
+            </div>
           </div>
-          <h3 class="text-xl font-semibold text-gray-900 dark:text-white mb-2">{{ $t('home.features.accessibleDesign.title') }}</h3>
-          <p class="text-gray-600 dark:text-gray-300">
-            {{ $t('home.features.accessibleDesign.description') }}
-          </p>
+          
+          <!-- Loading State -->
+          <div v-if="loadingUsers" class="text-center py-4">
+            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto"></div>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">{{ $t('home.loadingUsers') }}</p>
+          </div>
+          
+          <!-- Error State -->
+          <div v-if="userError" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p class="text-sm text-red-800 dark:text-red-200">{{ userError }}</p>
+          </div>
         </div>
       </div>
 
@@ -115,16 +188,62 @@
 import { ref, onMounted } from 'vue';
 import {
   EyeIcon,
-  SparklesIcon,
-  HeartIcon,
   ChatBubbleLeftRightIcon,
   Cog6ToothIcon,
   BookOpenIcon,
-  ChartBarIcon,
 } from '@heroicons/vue/24/outline';
-import { eyeTrackingAPI } from '@/services/api';
+import { useEyeTracking } from '../composables/useEyeTracking';
+import { eyeTrackingAPI, usersAPI } from '@/services/api';
 
+// Use the shared eye tracking composable
+const {
+  isConnected,
+  error,
+  toggleConnection,
+} = useEyeTracking();
+
+// Local state for backend API tracking (separate from WebSocket connection)
 const isTracking = ref(false);
+
+// User selection state
+const users = ref([]);
+const selectedUserId = ref(null);
+const selectedUser = ref(null);
+const loadingUsers = ref(false);
+const userError = ref(null);
+const showUserList = ref(false);
+
+const loadUsers = async () => {
+  try {
+    loadingUsers.value = true;
+    userError.value = null;
+    users.value = await usersAPI.list();
+  } catch (err) {
+    userError.value = err.response?.data?.detail || err.message || 'Failed to load users';
+    console.error('Error loading users:', err);
+  } finally {
+    loadingUsers.value = false;
+  }
+};
+
+const onUserSelected = async () => {
+  if (!selectedUserId.value) {
+    selectedUser.value = null;
+    showUserList.value = false;
+    return;
+  }
+  
+  try {
+    const user = await usersAPI.get(selectedUserId.value);
+    selectedUser.value = user;
+    showUserList.value = false;
+    // Store selected user in localStorage for persistence
+    localStorage.setItem('selectedUserId', selectedUserId.value.toString());
+  } catch (err) {
+    userError.value = err.response?.data?.detail || err.message || 'Failed to load user';
+    console.error('Error loading user:', err);
+  }
+};
 
 const toggleTracking = async () => {
   try {
@@ -149,12 +268,18 @@ const toggleTracking = async () => {
 };
 
 onMounted(async () => {
-  // Check initial status
-  try {
-    const status = await eyeTrackingAPI.getStatus();
-    isTracking.value = status.is_active;
-  } catch (error) {
-    console.error('Error fetching eye tracking status:', error);
+  // Load users
+  await loadUsers();
+  
+  // Restore previously selected user
+  const savedUserId = localStorage.getItem('selectedUserId');
+  if (savedUserId) {
+    const userId = parseInt(savedUserId);
+    const user = users.value.find(u => u.id === userId);
+    if (user) {
+      selectedUserId.value = userId;
+      await onUserSelected();
+    }
   }
 });
 </script>

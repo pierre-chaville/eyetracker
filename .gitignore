@@ -42,3 +42,6 @@ htmlcov/
 # database
 *.db
 
+# Configuration files
+backend/config.json
+

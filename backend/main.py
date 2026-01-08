@@ -5,6 +5,8 @@ from typing import Optional, List
 from sqlmodel import Session, select
 import uvicorn
 import json
+import os
+from pathlib import Path
 
 from database import engine, create_db_and_tables, get_session
 from models import (
@@ -257,6 +259,89 @@ async def delete_user(user_id: int, session: Session = Depends(get_session)):
     session.delete(user)
     session.commit()
     return None
+
+
+# Configuration file path
+CONFIG_FILE = Path(__file__).parent / "config.json"
+
+
+# Configuration models
+class ConfigModel(BaseModel):
+    """Application configuration model"""
+    provider: str = "openai"  # openai, anthropic, google, azure
+    model: str = ""
+    temperature: float = 0.7
+    prompt: str = ""
+    header_height_adjustment: int = 0  # in px
+    menu_width_adjustment: int = 0  # in px
+
+
+class ConfigResponse(BaseModel):
+    """Configuration response model"""
+    provider: str
+    model: str
+    temperature: float
+    prompt: str
+    header_height_adjustment: int
+    menu_width_adjustment: int
+
+
+def load_config() -> ConfigModel:
+    """Load configuration from config.json file"""
+    if CONFIG_FILE.exists():
+        try:
+            with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                return ConfigModel(**data)
+        except (json.JSONDecodeError, ValueError, KeyError) as e:
+            # If file is corrupted, return default config
+            print(f"Error loading config: {e}")
+            return ConfigModel()
+    else:
+        # Return default config if file doesn't exist
+        return ConfigModel()
+
+
+def save_config(config: ConfigModel) -> None:
+    """Save configuration to config.json file"""
+    try:
+        with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+            json.dump(config.model_dump(), f, indent=2, ensure_ascii=False)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to save configuration: {str(e)}"
+        )
+
+
+# Configuration endpoints
+@app.get("/api/config", response_model=ConfigResponse, tags=["setup"])
+async def get_config():
+    """Get current configuration"""
+    config = load_config()
+    return ConfigResponse(**config.model_dump())
+
+
+@app.put("/api/config", response_model=ConfigResponse, tags=["setup"])
+async def update_config(config: ConfigModel):
+    """Update configuration"""
+    # Validate provider
+    valid_providers = ["openai", "anthropic", "google", "azure"]
+    if config.provider not in valid_providers:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid provider. Must be one of: {', '.join(valid_providers)}"
+        )
+    
+    # Validate temperature
+    if not 0 <= config.temperature <= 2:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Temperature must be between 0 and 2"
+        )
+    
+    save_config(config)
+    return ConfigResponse(**config.model_dump())
 
 
 if __name__ == "__main__":
