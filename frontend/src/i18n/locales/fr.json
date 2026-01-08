@@ -1,0 +1,130 @@
+{
+  "common": {
+    "appName": "Suivi Oculaire",
+    "connect": "Connecter",
+    "disconnect": "Déconnecter",
+    "connected": "Connecté",
+    "disconnected": "Déconnecté",
+    "about": "À propos",
+    "settings": "Paramètres",
+    "help": "Aide"
+  },
+  "sidebar": {
+    "home": "Accueil",
+    "communicate": "Communiquer",
+    "calibration": "Calibration",
+    "viewEyeTracking": "Voir le Suivi Oculaire",
+    "users": "Utilisateurs",
+    "setup": "Configuration"
+  },
+  "home": {
+    "title": "Communication par Regard",
+    "subtitle": "Permettre aux personnes atteintes du syndrome de Rett de communiquer grâce à une technologie de suivi oculaire avancée et à une assistance linguistique alimentée par l'IA.",
+    "eyeTrackingStatus": "État du Suivi Oculaire",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "startEyeTracking": "Démarrer le Suivi Oculaire",
+    "stopEyeTracking": "Arrêter le Suivi Oculaire",
+    "features": {
+      "eyeTracking": {
+        "title": "Suivi Oculaire",
+        "description": "Technologie de suivi oculaire avancée pour détecter et interpréter avec précision les modèles de regard."
+      },
+      "aiAssistance": {
+        "title": "Assistance IA",
+        "description": "Traitement linguistique alimenté par LLM pour aider à former des pensées et des phrases complètes."
+      },
+      "accessibleDesign": {
+        "title": "Conception Accessible",
+        "description": "Conçu spécifiquement pour les personnes atteintes du syndrome de Rett et de troubles moteurs."
+      }
+    },
+    "quickActions": {
+      "title": "Actions Rapides",
+      "viewEyeTracking": "Voir le Suivi Oculaire",
+      "startCommunication": "Démarrer la Communication",
+      "calibrate": "Calibrer",
+      "practiceMode": "Mode Entraînement"
+    },
+    "footer": "© 2024 Suivi Oculaire. Construit avec soin pour la communauté du syndrome de Rett."
+  },
+  "eyeTracking": {
+    "title": "Suivi Oculaire",
+    "notConnected": "Non Connecté",
+    "connectMessage": "Cliquez sur \"Connecter\" pour commencer à recevoir les données de suivi oculaire",
+    "connectWebSocket": "Se Connecter au WebSocket",
+    "frozen": "GELÉ",
+    "frozenMessage": "GELÉ - Cliquez pour reprendre",
+    "invalid": "INVALIDE",
+    "eyeTrackingData": "Données de Suivi Oculaire",
+    "status": "Statut",
+    "valid": "Valide",
+    "screen": "Écran",
+    "screenX": "Écran X",
+    "screenY": "Écran Y",
+    "fps": "IPS",
+    "messages": "Messages",
+    "windowOffset": "Décalage de Fenêtre",
+    "scaleFactor": "Facteur d'Échelle",
+    "scaleApplied": "Échelle Appliquée",
+    "headerHeight": "Hauteur de l'En-tête",
+    "manual": "manuel",
+    "connectionSettings": "Paramètres de Connexion",
+    "websocketUrl": "URL WebSocket",
+    "manualOffset": "Décalage Manuel (X, Y)",
+    "refreshPosition": "Actualiser la Position",
+    "invertYAxis": "Inverser l'Axe Y",
+    "applyScaleCorrection": "Appliquer la Correction d'Échelle",
+    "scaleMode": "Mode d'Échelle",
+    "scaleModeNone": "Aucun (utiliser directement)",
+    "scaleModeDivide": "Diviser par l'échelle",
+    "scaleModeMultiply": "Multiplier par l'échelle",
+    "scaleFactorOverride": "Facteur d'Échelle (remplacer détecté: {value})",
+    "headerHeightOverride": "Hauteur de l'En-tête (mesurée: {value}px)",
+    "manualOffset": "Décalage Manuel"
+  },
+  "users": {
+    "title": "Utilisateurs",
+    "createUser": "Créer un Utilisateur",
+    "create": "Créer",
+    "creating": "Création...",
+    "cancel": "Annuler",
+    "name": "Nom",
+    "namePlaceholder": "Entrez le nom de l'utilisateur",
+    "notes": "Notes",
+    "notesPlaceholder": "Notes optionnelles sur cet utilisateur",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "start": "Démarrer",
+    "view": "Voir",
+    "noUsers": "Aucun utilisateur pour le moment",
+    "noUsersDescription": "Commencez par créer votre premier profil utilisateur.",
+    "noNotes": "Aucune note",
+    "createdAt": "Créé",
+    "loadError": "Échec du chargement des utilisateurs",
+    "createError": "Échec de la création de l'utilisateur"
+  },
+  "userDetail": {
+    "back": "Retour",
+    "backToUsers": "Retour aux Utilisateurs",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "editUser": "Modifier l'Utilisateur",
+    "deleteUser": "Supprimer l'Utilisateur",
+    "deleteConfirmation": "Êtes-vous sûr de vouloir supprimer {name} ? Cette action ne peut pas être annulée.",
+    "save": "Enregistrer",
+    "updating": "Mise à jour...",
+    "deleting": "Suppression...",
+    "createdAt": "Créé",
+    "notes": "Notes",
+    "eyeTrackingSetup": "Configuration du Suivi Oculaire",
+    "communicationSettings": "Paramètres de Communication",
+    "calibration": "Calibration",
+    "notConfigured": "Non configuré",
+    "calibrate": "Calibrer",
+    "loadError": "Échec du chargement de l'utilisateur",
+    "updateError": "Échec de la mise à jour de l'utilisateur",
+    "deleteError": "Échec de la suppression de l'utilisateur"
+  }
+}
+

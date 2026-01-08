@@ -5,6 +5,28 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Eye Tracker - Communication Assistant</title>
+    <script>
+      // Set theme immediately to prevent flash
+      // Always use explicit theme preference, ignore system/browser preference
+      (function() {
+        const savedTheme = localStorage.getItem('theme');
+        
+        // Explicitly set theme based on saved preference, default to light
+        if (savedTheme === 'dark') {
+          document.documentElement.classList.add('dark');
+        } else {
+          // Force light mode (default or if saved as light)
+          document.documentElement.classList.remove('dark');
+          if (!savedTheme) {
+            // Set default to light mode if no preference exists
+            localStorage.setItem('theme', 'light');
+          }
+        }
+        
+        // Prevent any system preference from overriding
+        // This ensures only our manual toggle controls the theme
+      })();
+    </script>
   </head>
   <body>
     <div id="app"></div>

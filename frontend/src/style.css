@@ -6,6 +6,15 @@
   body {
     @apply bg-gray-50 text-gray-900;
   }
+  
+  /* Force theme to be controlled only by class, not system preference */
+  html {
+    color-scheme: light;
+  }
+  
+  html.dark {
+    color-scheme: dark;
+  }
 }
 
 @layer components {

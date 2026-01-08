@@ -1,0 +1,130 @@
+{
+  "common": {
+    "appName": "Eye Tracker",
+    "connect": "Connect",
+    "disconnect": "Disconnect",
+    "connected": "Connected",
+    "disconnected": "Disconnected",
+    "about": "About",
+    "settings": "Settings",
+    "help": "Help"
+  },
+  "sidebar": {
+    "home": "Home",
+    "communicate": "Communicate",
+    "calibration": "Calibration",
+    "viewEyeTracking": "View Eye Tracking",
+    "users": "Users",
+    "setup": "Setup"
+  },
+  "home": {
+    "title": "Communication Through Eye Gaze",
+    "subtitle": "Empowering individuals with Rett syndrome to communicate using advanced eye tracking technology and AI-powered language assistance.",
+    "eyeTrackingStatus": "Eye Tracking Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "startEyeTracking": "Start Eye Tracking",
+    "stopEyeTracking": "Stop Eye Tracking",
+    "features": {
+      "eyeTracking": {
+        "title": "Eye Tracking",
+        "description": "Advanced eye tracking technology to detect and interpret gaze patterns accurately."
+      },
+      "aiAssistance": {
+        "title": "AI Assistance",
+        "description": "LLM-powered language processing to help form complete thoughts and sentences."
+      },
+      "accessibleDesign": {
+        "title": "Accessible Design",
+        "description": "Designed specifically for individuals with Rett syndrome and motor impairments."
+      }
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "viewEyeTracking": "View Eye Tracking",
+      "startCommunication": "Start Communication",
+      "calibrate": "Calibrate",
+      "practiceMode": "Practice Mode"
+    },
+    "footer": "© 2024 Eye Tracker. Built with care for the Rett syndrome community."
+  },
+  "eyeTracking": {
+    "title": "Eye Tracker",
+    "notConnected": "Not Connected",
+    "connectMessage": "Click \"Connect\" to start receiving eye tracking data",
+    "connectWebSocket": "Connect to WebSocket",
+    "frozen": "FROZEN",
+    "frozenMessage": "FROZEN - Click to resume",
+    "invalid": "INVALID",
+    "eyeTrackingData": "Eye Tracking Data",
+    "status": "Status",
+    "valid": "Valid",
+    "screen": "Screen",
+    "screenX": "Screen X",
+    "screenY": "Screen Y",
+    "fps": "FPS",
+    "messages": "Messages",
+    "windowOffset": "Window Offset",
+    "scaleFactor": "Scale Factor",
+    "scaleApplied": "Scale Applied",
+    "headerHeight": "Header Height",
+    "manual": "manual",
+    "connectionSettings": "Connection Settings",
+    "websocketUrl": "WebSocket URL",
+    "manualOffset": "Manual Offset (X, Y)",
+    "refreshPosition": "Refresh Position",
+    "invertYAxis": "Invert Y Axis",
+    "applyScaleCorrection": "Apply Scale Correction",
+    "scaleMode": "Scale Mode",
+    "scaleModeNone": "None (use directly)",
+    "scaleModeDivide": "Divide by scale",
+    "scaleModeMultiply": "Multiply by scale",
+    "scaleFactorOverride": "Scale Factor (override detected: {value})",
+    "headerHeightOverride": "Header Height (measured: {value}px)",
+    "manualOffset": "Manual Offset"
+  },
+  "users": {
+    "title": "Users",
+    "createUser": "Create User",
+    "create": "Create",
+    "creating": "Creating...",
+    "cancel": "Cancel",
+    "name": "Name",
+    "namePlaceholder": "Enter user name",
+    "notes": "Notes",
+    "notesPlaceholder": "Optional notes about this user",
+    "active": "Active",
+    "inactive": "Inactive",
+    "start": "Start",
+    "view": "View",
+    "noUsers": "No users yet",
+    "noUsersDescription": "Get started by creating your first user profile.",
+    "noNotes": "No notes",
+    "createdAt": "Created",
+    "loadError": "Failed to load users",
+    "createError": "Failed to create user"
+  },
+  "userDetail": {
+    "back": "Back",
+    "backToUsers": "Back to Users",
+    "edit": "Edit",
+    "delete": "Delete",
+    "editUser": "Edit User",
+    "deleteUser": "Delete User",
+    "deleteConfirmation": "Are you sure you want to delete {name}? This action cannot be undone.",
+    "save": "Save",
+    "updating": "Updating...",
+    "deleting": "Deleting...",
+    "createdAt": "Created",
+    "notes": "Notes",
+    "eyeTrackingSetup": "Eye Tracking Setup",
+    "communicationSettings": "Communication Settings",
+    "calibration": "Calibration",
+    "notConfigured": "Not configured",
+    "calibrate": "Calibrate",
+    "loadError": "Failed to load user",
+    "updateError": "Failed to update user",
+    "deleteError": "Failed to delete user"
+  }
+}
+

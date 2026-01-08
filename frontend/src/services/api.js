@@ -43,5 +43,34 @@ export const calibrationAPI = {
   },
 };
 
+export const usersAPI = {
+  list: async (skip = 0, limit = 100, activeOnly = false) => {
+    const response = await apiClient.get('/api/users', {
+      params: { skip, limit, active_only: activeOnly },
+    });
+    return response.data;
+  },
+  
+  get: async (userId) => {
+    const response = await apiClient.get(`/api/users/${userId}`);
+    return response.data;
+  },
+  
+  create: async (userData) => {
+    const response = await apiClient.post('/api/users', userData);
+    return response.data;
+  },
+  
+  update: async (userId, userData) => {
+    const response = await apiClient.put(`/api/users/${userId}`, userData);
+    return response.data;
+  },
+  
+  delete: async (userId) => {
+    const response = await apiClient.delete(`/api/users/${userId}`);
+    return response.data;
+  },
+};
+
 export default apiClient;
 

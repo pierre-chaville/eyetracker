@@ -1,25 +1,18 @@
 <template>
-  <div class="min-h-screen bg-gray-900 relative overflow-hidden">
+  <div class="min-h-screen bg-white dark:bg-gray-900 relative overflow-hidden">
     <!-- Header -->
-    <header ref="headerElement" class="bg-gray-800 shadow-lg z-10 relative">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <header ref="headerElement" class="bg-white dark:bg-gray-800 shadow-lg z-10 relative border-b border-gray-200 dark:border-gray-700">
+      <div class="px-4 sm:px-6 lg:px-8 py-4">
         <div class="flex items-center justify-between">
-          <div class="flex items-center space-x-3">
-            <router-link to="/" class="flex items-center space-x-3 hover:opacity-80 transition-opacity">
-              <div class="w-10 h-10 bg-primary-600 rounded-lg flex items-center justify-center">
-                <EyeIcon class="w-6 h-6 text-white" />
-              </div>
-              <h1 class="text-2xl font-bold text-white">Eye Tracker</h1>
-            </router-link>
-          </div>
+          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ $t('eyeTracking.title') }}</h1>
           <div class="flex items-center space-x-4">
             <div class="flex items-center space-x-2">
               <div :class="[
                 'w-3 h-3 rounded-full',
                 isConnected ? 'bg-green-500 animate-pulse' : 'bg-red-500'
               ]"></div>
-              <span class="text-sm font-medium text-gray-300">
-                {{ isConnected ? 'Connected' : 'Disconnected' }}
+              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {{ isConnected ? $t('common.connected') : $t('common.disconnected') }}
               </span>
             </div>
             <button
@@ -31,7 +24,7 @@
                   : 'bg-green-600 hover:bg-green-700 text-white'
               ]"
             >
-              {{ isConnected ? 'Disconnect' : 'Connect' }}
+              {{ isConnected ? $t('common.disconnect') : $t('common.connect') }}
             </button>
           </div>
         </div>
@@ -46,7 +39,7 @@
     >
       <!-- Freeze indicator -->
       <div v-if="isFrozen" class="absolute top-4 left-1/2 -translate-x-1/2 z-50 bg-yellow-500/90 backdrop-blur-sm text-black text-sm font-bold px-4 py-2 rounded-lg shadow-lg border-2 border-yellow-400">
-        ⏸ FROZEN - Click to resume
+        ⏸ {{ $t('eyeTracking.frozenMessage') }}
       </div>
 
       <!-- Gaze Point Circle with Coordinates (use frozen data if frozen) -->
@@ -62,7 +55,7 @@
         <!-- Coordinate Label -->
         <div class="absolute top-10 left-1/2 -translate-x-1/2 whitespace-nowrap bg-gray-900/90 backdrop-blur-sm text-white text-xs font-mono px-2 py-1 rounded shadow-lg border border-gray-700">
           <div class="text-center">
-            <div v-if="isFrozen" class="text-yellow-400 text-[10px] mb-1">FROZEN</div>
+            <div v-if="isFrozen" class="text-yellow-400 text-[10px] mb-1">{{ $t('eyeTracking.frozen') }}</div>
             <div>X: {{ (isFrozen ? frozenGazePoint : gazePoint).x.toFixed(1) }}px</div>
             <div>Y: {{ (isFrozen ? frozenGazePoint : gazePoint).y.toFixed(1) }}px</div>
             <div v-if="(isFrozen ? frozenTrackingData : trackingData)" class="text-gray-400 text-[10px] mt-1 pt-1 border-t border-gray-700">
@@ -91,8 +84,8 @@
         <!-- Coordinate Label -->
         <div class="absolute top-8 left-1/2 -translate-x-1/2 whitespace-nowrap bg-red-900/90 backdrop-blur-sm text-white text-xs font-mono px-2 py-1 rounded shadow-lg border border-red-700">
           <div class="text-center">
-            <div class="text-red-300">INVALID</div>
-            <div v-if="isFrozen" class="text-yellow-400 text-[10px]">FROZEN</div>
+            <div class="text-red-300">{{ $t('eyeTracking.invalid') }}</div>
+            <div v-if="isFrozen" class="text-yellow-400 text-[10px]">{{ $t('eyeTracking.frozen') }}</div>
             <div>X: {{ (isFrozen ? frozenGazePoint : gazePoint).x.toFixed(1) }}px</div>
             <div>Y: {{ (isFrozen ? frozenGazePoint : gazePoint).y.toFixed(1) }}px</div>
           </div>
@@ -115,133 +108,133 @@
           <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-800 flex items-center justify-center">
             <EyeIcon class="w-8 h-8 text-gray-500" />
           </div>
-          <h2 class="text-2xl font-semibold text-gray-300 mb-2">Not Connected</h2>
-          <p class="text-gray-400 mb-6">Click "Connect" to start receiving eye tracking data</p>
+          <h2 class="text-2xl font-semibold text-gray-300 mb-2">{{ $t('eyeTracking.notConnected') }}</h2>
+          <p class="text-gray-400 mb-6">{{ $t('eyeTracking.connectMessage') }}</p>
           <button
             @click="toggleConnection"
             class="px-6 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors"
           >
-            Connect to WebSocket
+            {{ $t('eyeTracking.connectWebSocket') }}
           </button>
         </div>
       </div>
     </div>
 
     <!-- Info Panel -->
-    <div class="absolute bottom-4 left-4 bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 shadow-xl max-w-xs">
-      <h3 class="text-sm font-semibold text-gray-300 mb-2">Eye Tracking Data</h3>
+    <div class="absolute bottom-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 shadow-xl max-w-xs border border-gray-200 dark:border-gray-700">
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-300 mb-2">{{ $t('eyeTracking.eyeTrackingData') }}</h3>
       <div class="space-y-1 text-xs font-mono">
-        <div class="text-gray-400">
-          <span class="text-gray-500">Status:</span>
+        <div class="text-gray-600 dark:text-gray-400">
+          <span class="text-gray-700 dark:text-gray-500">{{ $t('eyeTracking.status') }}:</span>
           <span :class="[
             'ml-2 font-semibold',
-            trackingData?.valid ? 'text-green-400' : 'text-red-400'
+            trackingData?.valid ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
           ]">
-            {{ trackingData?.valid ? 'Valid' : 'Invalid' }}
+            {{ trackingData?.valid ? $t('eyeTracking.valid') : $t('eyeTracking.invalid') }}
           </span>
         </div>
-        <div class="text-gray-400">
-          <span class="text-gray-500">X:</span>
-          <span class="text-white ml-2">{{ gazePoint ? gazePoint.x.toFixed(1) : '--' }}px</span>
-          <span v-if="trackingData" class="text-gray-500 ml-1">
+        <div class="text-gray-600 dark:text-gray-400">
+          <span class="text-gray-700 dark:text-gray-500">X:</span>
+          <span class="text-gray-900 dark:text-white ml-2">{{ gazePoint ? gazePoint.x.toFixed(1) : '--' }}px</span>
+          <span v-if="trackingData" class="text-gray-700 dark:text-gray-500 ml-1">
             ({{ (trackingData.x * 100).toFixed(1) }}%)
           </span>
         </div>
-        <div v-if="trackingData?.pixelX !== undefined" class="text-gray-400 text-[10px]">
-          <span class="text-gray-500">Screen X:</span>
-          <span class="text-white ml-2">{{ trackingData.pixelX.toFixed(1) }}px</span>
+        <div v-if="trackingData?.pixelX !== undefined" class="text-gray-600 dark:text-gray-400 text-[10px]">
+          <span class="text-gray-700 dark:text-gray-500">{{ $t('eyeTracking.screenX') }}:</span>
+          <span class="text-gray-900 dark:text-white ml-2">{{ trackingData.pixelX.toFixed(1) }}px</span>
         </div>
-        <div class="text-gray-400">
-          <span class="text-gray-500">Y:</span>
-          <span class="text-white ml-2">{{ gazePoint ? gazePoint.y.toFixed(1) : '--' }}px</span>
-          <span v-if="trackingData" class="text-gray-500 ml-1">
+        <div class="text-gray-600 dark:text-gray-400">
+          <span class="text-gray-700 dark:text-gray-500">Y:</span>
+          <span class="text-gray-900 dark:text-white ml-2">{{ gazePoint ? gazePoint.y.toFixed(1) : '--' }}px</span>
+          <span v-if="trackingData" class="text-gray-700 dark:text-gray-500 ml-1">
             ({{ (trackingData.y * 100).toFixed(1) }}%)
           </span>
         </div>
-        <div v-if="trackingData?.pixelY !== undefined" class="text-gray-400 text-[10px]">
-          <span class="text-gray-500">Screen Y:</span>
-          <span class="text-white ml-2">{{ trackingData.pixelY.toFixed(1) }}px</span>
+        <div v-if="trackingData?.pixelY !== undefined" class="text-gray-600 dark:text-gray-400 text-[10px]">
+          <span class="text-gray-700 dark:text-gray-500">{{ $t('eyeTracking.screenY') }}:</span>
+          <span class="text-gray-900 dark:text-white ml-2">{{ trackingData.pixelY.toFixed(1) }}px</span>
         </div>
-        <div v-if="trackingData" class="text-gray-400">
-          <span class="text-gray-500">Screen:</span>
-          <span class="text-white ml-2">{{ trackingData.screenWidth }}×{{ trackingData.screenHeight }}</span>
+        <div v-if="trackingData" class="text-gray-600 dark:text-gray-400">
+          <span class="text-gray-700 dark:text-gray-500">{{ $t('eyeTracking.screen') }}:</span>
+          <span class="text-gray-900 dark:text-white ml-2">{{ trackingData.screenWidth }}×{{ trackingData.screenHeight }}</span>
         </div>
-        <div class="text-gray-400">
-          <span class="text-gray-500">FPS:</span>
-          <span class="text-white ml-2">{{ fps.toFixed(1) }}</span>
+        <div class="text-gray-600 dark:text-gray-400">
+          <span class="text-gray-700 dark:text-gray-500">{{ $t('eyeTracking.fps') }}:</span>
+          <span class="text-gray-900 dark:text-white ml-2">{{ fps.toFixed(1) }}</span>
         </div>
-        <div class="text-gray-400">
-          <span class="text-gray-500">Messages:</span>
-          <span class="text-white ml-2">{{ messageCount }}</span>
+        <div class="text-gray-600 dark:text-gray-400">
+          <span class="text-gray-700 dark:text-gray-500">{{ $t('eyeTracking.messages') }}:</span>
+          <span class="text-gray-900 dark:text-white ml-2">{{ messageCount }}</span>
         </div>
-        <div class="text-gray-400 pt-2 border-t border-gray-700 mt-2">
-          <span class="text-gray-500">Window Offset:</span>
-          <span class="text-white ml-2">{{ windowOffset.x }}, {{ windowOffset.y }}</span>
+        <div class="text-gray-600 dark:text-gray-400 pt-2 border-t border-gray-300 dark:border-gray-700 mt-2">
+          <span class="text-gray-700 dark:text-gray-500">{{ $t('eyeTracking.windowOffset') }}:</span>
+          <span class="text-gray-900 dark:text-white ml-2">{{ windowOffset.x }}, {{ windowOffset.y }}</span>
         </div>
-        <div v-if="manualOffset.x !== 0 || manualOffset.y !== 0" class="text-gray-400">
-          <span class="text-gray-500">Manual Offset:</span>
-          <span class="text-yellow-400 ml-2">{{ manualOffset.x }}, {{ manualOffset.y }}</span>
+        <div v-if="manualOffset.x !== 0 || manualOffset.y !== 0" class="text-gray-600 dark:text-gray-400">
+          <span class="text-gray-700 dark:text-gray-500">{{ $t('eyeTracking.manualOffset') }}:</span>
+          <span class="text-yellow-600 dark:text-yellow-400 ml-2">{{ manualOffset.x }}, {{ manualOffset.y }}</span>
         </div>
-        <div class="text-gray-400">
-          <span class="text-gray-500">Scale Factor:</span>
-          <span class="text-white ml-2">{{ scaleFactor.toFixed(2) }}x</span>
+        <div class="text-gray-600 dark:text-gray-400">
+          <span class="text-gray-700 dark:text-gray-500">{{ $t('eyeTracking.scaleFactor') }}:</span>
+          <span class="text-gray-900 dark:text-white ml-2">{{ scaleFactor.toFixed(2) }}x</span>
         </div>
-        <div class="text-gray-400">
-          <span class="text-gray-500">Scale Applied:</span>
+        <div class="text-gray-600 dark:text-gray-400">
+          <span class="text-gray-700 dark:text-gray-500">{{ $t('eyeTracking.scaleApplied') }}:</span>
           <span :class="[
             'ml-2 font-semibold',
-            applyScaling ? 'text-green-400' : 'text-gray-500'
+            applyScaling ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-gray-500'
           ]">
-            {{ applyScaling ? scaleMode : 'None' }}
+            {{ applyScaling ? scaleMode : $t('eyeTracking.scaleModeNone') }}
           </span>
         </div>
-        <div class="text-gray-400">
-          <span class="text-gray-500">Header Height:</span>
-          <span class="text-white ml-2">
+        <div class="text-gray-600 dark:text-gray-400">
+          <span class="text-gray-700 dark:text-gray-500">{{ $t('eyeTracking.headerHeight') }}:</span>
+          <span class="text-gray-900 dark:text-white ml-2">
             {{ (manualHeaderHeight !== null && manualHeaderHeight > 0 ? manualHeaderHeight : headerHeight).toFixed(0) }}px
           </span>
-          <span v-if="manualHeaderHeight !== null && manualHeaderHeight > 0" class="text-yellow-400 text-[10px] ml-1">(manual)</span>
+          <span v-if="manualHeaderHeight !== null && manualHeaderHeight > 0" class="text-yellow-600 dark:text-yellow-400 text-[10px] ml-1">({{ $t('eyeTracking.manual') }})</span>
         </div>
       </div>
     </div>
 
     <!-- Connection Settings -->
-    <div class="absolute bottom-4 right-4 bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 shadow-xl max-w-xs">
-      <h3 class="text-sm font-semibold text-gray-300 mb-2">Connection Settings</h3>
+    <div class="absolute bottom-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 shadow-xl max-w-xs border border-gray-200 dark:border-gray-700">
+      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-300 mb-2">{{ $t('eyeTracking.connectionSettings') }}</h3>
       <div class="space-y-2">
         <div>
-          <label class="block text-xs text-gray-400 mb-1">WebSocket URL</label>
+          <label class="block text-xs text-gray-700 dark:text-gray-400 mb-1">{{ $t('eyeTracking.websocketUrl') }}</label>
           <input
             v-model="wsUrl"
             type="text"
             :disabled="isConnected"
-            class="w-full px-3 py-2 bg-gray-700 text-white rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
+            class="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
             placeholder="ws://127.0.0.1:8765"
           />
         </div>
-        <div class="pt-2 border-t border-gray-700">
-          <label class="block text-xs text-gray-400 mb-1">Manual Offset (X, Y)</label>
+        <div class="pt-2 border-t border-gray-300 dark:border-gray-700">
+          <label class="block text-xs text-gray-700 dark:text-gray-400 mb-1">{{ $t('eyeTracking.manualOffset') }}</label>
           <div class="flex gap-2">
             <input
               v-model.number="manualOffset.x"
               type="number"
               step="1"
-              class="w-full px-2 py-1 bg-gray-700 text-white rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+              class="w-full px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="X"
             />
             <input
               v-model.number="manualOffset.y"
               type="number"
               step="1"
-              class="w-full px-2 py-1 bg-gray-700 text-white rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+              class="w-full px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
               placeholder="Y"
             />
           </div>
           <button
             @click="updateWindowPosition"
-            class="mt-2 w-full px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white rounded text-xs transition-colors"
+            class="mt-2 w-full px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded text-xs transition-colors"
           >
-            Refresh Position
+            {{ $t('eyeTracking.refreshPosition') }}
           </button>
           <label class="flex items-center mt-2 cursor-pointer">
             <input
@@ -249,7 +242,7 @@
               type="checkbox"
               class="mr-2"
             />
-            <span class="text-xs text-gray-400">Invert Y Axis</span>
+            <span class="text-xs text-gray-700 dark:text-gray-400">{{ $t('eyeTracking.invertYAxis') }}</span>
           </label>
           <label class="flex items-center mt-2 cursor-pointer">
             <input
@@ -257,41 +250,41 @@
               type="checkbox"
               class="mr-2"
             />
-            <span class="text-xs text-gray-400">Apply Scale Correction</span>
+            <span class="text-xs text-gray-700 dark:text-gray-400">{{ $t('eyeTracking.applyScaleCorrection') }}</span>
           </label>
           <div v-if="applyScaling" class="mt-2 space-y-2">
             <div>
-              <label class="block text-xs text-gray-400 mb-1">Scale Mode</label>
+              <label class="block text-xs text-gray-700 dark:text-gray-400 mb-1">{{ $t('eyeTracking.scaleMode') }}</label>
               <select
                 v-model="scaleMode"
-                class="w-full px-2 py-1 bg-gray-700 text-white rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+                class="w-full px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="none">None (use directly)</option>
-                <option value="divide">Divide by scale</option>
-                <option value="multiply">Multiply by scale</option>
+                <option value="none">{{ $t('eyeTracking.scaleModeNone') }}</option>
+                <option value="divide">{{ $t('eyeTracking.scaleModeDivide') }}</option>
+                <option value="multiply">{{ $t('eyeTracking.scaleModeMultiply') }}</option>
               </select>
             </div>
             <div>
-              <label class="block text-xs text-gray-400 mb-1">Scale Factor (override detected: {{ scaleFactor.toFixed(2) }})</label>
+              <label class="block text-xs text-gray-700 dark:text-gray-400 mb-1">{{ $t('eyeTracking.scaleFactorOverride', { value: scaleFactor.toFixed(2) }) }}</label>
               <input
                 v-model.number="manualScaleFactor"
                 type="number"
                 step="0.1"
                 min="0.5"
                 max="3.0"
-                class="w-full px-2 py-1 bg-gray-700 text-white rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+                class="w-full px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Auto"
               />
             </div>
             <div>
-              <label class="block text-xs text-gray-400 mb-1">Header Height (measured: {{ headerHeight.toFixed(0) }}px)</label>
+              <label class="block text-xs text-gray-700 dark:text-gray-400 mb-1">{{ $t('eyeTracking.headerHeightOverride', { value: headerHeight.toFixed(0) }) }}</label>
               <input
                 v-model.number="manualHeaderHeight"
                 type="number"
                 step="1"
                 min="0"
                 max="200"
-                class="w-full px-2 py-1 bg-gray-700 text-white rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
+                class="w-full px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
                 placeholder="Auto"
               />
             </div>
