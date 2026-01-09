@@ -55,6 +55,7 @@
   },
   "eyeTracking": {
     "title": "Eye Tracker",
+    "start": "Start Eye Tracking",
     "notConnected": "Not Connected",
     "connectMessage": "Click \"Connect\" to start receiving eye tracking data",
     "connectWebSocket": "Connect to WebSocket",
@@ -157,6 +158,25 @@
     "saveSuccess": "Configuration saved successfully!",
     "loadError": "Failed to load configuration",
     "saveError": "Failed to save configuration"
+  },
+  "calibration": {
+    "title": "Calibration",
+    "user": "User",
+    "start": "Start Calibration",
+    "notConnected": "Please connect to eye tracker first",
+    "noUserSelected": "Please select a user first",
+    "progress": "Progress",
+    "complete": "Calibration Complete",
+    "completeMessage": "Calibration data has been saved successfully.",
+    "calibrateAgain": "Calibrate Again",
+    "validate": "Validate",
+    "restart": "Restart",
+    "qualityCheck": "Quality Check",
+    "targetPosition": "Target Position",
+    "gazeSamples": "Gaze Samples",
+    "averageGaze": "Average Gaze",
+    "calibrationApplied": "Calibration Applied",
+    "coefficientsSaved": "Affine coefficients saved"
   }
 }
 

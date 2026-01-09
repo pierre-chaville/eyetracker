@@ -55,6 +55,7 @@
   },
   "eyeTracking": {
     "title": "Suivi Oculaire",
+    "start": "Démarrer le Suivi Oculaire",
     "notConnected": "Non Connecté",
     "connectMessage": "Cliquez sur \"Connecter\" pour commencer à recevoir les données de suivi oculaire",
     "connectWebSocket": "Se Connecter au WebSocket",
@@ -157,6 +158,25 @@
     "saveSuccess": "Configuration enregistrée avec succès !",
     "loadError": "Échec du chargement de la configuration",
     "saveError": "Échec de l'enregistrement de la configuration"
+  },
+  "calibration": {
+    "title": "Calibration",
+    "user": "Utilisateur",
+    "start": "Démarrer la Calibration",
+    "notConnected": "Veuillez d'abord vous connecter au suivi oculaire",
+    "noUserSelected": "Veuillez d'abord sélectionner un utilisateur",
+    "progress": "Progression",
+    "complete": "Calibration Terminée",
+    "completeMessage": "Les données de calibration ont été enregistrées avec succès.",
+    "calibrateAgain": "Recalibrer",
+    "validate": "Valider",
+    "restart": "Redémarrer",
+    "qualityCheck": "Vérification de la qualité",
+    "targetPosition": "Position cible",
+    "gazeSamples": "Échantillons de regard",
+    "averageGaze": "Regard moyen",
+    "calibrationApplied": "Calibration appliquée",
+    "coefficientsSaved": "Coefficients affines enregistrés"
   }
 }
 

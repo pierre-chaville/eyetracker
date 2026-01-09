@@ -41,6 +41,11 @@ export const calibrationAPI = {
     const response = await apiClient.post('/api/calibration/start');
     return response.data;
   },
+  
+  process: async (calibrationData) => {
+    const response = await apiClient.post('/api/calibration/process', calibrationData);
+    return response.data;
+  },
 };
 
 export const usersAPI = {

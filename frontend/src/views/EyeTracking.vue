@@ -1,7 +1,11 @@
 <template>
   <div class="min-h-screen bg-white dark:bg-gray-900 relative overflow-hidden">
-    <!-- Header -->
-    <header ref="headerElement" class="bg-white dark:bg-gray-800 shadow-lg z-10 relative border-b border-gray-200 dark:border-gray-700">
+    <!-- Header (hidden in fullscreen mode) -->
+    <header 
+      v-if="!isFullscreen"
+      ref="headerElement" 
+      class="bg-white dark:bg-gray-800 shadow-lg z-10 relative border-b border-gray-200 dark:border-gray-700"
+    >
       <div class="px-4 sm:px-6 lg:px-8 py-4">
         <div class="flex items-center justify-between">
           <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ $t('eyeTracking.title') }}</h1>
@@ -19,12 +23,35 @@
         </div>
       </div>
     </header>
+    
+    <!-- Start Button (shown before fullscreen) -->
+    <div
+      v-if="!isFullscreen"
+      class="absolute inset-0 flex items-center justify-center bg-gray-50 dark:bg-gray-900"
+    >
+      <button
+        @click="startEyeTracking"
+        :disabled="!isConnected"
+        :class="[
+          'px-12 py-6 rounded-xl font-semibold text-xl transition-all duration-200',
+          !isConnected
+            ? 'bg-gray-400 dark:bg-gray-600 text-gray-200 cursor-not-allowed'
+            : 'bg-primary-600 hover:bg-primary-700 text-white shadow-lg hover:shadow-xl'
+        ]"
+      >
+        {{ $t('eyeTracking.start') }}
+      </button>
+      <div v-if="!isConnected" class="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-20 text-red-600 dark:text-red-400 text-sm">
+        {{ $t('eyeTracking.notConnected') }}
+      </div>
+    </div>
 
-    <!-- Eye Tracking Canvas Area -->
+    <!-- Eye Tracking Canvas Area (fullscreen when active) -->
     <div 
-      class="relative w-full h-[calc(100vh-80px)] cursor-pointer" 
+      v-if="isFullscreen"
+      class="relative w-screen h-screen cursor-pointer bg-white dark:bg-gray-900" 
       ref="trackingArea"
-      @click="toggleFreeze"
+      @click="stopEyeTracking"
     >
       <!-- Gaze Visualization Component -->
       <EyeTrackingGaze
@@ -61,8 +88,8 @@
       </div>
     </div>
 
-    <!-- Info Panel -->
-    <div class="absolute bottom-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 shadow-xl max-w-xs border border-gray-200 dark:border-gray-700">
+    <!-- Info Panel (hidden in fullscreen) -->
+    <div v-if="!isFullscreen" class="absolute bottom-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 shadow-xl max-w-xs border border-gray-200 dark:border-gray-700">
       <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-300 mb-2">{{ $t('eyeTracking.eyeTrackingData') }}</h3>
       <div class="space-y-1 text-xs font-mono">
         <div class="text-gray-600 dark:text-gray-400">
@@ -139,8 +166,8 @@
       </div>
     </div>
 
-    <!-- Connection Settings -->
-    <div class="absolute bottom-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 shadow-xl max-w-xs border border-gray-200 dark:border-gray-700">
+      <!-- Connection Settings (hidden in fullscreen) -->
+      <div v-if="!isFullscreen" class="absolute bottom-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 shadow-xl max-w-xs border border-gray-200 dark:border-gray-700">
       <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-300 mb-2">{{ $t('eyeTracking.connectionSettings') }}</h3>
       <div class="space-y-2">
         <div>
@@ -240,9 +267,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, inject } from 'vue';
 import { EyeIcon } from '@heroicons/vue/24/outline';
 import { useEyeTracking } from '../composables/useEyeTracking';
+import { useCalibration } from '../composables/useCalibration';
 import EyeTrackingGaze from '../components/EyeTrackingGaze.vue';
 
 const trackingArea = ref(null);
@@ -250,6 +278,14 @@ const headerElement = ref(null);
 let positionInterval = null;
 let resizeObserver = null;
 let resizeHandler = null;
+
+// Fullscreen state
+const isFullscreen = ref(false);
+// Get eye tracking fullscreen state from App.vue to hide sidebar
+const isEyeTrackingFullscreenApp = inject('isEyeTrackingFullscreen', ref(false));
+
+// Use calibration composable to get coefficients for selected user
+const { calibrationCoefficients } = useCalibration();
 
 // Use the eye tracking composable
 const {
@@ -272,11 +308,20 @@ const {
   scaleMode,
   headerHeight,
   manualHeaderHeight,
+  calibrationCoefficients: trackingCalibrationCoefficients,
+  isFullscreen: trackingIsFullscreen,
   toggleConnection,
   toggleFreeze,
   updateWindowPosition,
   updateHeaderHeight: updateHeaderHeightFromComposable,
-} = useEyeTracking();
+} = useEyeTracking({ isFullscreen });
+
+// Update calibration coefficients in eye tracking when they change
+watch(calibrationCoefficients, (newCoefficients) => {
+  if (trackingCalibrationCoefficients) {
+    trackingCalibrationCoefficients.value = newCoefficients;
+  }
+}, { immediate: true });
 
 const updateHeaderHeight = () => {
   if (headerElement.value) {
@@ -284,6 +329,65 @@ const updateHeaderHeight = () => {
   }
 };
 
+const startEyeTracking = async () => {
+  if (!isConnected.value) {
+    return;
+  }
+  
+  // Set fullscreen state in App.vue to hide sidebar
+  isEyeTrackingFullscreenApp.value = true;
+  
+  // Enter fullscreen mode
+  try {
+    const element = document.documentElement;
+    if (element.requestFullscreen) {
+      await element.requestFullscreen();
+    } else if (element.webkitRequestFullscreen) {
+      await element.webkitRequestFullscreen();
+    } else if (element.msRequestFullscreen) {
+      await element.msRequestFullscreen();
+    }
+  } catch (error) {
+    console.warn('Could not enter fullscreen mode:', error);
+  }
+  
+  isFullscreen.value = true;
+  // Update fullscreen state in composable
+  if (trackingIsFullscreen) {
+    trackingIsFullscreen.value = true;
+  }
+};
+
+const exitFullscreen = () => {
+  try {
+    if (document.exitFullscreen) {
+      document.exitFullscreen();
+    } else if (document.webkitExitFullscreen) {
+      document.webkitExitFullscreen();
+    } else if (document.msExitFullscreen) {
+      document.msExitFullscreen();
+    }
+  } catch (error) {
+    console.warn('Could not exit fullscreen mode:', error);
+  }
+};
+
+const stopEyeTracking = () => {
+  // Reset fullscreen state in App.vue to show sidebar
+  isEyeTrackingFullscreenApp.value = false;
+  
+  // Exit fullscreen mode
+  exitFullscreen();
+  
+  isFullscreen.value = false;
+  // Update fullscreen state in composable
+  if (trackingIsFullscreen) {
+    trackingIsFullscreen.value = false;
+  }
+};
+
+// Fullscreen change handlers
+let fullscreenChangeHandlers = [];
 
 onMounted(() => {
   // Wait for next tick to ensure header element is rendered
@@ -315,9 +419,42 @@ onMounted(() => {
     updateHeaderHeight();
   };
   window.addEventListener('resize', resizeHandler);
+  
+  // Listen for fullscreen changes to handle ESC key
+  const handleFullscreenChange = () => {
+    // If user exits fullscreen manually (ESC key), reset state
+    if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+      if (isFullscreen.value) {
+        stopEyeTracking();
+      }
+    }
+  };
+  
+  document.addEventListener('fullscreenchange', handleFullscreenChange);
+  document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+  document.addEventListener('msfullscreenchange', handleFullscreenChange);
+  
+  fullscreenChangeHandlers = [
+    { event: 'fullscreenchange', handler: handleFullscreenChange },
+    { event: 'webkitfullscreenchange', handler: handleFullscreenChange },
+    { event: 'msfullscreenchange', handler: handleFullscreenChange },
+  ];
 });
 
 onBeforeUnmount(() => {
+  // Remove fullscreen event listeners
+  if (fullscreenChangeHandlers && fullscreenChangeHandlers.length > 0) {
+    fullscreenChangeHandlers.forEach(({ event, handler }) => {
+      document.removeEventListener(event, handler);
+    });
+  }
+  
+  // Exit fullscreen if still active when component unmounts
+  if (isFullscreen.value) {
+    exitFullscreen();
+    isEyeTrackingFullscreenApp.value = false;
+  }
+  
   if (positionInterval) {
     clearInterval(positionInterval);
   }

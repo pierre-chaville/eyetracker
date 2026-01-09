@@ -1,4 +1,5 @@
 import { ref, computed } from 'vue';
+import { applyAffineTransformation } from '../utils/calibration';
 
 // Shared state instance - all components using this composable will share the same state
 let sharedState = null;
@@ -23,6 +24,8 @@ function createEyeTrackingState(options = {}) {
     autoConnect = false,
     onGazeUpdate = null,
     onTrackingDataUpdate = null,
+    calibrationCoefficients: initialCalibrationCoefficients = null,
+    isFullscreen: initialIsFullscreen = false,
   } = options;
 
   // Connection state
@@ -52,6 +55,8 @@ function createEyeTrackingState(options = {}) {
   const scaleMode = ref('divide'); // 'divide', 'multiply', or 'none'
   const headerHeight = ref(80);
   const manualHeaderHeight = ref(null);
+  const calibrationCoefficients = ref(initialCalibrationCoefficients);
+  const isFullscreen = ref(initialIsFullscreen || false);
 
   // FPS calculation
   const frameTimes = ref([]);
@@ -127,40 +132,73 @@ function createEyeTrackingState(options = {}) {
             }
           }
           
-          // Apply offsets
-          let totalOffsetX = windowOffset.value.x + manualOffset.value.x;
-          let totalOffsetY = windowOffset.value.y + manualOffset.value.y;
+          // Apply offsets only if not in fullscreen mode
+          let windowX, windowY;
           
-          // Handle Y axis inversion
-          let adjustedLogicalY = logicalY;
-          if (invertY.value && data.screenHeight) {
-            const screenHeightLogical = applyScaling.value && scaleFactor.value !== 1.0 
-              ? data.screenHeight / scaleFactor.value 
-              : data.screenHeight;
-            adjustedLogicalY = screenHeightLogical - logicalY;
-          }
-          
-          // Calculate effective header height
-          let effectiveHeaderHeight = manualHeaderHeight.value !== null && manualHeaderHeight.value > 0
-            ? manualHeaderHeight.value
-            : headerHeight.value;
-          
-          if (applyScaling.value && scaleMode.value === 'divide') {
-            const effectiveScaleFactor = manualScaleFactor.value !== null && manualScaleFactor.value > 0
-              ? manualScaleFactor.value
-              : scaleFactor.value;
+          if (isFullscreen.value) {
+            // In fullscreen mode: no offsets, only scale factor (already applied above)
+            windowX = logicalX;
+            windowY = logicalY;
             
-            if (manualHeaderHeight.value === null || manualHeaderHeight.value === 0) {
-              effectiveHeaderHeight = headerHeight.value * effectiveScaleFactor * effectiveScaleFactor;
+            // Handle Y axis inversion if needed
+            if (invertY.value && data.screenHeight) {
+              const screenHeightLogical = applyScaling.value && scaleFactor.value !== 1.0 
+                ? data.screenHeight / scaleFactor.value 
+                : data.screenHeight;
+              windowY = screenHeightLogical - logicalY;
             }
+          } else {
+            // Normal mode: apply all offsets
+            let totalOffsetX = windowOffset.value.x + manualOffset.value.x;
+            let totalOffsetY = windowOffset.value.y + manualOffset.value.y;
+            
+            // Handle Y axis inversion
+            let adjustedLogicalY = logicalY;
+            if (invertY.value && data.screenHeight) {
+              const screenHeightLogical = applyScaling.value && scaleFactor.value !== 1.0 
+                ? data.screenHeight / scaleFactor.value 
+                : data.screenHeight;
+              adjustedLogicalY = screenHeightLogical - logicalY;
+            }
+            
+            // Calculate effective header height
+            let effectiveHeaderHeight = manualHeaderHeight.value !== null && manualHeaderHeight.value > 0
+              ? manualHeaderHeight.value
+              : headerHeight.value;
+            
+            if (applyScaling.value && scaleMode.value === 'divide') {
+              const effectiveScaleFactor = manualScaleFactor.value !== null && manualScaleFactor.value > 0
+                ? manualScaleFactor.value
+                : scaleFactor.value;
+              
+              if (manualHeaderHeight.value === null || manualHeaderHeight.value === 0) {
+                effectiveHeaderHeight = headerHeight.value * effectiveScaleFactor * effectiveScaleFactor;
+              }
+            }
+            
+            windowX = logicalX - totalOffsetX;
+            windowY = adjustedLogicalY - totalOffsetY - effectiveHeaderHeight;
           }
-          
-          const windowX = logicalX - totalOffsetX;
-          const windowY = adjustedLogicalY - totalOffsetY - effectiveHeaderHeight;
           
           // Ensure coordinates are within bounds
-          const x = Math.max(0, Math.min(window.innerWidth, windowX));
-          const y = Math.max(0, Math.min(window.innerHeight - effectiveHeaderHeight, windowY));
+          let x, y;
+          if (isFullscreen.value) {
+            x = Math.max(0, Math.min(window.innerWidth, windowX));
+            y = Math.max(0, Math.min(window.innerHeight, windowY));
+          } else {
+            const effectiveHeaderHeight = manualHeaderHeight.value !== null && manualHeaderHeight.value > 0
+              ? manualHeaderHeight.value
+              : headerHeight.value;
+            x = Math.max(0, Math.min(window.innerWidth, windowX));
+            y = Math.max(0, Math.min(window.innerHeight - effectiveHeaderHeight, windowY));
+          }
+          
+          // Apply calibration transformation if available
+          if (calibrationCoefficients.value) {
+            const calibrated = applyAffineTransformation({ x, y }, calibrationCoefficients.value);
+            x = calibrated.x;
+            y = calibrated.y;
+          }
           
           // Only update gaze point if not frozen
           if (!isFrozen.value) {
@@ -300,6 +338,8 @@ function createEyeTrackingState(options = {}) {
     scaleMode,
     headerHeight,
     manualHeaderHeight,
+    calibrationCoefficients,
+    isFullscreen,
     
     // Methods
     connectWebSocket,
