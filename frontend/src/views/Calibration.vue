@@ -201,12 +201,14 @@ const { t } = useI18n();
 const isCalibratingApp = inject('isCalibrating', ref(false));
 
 // Eye tracking - skip calibration transformation during calibration
+// Also set isFullscreen to true so coordinate conversion matches fullscreen mode
 const {
   isConnected,
   gazePoint,
   trackingData,
   skipCalibration,
-} = useEyeTracking({ skipCalibration: true });
+  isFullscreen: trackingIsFullscreen,
+} = useEyeTracking({ skipCalibration: true, initialIsFullscreen: true });
 
 // Calibration state
 const isCalibrating = ref(false);
@@ -227,11 +229,26 @@ let gazeCollectionInterval = null;
 let circleAnimationInterval = null;
 
 const initializePositions = () => {
+  // Use window dimensions (logical pixels) which match the coordinate system of gazePoint
+  // The gaze coordinates are already converted to logical window coordinates
+  // In fullscreen mode, window.innerWidth/Height should match the viewport
   const width = window.innerWidth;
   const height = window.innerHeight;
+
+  console.log('Window width:', width);
+  console.log('Window height:', height);
+  console.log('Screen width:', screen.width);
+  console.log('Screen height:', screen.height);
+  console.log('Device pixel ratio:', window.devicePixelRatio);
+  if (trackingData.value) {
+    console.log('Tracking data screenWidth:', trackingData.value.screenWidth);
+    console.log('Tracking data screenHeight:', trackingData.value.screenHeight);
+    console.log('Tracking data pixelX/pixelY available:', trackingData.value.pixelX !== undefined);
+  }
+
   // Increased margin from edges (20% of screen dimension) to bring corners more toward center
-  const marginX = width * 0.2; // 20% from left/right edges
-  const marginY = height * 0.2; // 20% from top/bottom edges
+  const marginX = width * 0.1; // 20% from left/right edges
+  const marginY = height * 0.1; // 20% from top/bottom edges
   
   calibrationPositions.value = [
     { x: width / 2, y: height / 2, label: 'center' }, // Center
@@ -240,6 +257,9 @@ const initializePositions = () => {
     { x: width - marginX, y: height - marginY, label: 'bottom-right' }, // Bottom right
     { x: marginX, y: height - marginY, label: 'bottom-left' }, // Bottom left
   ];
+  
+  console.log('Calibration positions:', calibrationPositions.value);
+  console.log('Expected coordinate system: logical window pixels (matching gazePoint.x/y)');
 };
 
 const startCalibration = async () => {
@@ -250,20 +270,54 @@ const startCalibration = async () => {
   // Set calibration state in App.vue to hide sidebar
   isCalibratingApp.value = true;
   
-  // Enter fullscreen mode
+  // Set fullscreen state in eye tracking composable BEFORE entering fullscreen
+  // This ensures coordinate conversion uses fullscreen mode
+  if (trackingIsFullscreen) {
+    trackingIsFullscreen.value = true;
+  }
+  
+  // Enter fullscreen mode and wait for it to complete
   try {
     const element = document.documentElement;
+    let fullscreenPromise;
+    
     if (element.requestFullscreen) {
-      await element.requestFullscreen();
+      fullscreenPromise = element.requestFullscreen();
     } else if (element.webkitRequestFullscreen) {
-      await element.webkitRequestFullscreen();
+      fullscreenPromise = element.webkitRequestFullscreen();
     } else if (element.msRequestFullscreen) {
-      await element.msRequestFullscreen();
+      fullscreenPromise = element.msRequestFullscreen();
+    }
+    
+    if (fullscreenPromise) {
+      await fullscreenPromise;
+      
+      // Wait for fullscreen change event and then wait for dimensions to update
+      await new Promise(resolve => {
+        const checkFullscreen = () => {
+          const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+          if (isFullscreen) {
+            // Wait for next frame to ensure dimensions are updated
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                resolve();
+              });
+            });
+          } else {
+            // Retry after a short delay
+            setTimeout(checkFullscreen, 50);
+          }
+        };
+        checkFullscreen();
+      });
     }
   } catch (error) {
     console.warn('Could not enter fullscreen mode:', error);
   }
   
+  // Now initialize positions with correct fullscreen dimensions
+  // Wait a bit more to ensure all coordinate systems are aligned
+  await new Promise(resolve => setTimeout(resolve, 100));
   initializePositions();
   isCalibrating.value = true;
   calibrationComplete.value = false;
@@ -313,12 +367,45 @@ const startCalibrationPoint = (positionIndex) => {
       clearInterval(circleAnimationInterval);
       clearInterval(gazeCollectionInterval);
       
-      // Store raw calibration data (backend will calculate averages)
+      // Calculate mean of all collected gaze samples for debugging
       if (gazeSamples.value.length > 0) {
+        const meanX = gazeSamples.value.reduce((sum, s) => sum + s.x, 0) / gazeSamples.value.length;
+        const meanY = gazeSamples.value.reduce((sum, s) => sum + s.y, 0) / gazeSamples.value.length;
+        const meanScreenX = gazeSamples.value.reduce((sum, s) => sum + (s.screenX || 0), 0) / gazeSamples.value.length;
+        const meanScreenY = gazeSamples.value.reduce((sum, s) => sum + (s.screenY || 0), 0) / gazeSamples.value.length;
+        
+        const targetX = calibrationPositions.value[positionIndex].x;
+        const targetY = calibrationPositions.value[positionIndex].y;
+        const offsetX = targetX - meanX;
+        const offsetY = targetY - meanY;
+        const offsetPercentX = (offsetX / targetX) * 100;
+        const offsetPercentY = (offsetY / targetY) * 100;
+        
+        console.log(`Calibration point ${positionIndex} (${calibrationPositions.value[positionIndex].label}):`, {
+          targetPosition: { x: targetX, y: targetY },
+          meanGazePoint: { x: meanX.toFixed(2), y: meanY.toFixed(2) },
+          meanScreenCoords: { 
+            pixelX: meanScreenX.toFixed(2), 
+            pixelY: meanScreenY.toFixed(2) 
+          },
+          offset: { 
+            x: offsetX.toFixed(2), 
+            y: offsetY.toFixed(2),
+            xPercent: offsetPercentX.toFixed(2) + '%',
+            yPercent: offsetPercentY.toFixed(2) + '%'
+          },
+          sampleCount: gazeSamples.value.length,
+          trackingData: trackingData.value ? {
+            screenWidth: trackingData.value.screenWidth,
+            screenHeight: trackingData.value.screenHeight
+          } : null
+        });
+        
+        // Store raw calibration data (backend will calculate averages)
         calibrationData.value.push({
           position: calibrationPositions.value[positionIndex],
-          targetX: calibrationPositions.value[positionIndex].x,
-          targetY: calibrationPositions.value[positionIndex].y,
+          targetX: targetX,
+          targetY: targetY,
           samplesData: gazeSamples.value, // Store all raw samples for backend processing
         });
       }
