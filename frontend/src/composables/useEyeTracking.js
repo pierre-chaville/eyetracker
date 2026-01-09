@@ -26,6 +26,7 @@ function createEyeTrackingState(options = {}) {
     onTrackingDataUpdate = null,
     calibrationCoefficients: initialCalibrationCoefficients = null,
     isFullscreen: initialIsFullscreen = false,
+    skipCalibration: initialSkipCalibration = false,
   } = options;
 
   // Connection state
@@ -57,6 +58,7 @@ function createEyeTrackingState(options = {}) {
   const manualHeaderHeight = ref(null);
   const calibrationCoefficients = ref(initialCalibrationCoefficients);
   const isFullscreen = ref(initialIsFullscreen || false);
+  const skipCalibration = ref(initialSkipCalibration);
 
   // FPS calculation
   const frameTimes = ref([]);
@@ -193,8 +195,8 @@ function createEyeTrackingState(options = {}) {
             y = Math.max(0, Math.min(window.innerHeight - effectiveHeaderHeight, windowY));
           }
           
-          // Apply calibration transformation if available
-          if (calibrationCoefficients.value) {
+          // Apply calibration transformation if available and not skipped
+          if (calibrationCoefficients.value && !skipCalibration.value) {
             const calibrated = applyAffineTransformation({ x, y }, calibrationCoefficients.value);
             x = calibrated.x;
             y = calibrated.y;
@@ -340,6 +342,7 @@ function createEyeTrackingState(options = {}) {
     manualHeaderHeight,
     calibrationCoefficients,
     isFullscreen,
+    skipCalibration,
     
     // Methods
     connectWebSocket,

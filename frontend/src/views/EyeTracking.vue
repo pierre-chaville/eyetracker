@@ -61,7 +61,7 @@
         :is-frozen="isFrozen"
         :frozen-gaze-point="frozenGazePoint"
         :frozen-tracking-data="frozenTrackingData"
-        :show-coordinates="true"
+        :show-coordinates="false"
       />
 
       <!-- Crosshair at center (for reference) -->
@@ -162,104 +162,6 @@
             {{ (manualHeaderHeight !== null && manualHeaderHeight > 0 ? manualHeaderHeight : headerHeight).toFixed(0) }}px
           </span>
           <span v-if="manualHeaderHeight !== null && manualHeaderHeight > 0" class="text-yellow-600 dark:text-yellow-400 text-[10px] ml-1">({{ $t('eyeTracking.manual') }})</span>
-        </div>
-      </div>
-    </div>
-
-      <!-- Connection Settings (hidden in fullscreen) -->
-      <div v-if="!isFullscreen" class="absolute bottom-4 right-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 shadow-xl max-w-xs border border-gray-200 dark:border-gray-700">
-      <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-300 mb-2">{{ $t('eyeTracking.connectionSettings') }}</h3>
-      <div class="space-y-2">
-        <div>
-          <label class="block text-xs text-gray-700 dark:text-gray-400 mb-1">{{ $t('eyeTracking.websocketUrl') }}</label>
-          <input
-            v-model="wsUrl"
-            type="text"
-            :disabled="isConnected"
-            class="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:opacity-50"
-            placeholder="ws://127.0.0.1:8765"
-          />
-        </div>
-        <div class="pt-2 border-t border-gray-300 dark:border-gray-700">
-          <label class="block text-xs text-gray-700 dark:text-gray-400 mb-1">{{ $t('eyeTracking.manualOffset') }}</label>
-          <div class="flex gap-2">
-            <input
-              v-model.number="manualOffset.x"
-              type="number"
-              step="1"
-              class="w-full px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="X"
-            />
-            <input
-              v-model.number="manualOffset.y"
-              type="number"
-              step="1"
-              class="w-full px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="Y"
-            />
-          </div>
-          <button
-            @click="updateWindowPosition"
-            class="mt-2 w-full px-2 py-1 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded text-xs transition-colors"
-          >
-            {{ $t('eyeTracking.refreshPosition') }}
-          </button>
-          <label class="flex items-center mt-2 cursor-pointer">
-            <input
-              v-model="invertY"
-              type="checkbox"
-              class="mr-2"
-            />
-            <span class="text-xs text-gray-700 dark:text-gray-400">{{ $t('eyeTracking.invertYAxis') }}</span>
-          </label>
-          <label class="flex items-center mt-2 cursor-pointer">
-            <input
-              v-model="applyScaling"
-              type="checkbox"
-              class="mr-2"
-            />
-            <span class="text-xs text-gray-700 dark:text-gray-400">{{ $t('eyeTracking.applyScaleCorrection') }}</span>
-          </label>
-          <div v-if="applyScaling" class="mt-2 space-y-2">
-            <div>
-              <label class="block text-xs text-gray-700 dark:text-gray-400 mb-1">{{ $t('eyeTracking.scaleMode') }}</label>
-              <select
-                v-model="scaleMode"
-                class="w-full px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="none">{{ $t('eyeTracking.scaleModeNone') }}</option>
-                <option value="divide">{{ $t('eyeTracking.scaleModeDivide') }}</option>
-                <option value="multiply">{{ $t('eyeTracking.scaleModeMultiply') }}</option>
-              </select>
-            </div>
-            <div>
-              <label class="block text-xs text-gray-700 dark:text-gray-400 mb-1">{{ $t('eyeTracking.scaleFactorOverride', { value: scaleFactor.toFixed(2) }) }}</label>
-              <input
-                v-model.number="manualScaleFactor"
-                type="number"
-                step="0.1"
-                min="0.5"
-                max="3.0"
-                class="w-full px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Auto"
-              />
-            </div>
-            <div>
-              <label class="block text-xs text-gray-700 dark:text-gray-400 mb-1">{{ $t('eyeTracking.headerHeightOverride', { value: headerHeight.toFixed(0) }) }}</label>
-              <input
-                v-model.number="manualHeaderHeight"
-                type="number"
-                step="1"
-                min="0"
-                max="200"
-                class="w-full px-2 py-1 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded text-xs focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="Auto"
-              />
-            </div>
-          </div>
-        </div>
-        <div v-if="error" class="mt-2 p-2 bg-red-900/50 border border-red-700 rounded text-xs text-red-300">
-          {{ error }}
         </div>
       </div>
     </div>

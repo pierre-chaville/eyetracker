@@ -70,11 +70,6 @@
           class="absolute -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full"
           :style="{ backgroundColor: circleColor }"
         ></div>
-        
-        <!-- Position Label -->
-        <div class="absolute top-12 left-1/2 -translate-x-1/2 text-white text-sm font-semibold bg-black/50 px-3 py-1 rounded">
-          {{ currentPosition + 1 }} / {{ calibrationPositions.length }}
-        </div>
       </div>
 
 
@@ -188,24 +183,6 @@
           </div>
         </div>
       </div>
-
-      <!-- Progress Indicator -->
-      <div
-        v-if="isCalibrating"
-        class="absolute bottom-8 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-sm text-white px-6 py-3 rounded-lg"
-      >
-        <div class="flex items-center space-x-4">
-          <div class="text-sm font-medium">
-            {{ $t('calibration.progress') }}: {{ currentPosition + 1 }} / {{ calibrationPositions.length }}
-          </div>
-          <div class="w-32 h-2 bg-gray-700 rounded-full overflow-hidden">
-            <div
-              class="h-full bg-primary-500 transition-all duration-300"
-              :style="{ width: `${((currentPosition + 1) / calibrationPositions.length) * 100}%` }"
-            ></div>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -223,12 +200,13 @@ const { t } = useI18n();
 // Get calibration state from App.vue to hide sidebar
 const isCalibratingApp = inject('isCalibrating', ref(false));
 
-// Eye tracking
+// Eye tracking - skip calibration transformation during calibration
 const {
   isConnected,
   gazePoint,
   trackingData,
-} = useEyeTracking();
+  skipCalibration,
+} = useEyeTracking({ skipCalibration: true });
 
 // Calibration state
 const isCalibrating = ref(false);
@@ -389,6 +367,11 @@ const finishCalibration = async () => {
 
 const validateCalibration = () => {
   // Calibration is already saved, just navigate away or show success
+  // Re-enable calibration transformation after calibration
+  if (skipCalibration) {
+    skipCalibration.value = false;
+  }
+  
   // Reset calibration state in App.vue to show sidebar
   isCalibratingApp.value = false;
   
@@ -434,6 +417,11 @@ const resetCalibration = () => {
   calibrationData.value = [];
   processedCalibrationData.value = null;
   circleSize.value = 200;
+  
+  // Re-enable calibration transformation after calibration
+  if (skipCalibration) {
+    skipCalibration.value = false;
+  }
   
   // Reset calibration state in App.vue to show sidebar
   isCalibratingApp.value = false;
