@@ -467,7 +467,12 @@ const loadChoices = async () => {
 
 // Play audio from base64 data
 const playAudio = (audioBase64) => {
-  if (!audioBase64) return;
+  if (!audioBase64) {
+    console.warn('playAudio called with empty audioBase64');
+    return;
+  }
+  
+  console.log('playAudio called, base64 length:', audioBase64.length);
   
   try {
     // Convert base64 to blob
@@ -478,17 +483,75 @@ const playAudio = (audioBase64) => {
       uint8Array[i] = audioData.charCodeAt(i);
     }
     
+    console.log('Audio data converted, first bytes:', Array.from(uint8Array.slice(0, 10)));
+    
+    // Detect audio format - ElevenLabs returns MP3, pyttsx3 returns WAV
+    // Check first few bytes to determine format
+    let mimeType = 'audio/mpeg'; // Default to MP3 (ElevenLabs)
+    if (uint8Array[0] === 0x52 && uint8Array[1] === 0x49 && uint8Array[2] === 0x46 && uint8Array[3] === 0x46) {
+      // RIFF header indicates WAV format
+      mimeType = 'audio/wav';
+      console.log('Detected WAV format');
+    } else if (uint8Array[0] === 0xFF && (uint8Array[1] === 0xFB || uint8Array[1] === 0xF3)) {
+      // MP3 header
+      mimeType = 'audio/mpeg';
+      console.log('Detected MP3 format');
+    } else {
+      console.log('Unknown format, defaulting to MP3. First bytes:', Array.from(uint8Array.slice(0, 4)).map(b => '0x' + b.toString(16)));
+    }
+    
     // Create audio blob and play
-    const blob = new Blob([arrayBuffer], { type: 'audio/wav' });
+    const blob = new Blob([arrayBuffer], { type: mimeType });
     const audioUrl = URL.createObjectURL(blob);
+    console.log('Created blob URL:', audioUrl, 'size:', blob.size, 'type:', mimeType);
+    
     const audio = new Audio(audioUrl);
     
-    audio.play().catch(err => {
-      console.error('Error playing audio:', err);
+    // Set volume to ensure it's audible
+    audio.volume = 1.0;
+    
+    audio.addEventListener('canplaythrough', () => {
+      console.log('Audio can play through');
     });
+    
+    audio.addEventListener('loadeddata', () => {
+      console.log('Audio data loaded');
+    });
+    
+    audio.addEventListener('loadstart', () => {
+      console.log('Audio loading started');
+    });
+    
+    audio.addEventListener('error', (e) => {
+      console.error('Audio playback error:', e);
+      console.error('Audio error details:', {
+        code: audio.error?.code,
+        message: audio.error?.message,
+        MEDIA_ERR_ABORTED: 1,
+        MEDIA_ERR_NETWORK: 2,
+        MEDIA_ERR_DECODE: 3,
+        MEDIA_ERR_SRC_NOT_SUPPORTED: 4
+      });
+    });
+    
+    // Try to play audio
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        console.log('Audio playback started successfully');
+      }).catch(err => {
+        console.error('Error playing audio (playPromise rejected):', err);
+        // Try to play again after user interaction
+        console.log('Attempting to play audio after user interaction...');
+        document.addEventListener('click', () => {
+          audio.play().catch(e => console.error('Still cannot play audio:', e));
+        }, { once: true });
+      });
+    }
     
     // Clean up URL after playback
     audio.addEventListener('ended', () => {
+      console.log('Audio playback ended');
       URL.revokeObjectURL(audioUrl);
     });
   } catch (err) {
@@ -522,8 +585,12 @@ const selectChoice = async (choice) => {
     });
     
     // Play the generated audio if available
+    console.log('Response from select_choice:', response.data);
     if (response.data.audio_base64) {
+      console.log('Audio base64 received, length:', response.data.audio_base64.length);
       playAudio(response.data.audio_base64);
+    } else {
+      console.warn('No audio_base64 in response');
     }
     
     // Reload choices for next context

@@ -19,8 +19,9 @@ class TTSService:
         Initialize TTS service.
         
         Args:
-            provider: "pyttsx3" (offline) or "openai" (requires API key)
+            provider: "pyttsx3" (offline), "openai" (requires API key), or "elevenlabs" (requires API key)
         """
+        print(f"--> Initializing TTS service with provider: {provider}")
         self.provider = provider.lower()
         self._engine = None
     
@@ -53,6 +54,8 @@ class TTSService:
             return self._generate_with_pyttsx3(text)
         elif self.provider == "openai":
             return self._generate_with_openai(text, language)
+        elif self.provider == "elevenlabs":
+            return self._generate_with_elevenlabs(text, language)
         else:
             raise ValueError(f"Unsupported TTS provider: {self.provider}")
     
@@ -115,8 +118,68 @@ class TTSService:
         
         except ImportError:
             raise ValueError("openai package is not installed. Install it with: pip install openai")
+        except ImportError:
+            raise ValueError("openai package is not installed. Install it with: pip install openai")
         except Exception as e:
             print(f"Error generating speech with OpenAI: {e}")
+            return None
+    
+    def _generate_with_elevenlabs(self, text: str, language: str = "en") -> Optional[bytes]:
+        """Generate speech using ElevenLabs API"""
+        try:
+            import requests
+            
+            api_key = os.getenv("ELEVEN_LABS_API_KEY")
+            voice_id = os.getenv("ELEVEN_LABS_VOICE_ID")
+            
+            print(f"ElevenLabs TTS: API key present: {bool(api_key)}, Voice ID: {voice_id}")
+            
+            if not api_key:
+                raise ValueError("ELEVEN_LABS_API_KEY environment variable is required")
+            if not voice_id:
+                raise ValueError("ELEVEN_LABS_VOICE_ID environment variable is required")
+            
+            url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+            print(f"ElevenLabs TTS: Calling URL: {url}")
+            print(f"ElevenLabs TTS: Text to convert: '{text}'")
+            
+            headers = {
+                "Accept": "audio/mpeg",
+                "Content-Type": "application/json",
+                "xi-api-key": api_key
+            }
+            
+            data = {
+                "text": text,
+                "model_id": "eleven_multilingual_v2",  # Use multilingual model
+                "voice_settings": {
+                    "stability": 0.5,
+                    "similarity_boost": 0.75
+                }
+            }
+            
+            response = requests.post(url, json=data, headers=headers, timeout=30)
+            print(f"ElevenLabs TTS: Response status code: {response.status_code}")
+            
+            response.raise_for_status()
+            
+            # ElevenLabs returns MP3 format by default
+            audio_data = response.content
+            print(f"ElevenLabs TTS: Received audio data, length: {len(audio_data)} bytes")
+            return audio_data
+        
+        except ImportError:
+            raise ValueError("requests package is not installed. Install it with: pip install requests")
+        except requests.exceptions.RequestException as e:
+            print(f"Error generating speech with ElevenLabs (RequestException): {e}")
+            if hasattr(e, 'response') and e.response is not None:
+                print(f"Response status: {e.response.status_code}")
+                print(f"Response body: {e.response.text}")
+            return None
+        except Exception as e:
+            print(f"Error generating speech with ElevenLabs: {e}")
+            import traceback
+            traceback.print_exc()
             return None
     
     def generate_speech_base64(self, text: str, language: str = "en") -> Optional[str]:

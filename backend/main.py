@@ -221,6 +221,8 @@ class ChoiceSelectionRequest(BaseModel):
     choice_id: str
     choice_text: Optional[str] = None
     current_text: Optional[str] = None
+    session_id: Optional[int] = None
+    step_number: Optional[int] = None
 
 
 class ChoicesRequest(BaseModel):
@@ -351,8 +353,11 @@ async def select_choice(request: ChoiceSelectionRequest, db_session: Session = D
         # Default to pyttsx3 for offline TTS, but could be configurable
         tts_provider = "pyttsx3"
         
-        # If OpenAI is configured and has API key, use OpenAI TTS for better quality
-        if config.provider == "openai" and os.getenv("OPENAI_API_KEY"):
+        # If ElevenLabs API key is available, use ElevenLabs TTS for better quality
+        if os.getenv("ELEVEN_LABS_API_KEY") and os.getenv("ELEVEN_LABS_VOICE_ID"):
+            tts_provider = "elevenlabs"
+        # Fallback to OpenAI if ElevenLabs is not available
+        elif config.provider == "openai" and os.getenv("OPENAI_API_KEY"):
             tts_provider = "openai"
         
         # Get TTS service
@@ -363,10 +368,15 @@ async def select_choice(request: ChoiceSelectionRequest, db_session: Session = D
         if request.choice_text:
             # Determine language from config or default to English
             language = "en"  # Could be made configurable
+            print(f"Generating TTS for text: '{request.choice_text}' using provider: {tts_provider}")
             audio_base64 = tts_service.generate_speech_base64(
                 text=request.choice_text,
                 language=language
             )
+            if audio_base64:
+                print(f"TTS generated successfully, audio length: {len(audio_base64)} characters")
+            else:
+                print("WARNING: TTS generation returned None")
         
         # Update session step with selected choice if session_id is provided
         if request.session_id and request.step_number is not None and request.choice_text:
@@ -400,11 +410,28 @@ async def select_choice(request: ChoiceSelectionRequest, db_session: Session = D
         }
     except Exception as e:
         print(f"Error in select_choice: {e}")
+        import traceback
+        traceback.print_exc()
+        # Try to generate audio even if there's an error
+        audio_base64 = None
+        try:
+            if request.choice_text:
+                config = load_config()
+                tts_provider = "pyttsx3"
+                if os.getenv("ELEVEN_LABS_API_KEY") and os.getenv("ELEVEN_LABS_VOICE_ID"):
+                    tts_provider = "elevenlabs"
+                elif config.provider == "openai" and os.getenv("OPENAI_API_KEY"):
+                    tts_provider = "openai"
+                tts_service = get_tts_service(provider=tts_provider)
+                audio_base64 = tts_service.generate_speech_base64(text=request.choice_text, language="en")
+        except Exception as tts_error:
+            print(f"Error generating TTS in exception handler: {tts_error}")
+        
         return {
             "success": True,
             "message": f"Choice '{request.choice_id}' selected",
             "updated_text": request.current_text,
-            "audio_base64": None,
+            "audio_base64": audio_base64,
             "error": str(e)
         }
 
@@ -732,7 +759,7 @@ async def list_sessions(
 
 
 @app.get("/api/communication/sessions/{session_id}", response_model=CommunicationSessionResponse, tags=["communication"])
-async def get_session(session_id: int, db_session: Session = Depends(get_session)):
+async def get_communication_session(session_id: int, db_session: Session = Depends(get_session)):
     """Get a specific communication session by ID with all steps"""
     session = db_session.get(CommunicationSession, session_id)
     if not session:
