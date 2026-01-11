@@ -7,6 +7,8 @@ import Users from '../views/Users.vue';
 import UserDetail from '../views/UserDetail.vue';
 import Caregivers from '../views/Caregivers.vue';
 import CaregiverDetail from '../views/CaregiverDetail.vue';
+import CommunicationSessions from '../views/CommunicationSessions.vue';
+import CommunicationSessionDetail from '../views/CommunicationSessionDetail.vue';
 import Setup from '../views/Setup.vue';
 
 const routes = [
@@ -19,6 +21,16 @@ const routes = [
     path: '/communicate',
     name: 'Communicate',
     component: Communicate,
+  },
+  {
+    path: '/communication-sessions',
+    name: 'CommunicationSessions',
+    component: CommunicationSessions,
+  },
+  {
+    path: '/communication-sessions/:id',
+    name: 'CommunicationSessionDetail',
+    component: CommunicationSessionDetail,
   },
   {
     path: '/calibration',

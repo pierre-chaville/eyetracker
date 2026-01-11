@@ -30,7 +30,8 @@
         <div
           v-for="user in users"
           :key="user.id"
-          class="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow p-6"
+          @click="$router.push(`/users/${user.id}`)"
+          class="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer p-6 hover:border-primary-500 dark:hover:border-primary-400 border-2 border-transparent"
         >
           <div class="flex items-start justify-between mb-4">
             <div>
@@ -53,28 +54,13 @@
             </span>
           </div>
 
-          <div class="mb-4">
+          <div>
             <p v-if="user.notes" class="text-sm text-gray-600 dark:text-gray-400 line-clamp-2">
               {{ user.notes }}
             </p>
             <p v-else class="text-sm text-gray-400 dark:text-gray-500 italic">
               {{ $t('users.noNotes') }}
             </p>
-          </div>
-
-          <div class="flex space-x-2">
-            <button
-              @click="startSession(user)"
-              class="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors text-sm font-medium"
-            >
-              {{ $t('users.start') }}
-            </button>
-            <button
-              @click="$router.push(`/users/${user.id}`)"
-              class="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors text-sm font-medium"
-            >
-              {{ $t('users.view') }}
-            </button>
           </div>
         </div>
       </div>
@@ -199,14 +185,6 @@ const createUser = async () => {
   } finally {
     creating.value = false;
   }
-};
-
-const startSession = (user) => {
-  // Navigate to communicate page with user context
-  router.push({
-    name: 'Communicate',
-    query: { userId: user.id },
-  });
 };
 
 const formatDate = (dateString) => {

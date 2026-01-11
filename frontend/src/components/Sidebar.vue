@@ -81,6 +81,7 @@ import { useRoute } from 'vue-router';
 import {
   HomeIcon,
   ChatBubbleLeftRightIcon,
+  DocumentTextIcon,
   Cog6ToothIcon,
   EyeIcon,
   UserGroupIcon,
@@ -119,6 +120,11 @@ const menuItems = computed(() => [
     path: '/communicate',
     label: t('sidebar.communicate'),
     icon: ChatBubbleLeftRightIcon,
+  },
+  {
+    path: '/communication-sessions',
+    label: t('sidebar.communicationSessions'),
+    icon: DocumentTextIcon,
   },
   {
     path: '/calibration',

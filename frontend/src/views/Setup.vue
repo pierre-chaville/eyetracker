@@ -2,9 +2,19 @@
   <div class="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
     <div class="max-w-4xl mx-auto">
       <!-- Header -->
-      <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-6">
-        {{ $t('setup.title') }}
-      </h1>
+      <div class="flex items-center justify-between mb-6">
+        <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
+          {{ $t('setup.title') }}
+        </h1>
+        <button
+          v-if="!isEditMode"
+          @click="enterEditMode"
+          class="px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors flex items-center space-x-2"
+        >
+          <PencilIcon class="w-5 h-5" />
+          <span>{{ $t('setup.edit') }}</span>
+        </button>
+      </div>
 
       <!-- Loading State -->
       <div v-if="loading" class="flex justify-center items-center py-12">
@@ -33,7 +43,8 @@
           </label>
           <select
             v-model="config.provider"
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            :disabled="!isEditMode"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
           >
             <option value="openai">OpenAI</option>
             <option value="anthropic">Anthropic</option>
@@ -53,7 +64,8 @@
           <input
             v-model="config.model"
             type="text"
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            :disabled="!isEditMode"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
             :placeholder="$t('setup.modelPlaceholder')"
           />
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -72,7 +84,9 @@
             min="0"
             max="2"
             step="0.1"
-            class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer"
+            :disabled="!isEditMode"
+            class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none disabled:cursor-not-allowed"
+            :class="isEditMode ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'"
           />
           <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
             <span>0.0</span>
@@ -92,7 +106,8 @@
           <textarea
             v-model="config.prompt"
             rows="6"
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm"
+            :disabled="!isEditMode"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
             :placeholder="$t('setup.promptPlaceholder')"
           />
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
@@ -100,55 +115,14 @@
           </p>
         </div>
 
-        <!-- UI Adjustments Section -->
-        <div class="border-t border-gray-200 dark:border-gray-700 pt-6">
-          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            {{ $t('setup.uiAdjustments') }}
-          </h2>
-
-          <!-- Header Height Adjustment -->
-          <div class="mb-4">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              {{ $t('setup.headerHeightAdjustment') }} (px)
-            </label>
-            <input
-              v-model.number="config.header_height_adjustment"
-              type="number"
-              step="1"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              :placeholder="$t('setup.headerHeightPlaceholder')"
-            />
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {{ $t('setup.headerHeightDescription') }}
-            </p>
-          </div>
-
-          <!-- Menu Width Adjustment -->
-          <div>
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              {{ $t('setup.menuWidthAdjustment') }} (px)
-            </label>
-            <input
-              v-model.number="config.menu_width_adjustment"
-              type="number"
-              step="1"
-              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              :placeholder="$t('setup.menuWidthPlaceholder')"
-            />
-            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-              {{ $t('setup.menuWidthDescription') }}
-            </p>
-          </div>
-        </div>
-
-        <!-- Action Buttons -->
-        <div class="flex space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
+        <!-- Action Buttons (only shown in edit mode) -->
+        <div v-if="isEditMode" class="flex space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
           <button
             type="button"
-            @click="loadConfig"
-            class="px-6 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
+            @click="cancelEdit"
+            class="flex-1 px-6 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-lg transition-colors font-medium"
           >
-            {{ $t('setup.reset') }}
+            {{ $t('setup.cancel') }}
           </button>
           <button
             type="submit"
@@ -166,6 +140,7 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { PencilIcon } from '@heroicons/vue/24/outline';
 import { configAPI } from '../services/api';
 
 const { t } = useI18n();
@@ -175,10 +150,10 @@ const config = ref({
   model: '',
   temperature: 0.7,
   prompt: '',
-  header_height_adjustment: 0,
-  menu_width_adjustment: 0,
 });
 
+const originalConfig = ref({});
+const isEditMode = ref(false);
 const loading = ref(true);
 const saving = ref(false);
 const error = ref(null);
@@ -190,20 +165,34 @@ const loadConfig = async () => {
     error.value = null;
     successMessage.value = null;
     const data = await configAPI.get();
-    config.value = {
+    const loadedConfig = {
       provider: data.provider || 'openai',
       model: data.model || '',
       temperature: data.temperature ?? 0.7,
       prompt: data.prompt || '',
-      header_height_adjustment: data.header_height_adjustment ?? 0,
-      menu_width_adjustment: data.menu_width_adjustment ?? 0,
     };
+    config.value = { ...loadedConfig };
+    originalConfig.value = { ...loadedConfig };
   } catch (err) {
     error.value = err.response?.data?.detail || err.message || t('setup.loadError');
     console.error('Error loading config:', err);
   } finally {
     loading.value = false;
   }
+};
+
+const enterEditMode = () => {
+  // Store current config as original before editing
+  originalConfig.value = { ...config.value };
+  isEditMode.value = true;
+};
+
+const cancelEdit = () => {
+  // Revert to original config
+  config.value = { ...originalConfig.value };
+  isEditMode.value = false;
+  error.value = null;
+  successMessage.value = null;
 };
 
 const saveConfig = async () => {
@@ -219,7 +208,12 @@ const saveConfig = async () => {
     }
     
     await configAPI.update(config.value);
+    // Update original config to match saved config
+    originalConfig.value = { ...config.value };
     successMessage.value = t('setup.saveSuccess');
+    
+    // Exit edit mode after successful save
+    isEditMode.value = false;
     
     // Clear success message after 3 seconds
     setTimeout(() => {

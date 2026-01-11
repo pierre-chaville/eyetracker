@@ -285,3 +285,4 @@ class SpeechToTextService:
         except Exception as e:
             if self.on_error:
                 self.on_error(f"Error in audio stream: {e}")
+

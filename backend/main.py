@@ -14,6 +14,8 @@ from database import engine, create_db_and_tables, get_session
 from models import (
     User, UserCreate, UserUpdate, UserResponse,
     Caregiver, CaregiverCreate, CaregiverUpdate, CaregiverResponse,
+    CommunicationSession, CommunicationSessionCreate, CommunicationSessionUpdate, CommunicationSessionResponse,
+    SessionStep, SessionStepCreate, SessionStepResponse, ChoiceData,
     EyeTrackingSetup, CommunicationSettings
 )
 from calibration import (
@@ -24,7 +26,7 @@ from calibration import (
 from llm import get_llm_service
 from tts_service import get_tts_service
 try:
-    from speech_to_text_service import SpeechToTextService
+    from stt_service import SpeechToTextService
 except ImportError:
     # Speech-to-text service not available (missing dependencies)
     SpeechToTextService = None
@@ -227,6 +229,8 @@ class ChoicesRequest(BaseModel):
     user_id: Optional[int] = None
     caregiver_id: Optional[int] = None
     current_text: Optional[str] = None
+    session_id: Optional[int] = None
+    step_number: Optional[int] = None
 
 
 @app.post("/api/communication/choices", response_model=ChoicesResponse, tags=["communication"])
@@ -279,6 +283,47 @@ async def get_choices(request: ChoicesRequest, session: Session = Depends(get_se
             for i, choice in enumerate(llm_choices)
         ]
         
+        # Save step to session if session_id is provided
+        if request.session_id and request.step_number is not None:
+            try:
+                # Determine message role based on conversation history
+                message_role = None
+                message_content = None
+                if request.conversation_history:
+                    last_message = request.conversation_history[-1]
+                    message_role = last_message.get("role", "").lower()
+                    message_content = last_message.get("content", "")
+                    # Map 'user' to 'caregiver' and 'assistant' to 'user' for clarity
+                    if message_role == "user":
+                        message_role = "caregiver"
+                    elif message_role == "assistant":
+                        message_role = "user"
+                
+                # Prepare choices data
+                choices_data = [{"text": c.text, "probability": c.probability} for c in choices]
+                
+                step = SessionStep(
+                    session_id=request.session_id,
+                    step_number=request.step_number,
+                    message_role=message_role,
+                    message_content=message_content,
+                    choices_json=choices_data,
+                    selected_choice_text=None  # Not selected yet
+                )
+                
+                session.add(step)
+                
+                # Update session updated_at
+                comm_session = session.get(CommunicationSession, request.session_id)
+                if comm_session:
+                    comm_session.updated_at = datetime.utcnow()
+                    session.add(comm_session)
+                
+                session.commit()
+            except Exception as e:
+                print(f"Error saving session step: {e}")
+                # Continue even if saving fails
+        
         return ChoicesResponse(choices=choices)
     
     except Exception as e:
@@ -294,7 +339,7 @@ async def get_choices(request: ChoicesRequest, session: Session = Depends(get_se
 
 
 @app.post("/api/communication/select", tags=["communication"])
-async def select_choice(request: ChoiceSelectionRequest):
+async def select_choice(request: ChoiceSelectionRequest, db_session: Session = Depends(get_session)):
     """
     Handle selection of a choice.
     This triggers text-to-speech generation for the selected choice.
@@ -322,6 +367,30 @@ async def select_choice(request: ChoiceSelectionRequest):
                 text=request.choice_text,
                 language=language
             )
+        
+        # Update session step with selected choice if session_id is provided
+        if request.session_id and request.step_number is not None and request.choice_text:
+            try:
+                from sqlmodel import select as sql_select
+                step_statement = sql_select(SessionStep).where(
+                    SessionStep.session_id == request.session_id,
+                    SessionStep.step_number == request.step_number
+                )
+                step = db_session.exec(step_statement).first()
+                if step:
+                    step.selected_choice_text = request.choice_text
+                    step.timestamp = datetime.utcnow()
+                    db_session.add(step)
+                    
+                    # Update session updated_at
+                    comm_session = db_session.get(CommunicationSession, request.session_id)
+                    if comm_session:
+                        comm_session.updated_at = datetime.utcnow()
+                        db_session.add(comm_session)
+                    
+                    db_session.commit()
+            except Exception as e:
+                print(f"Error updating session step with selected choice: {e}")
         
         return {
             "success": True,
@@ -609,6 +678,181 @@ def caregiver_to_response(caregiver: Caregiver) -> CaregiverResponse:
         description=caregiver.description,
         created_at=caregiver.created_at,
         updated_at=caregiver.updated_at
+    )
+
+
+# Communication Session CRUD endpoints
+@app.post("/api/communication/sessions", response_model=CommunicationSessionResponse, status_code=status.HTTP_201_CREATED, tags=["communication"])
+async def create_session(session_data: CommunicationSessionCreate, db_session: Session = Depends(get_session)):
+    """Create a new communication session"""
+    session = CommunicationSession(
+        user_id=session_data.user_id,
+        caregiver_id=session_data.caregiver_id
+    )
+    
+    db_session.add(session)
+    db_session.commit()
+    db_session.refresh(session)
+    
+    return session_to_response(session, db_session)
+
+
+@app.get("/api/communication/sessions", response_model=List[CommunicationSessionResponse], tags=["communication"])
+async def list_sessions(
+    skip: int = 0,
+    limit: int = 100,
+    user_id: Optional[int] = None,
+    caregiver_id: Optional[int] = None,
+    db_session: Session = Depends(get_session)
+):
+    """List all communication sessions with optional filtering"""
+    statement = select(CommunicationSession)
+    
+    if user_id is not None:
+        statement = statement.where(CommunicationSession.user_id == user_id)
+    if caregiver_id is not None:
+        statement = statement.where(CommunicationSession.caregiver_id == caregiver_id)
+    
+    statement = statement.order_by(CommunicationSession.started_at.desc()).offset(skip).limit(limit)
+    sessions = db_session.exec(statement).all()
+    
+    return [session_to_response(session, db_session) for session in sessions]
+
+
+@app.get("/api/communication/sessions/{session_id}", response_model=CommunicationSessionResponse, tags=["communication"])
+async def get_session(session_id: int, db_session: Session = Depends(get_session)):
+    """Get a specific communication session by ID with all steps"""
+    session = db_session.get(CommunicationSession, session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Session with id {session_id} not found"
+        )
+    return session_to_response(session, db_session)
+
+
+@app.put("/api/communication/sessions/{session_id}", response_model=CommunicationSessionResponse, tags=["communication"])
+async def update_session(
+    session_id: int,
+    session_data: CommunicationSessionUpdate,
+    db_session: Session = Depends(get_session)
+):
+    """Update an existing communication session (e.g., set ended_at)"""
+    session = db_session.get(CommunicationSession, session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Session with id {session_id} not found"
+        )
+    
+    if session_data.ended_at is not None:
+        session.ended_at = session_data.ended_at
+    
+    session.updated_at = datetime.utcnow()
+    
+    db_session.add(session)
+    db_session.commit()
+    db_session.refresh(session)
+    
+    return session_to_response(session, db_session)
+
+
+@app.delete("/api/communication/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["communication"])
+async def delete_session(session_id: int, db_session: Session = Depends(get_session)):
+    """Delete a communication session and all its steps"""
+    session = db_session.get(CommunicationSession, session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Session with id {session_id} not found"
+        )
+    
+    # Delete all steps first
+    steps_statement = select(SessionStep).where(SessionStep.session_id == session_id)
+    steps = db_session.exec(steps_statement).all()
+    for step in steps:
+        db_session.delete(step)
+    
+    db_session.delete(session)
+    db_session.commit()
+    return None
+
+
+@app.post("/api/communication/sessions/{session_id}/steps", response_model=SessionStepResponse, status_code=status.HTTP_201_CREATED, tags=["communication"])
+async def create_session_step(
+    session_id: int,
+    step_data: SessionStepCreate,
+    db_session: Session = Depends(get_session)
+):
+    """Create a new step in a communication session"""
+    # Verify session exists
+    session = db_session.get(CommunicationSession, session_id)
+    if not session:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Session with id {session_id} not found"
+        )
+    
+    # Convert choices list to JSON
+    choices_json = None
+    if step_data.choices:
+        choices_json = [{"text": c.get("text", ""), "probability": c.get("probability", 0.0)} for c in step_data.choices]
+    
+    step = SessionStep(
+        session_id=session_id,
+        step_number=step_data.step_number,
+        message_role=step_data.message_role,
+        message_content=step_data.message_content,
+        choices_json=choices_json,
+        selected_choice_text=step_data.selected_choice_text
+    )
+    
+    db_session.add(step)
+    db_session.commit()
+    db_session.refresh(step)
+    
+    # Update session updated_at
+    session.updated_at = datetime.utcnow()
+    db_session.add(session)
+    db_session.commit()
+    
+    return step_to_response(step)
+
+
+# Helper functions for session responses
+def step_to_response(step: SessionStep) -> SessionStepResponse:
+    """Convert SessionStep model to SessionStepResponse"""
+    choices = None
+    if step.choices_json:
+        choices = [ChoiceData(text=c.get("text", ""), probability=c.get("probability", 0.0)) for c in step.choices_json]
+    
+    return SessionStepResponse(
+        id=step.id,
+        session_id=step.session_id,
+        step_number=step.step_number,
+        message_role=step.message_role,
+        message_content=step.message_content,
+        choices=choices,
+        selected_choice_text=step.selected_choice_text,
+        timestamp=step.timestamp
+    )
+
+
+def session_to_response(session: CommunicationSession, db_session: Session) -> CommunicationSessionResponse:
+    """Convert CommunicationSession model to CommunicationSessionResponse with steps"""
+    # Get all steps for this session
+    steps_statement = select(SessionStep).where(SessionStep.session_id == session.id).order_by(SessionStep.step_number)
+    steps = db_session.exec(steps_statement).all()
+    
+    return CommunicationSessionResponse(
+        id=session.id,
+        user_id=session.user_id,
+        caregiver_id=session.caregiver_id,
+        started_at=session.started_at,
+        ended_at=session.ended_at,
+        created_at=session.created_at,
+        updated_at=session.updated_at,
+        steps=[step_to_response(step) for step in steps]
     )
 
 

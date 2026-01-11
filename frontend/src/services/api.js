@@ -128,5 +128,32 @@ export const configAPI = {
   },
 };
 
+export const sessionsAPI = {
+  list: async (params = {}) => {
+    const response = await apiClient.get('/api/communication/sessions', { params });
+    return response.data;
+  },
+  
+  get: async (sessionId) => {
+    const response = await apiClient.get(`/api/communication/sessions/${sessionId}`);
+    return response.data;
+  },
+  
+  create: async (sessionData) => {
+    const response = await apiClient.post('/api/communication/sessions', sessionData);
+    return response.data;
+  },
+  
+  update: async (sessionId, sessionData) => {
+    const response = await apiClient.put(`/api/communication/sessions/${sessionId}`, sessionData);
+    return response.data;
+  },
+  
+  delete: async (sessionId) => {
+    const response = await apiClient.delete(`/api/communication/sessions/${sessionId}`);
+    return response.data;
+  },
+};
+
 export default apiClient;
 

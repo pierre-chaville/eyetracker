@@ -127,13 +127,13 @@
           <!-- Cell 5: Center (Transcription Display) -->
           <div
             ref="cell5"
-            class="border-2 border-primary-500 dark:border-primary-400 rounded-lg flex flex-col items-center justify-center bg-primary-50 dark:bg-primary-900/20 p-4"
+            class="border border-gray-300 dark:border-gray-600 rounded-lg flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800/50 p-4"
             :style="cellStyle"
           >
             <div class="w-full h-full flex flex-col">
               <!-- Speech Started Indicator -->
               <div v-if="isSpeaking" class="mb-2 flex items-center justify-center space-x-2">
-                <div class="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                <MicrophoneIcon class="w-5 h-5 text-blue-600 dark:text-blue-400 animate-pulse" />
                 <span class="text-xs text-blue-600 dark:text-blue-400 font-medium">
                   {{ $t('communicate.speaking') }}
                 </span>
@@ -144,7 +144,7 @@
                 <div v-if="currentText" class="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
                   {{ currentText }}
                 </div>
-                <div v-else class="text-gray-400 dark:text-gray-500 text-sm">
+                <div v-else class="text-gray-400 dark:text-gray-500 text-sm italic">
                   {{ $t('communicate.noText') }}
                 </div>
               </div>
@@ -237,6 +237,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, watch, inject } from 'vue';
 import { useI18n } from 'vue-i18n';
 import axios from 'axios';
+import { MicrophoneIcon } from '@heroicons/vue/24/solid';
 import { useEyeTracking } from '../composables/useEyeTracking';
 import { useCalibration } from '../composables/useCalibration';
 import EyeTrackingGaze from '../components/EyeTrackingGaze.vue';
@@ -264,6 +265,10 @@ const conversationHistory = ref([]);
 let ws = null;
 let successTimeout = null;
 let fullscreenChangeHandlers = [];
+
+// Session tracking
+const sessionId = ref(null);
+const stepNumber = ref(0);
 
 // Eye tracking
 const { calibrationCoefficients } = useCalibration();
@@ -383,8 +388,8 @@ const isCellHighlighted = (cellNumber) => {
 };
 
 const getCellClasses = (cellNumber) => {
-  const baseClasses = 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600';
-  const highlightedClasses = 'border-primary-500 dark:border-primary-400 bg-primary-100 dark:bg-primary-900/30 ring-2 ring-primary-500 dark:ring-primary-400';
+  const baseClasses = 'border-4 border-primary-400 dark:border-primary-500 bg-white dark:bg-gray-700 hover:bg-primary-50 dark:hover:bg-primary-900/20 hover:border-primary-500 dark:hover:border-primary-400';
+  const highlightedClasses = 'border-4 border-primary-600 dark:border-primary-400 bg-primary-100 dark:bg-primary-900/40 ring-4 ring-primary-300 dark:ring-primary-700';
   
   if (isCellHighlighted(cellNumber)) {
     return highlightedClasses;
@@ -439,11 +444,18 @@ const loadChoices = async () => {
     const userId = localStorage.getItem('selectedUserId') ? parseInt(localStorage.getItem('selectedUserId')) : null;
     const caregiverId = localStorage.getItem('selectedCaregiverId') ? parseInt(localStorage.getItem('selectedCaregiverId')) : null;
     
+    // Increment step number for this session
+    if (sessionId.value) {
+      stepNumber.value += 1;
+    }
+    
     const response = await axios.post(`${API_BASE_URL}/api/communication/choices`, {
       conversation_history: conversationHistory.value,
       user_id: userId,
       caregiver_id: caregiverId,
       current_text: currentText.value || null,
+      session_id: sessionId.value,
+      step_number: sessionId.value ? stepNumber.value : null,
     });
     choices.value = response.data.choices || [];
   } catch (err) {
@@ -505,6 +517,8 @@ const selectChoice = async (choice) => {
       choice_id: choice.id,
       choice_text: choice.text,
       current_text: currentText.value,
+      session_id: sessionId.value,
+      step_number: sessionId.value ? stepNumber.value : null,
     });
     
     // Play the generated audio if available
@@ -664,6 +678,24 @@ const startCommunication = async () => {
   successMessage.value = null;
   
   try {
+    // Get user and caregiver IDs from localStorage
+    const userId = localStorage.getItem('selectedUserId') ? parseInt(localStorage.getItem('selectedUserId')) : null;
+    const caregiverId = localStorage.getItem('selectedCaregiverId') ? parseInt(localStorage.getItem('selectedCaregiverId')) : null;
+    
+    // Create a new communication session
+    try {
+      const sessionResponse = await axios.post(`${API_BASE_URL}/api/communication/sessions`, {
+        user_id: userId,
+        caregiver_id: caregiverId,
+      });
+      sessionId.value = sessionResponse.data.id;
+      stepNumber.value = 0;
+      console.log('Created session:', sessionId.value);
+    } catch (sessionErr) {
+      console.error('Error creating session:', sessionErr);
+      // Continue even if session creation fails
+    }
+    
     // Start speech-to-text
     await axios.post(`${API_BASE_URL}/api/speech-to-text/start`);
     isActive.value = true;
@@ -697,6 +729,21 @@ const stopCommunication = async () => {
     await axios.post(`${API_BASE_URL}/api/speech-to-text/stop`);
     isActive.value = false;
     disconnectWebSocket();
+    
+    // End the session if it exists
+    if (sessionId.value) {
+      try {
+        await axios.put(`${API_BASE_URL}/api/communication/sessions/${sessionId.value}`, {
+          ended_at: new Date().toISOString(),
+        });
+        console.log('Ended session:', sessionId.value);
+      } catch (sessionErr) {
+        console.error('Error ending session:', sessionErr);
+        // Continue even if ending session fails
+      }
+      sessionId.value = null;
+      stepNumber.value = 0;
+    }
     
     // Reset fullscreen state in App.vue to show sidebar
     isCommunicationFullscreenApp.value = false;

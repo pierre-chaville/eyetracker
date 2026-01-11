@@ -30,7 +30,8 @@
         <div
           v-for="caregiver in caregivers"
           :key="caregiver.id"
-          class="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-shadow p-6"
+          @click="$router.push(`/caregivers/${caregiver.id}`)"
+          class="bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-lg transition-all cursor-pointer p-6 hover:border-primary-500 dark:hover:border-primary-400 border-2 border-transparent"
         >
           <div class="flex items-start justify-between mb-4">
             <div>
@@ -46,22 +47,13 @@
             </div>
           </div>
 
-          <div class="mb-4">
+          <div>
             <p v-if="caregiver.description" class="text-sm text-gray-600 dark:text-gray-400 line-clamp-3">
               {{ caregiver.description }}
             </p>
             <p v-else class="text-sm text-gray-400 dark:text-gray-500 italic">
               {{ $t('caregivers.noDescription') }}
             </p>
-          </div>
-
-          <div class="flex space-x-2">
-            <button
-              @click="$router.push(`/caregivers/${caregiver.id}`)"
-              class="flex-1 px-4 py-2 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-colors text-sm font-medium"
-            >
-              {{ $t('caregivers.view') }}
-            </button>
           </div>
         </div>
       </div>
