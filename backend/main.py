@@ -66,41 +66,57 @@ async def broadcast_speech_event(event_type: str, data: dict):
         "data": data,
         "timestamp": datetime.utcnow().isoformat()
     }
+    print(f"Broadcasting event: {event_type} to {len(speech_websocket_connections)} connections")
     disconnected = set()
     for connection in speech_websocket_connections.copy():
         try:
             await connection.send_json(message)
-        except Exception:
+            print(f"Sent {event_type} to WebSocket client")
+        except Exception as e:
+            print(f"Error sending to WebSocket: {e}")
             disconnected.add(connection)
     # Remove disconnected connections
     speech_websocket_connections.difference_update(disconnected)
+    print(f"Active WebSocket connections: {len(speech_websocket_connections)}")
 
 
 def on_speech_started():
     """Callback when speech starts."""
-    loop = get_event_loop()
-    if loop.is_running():
-        asyncio.run_coroutine_threadsafe(broadcast_speech_event("speech_started", {}), loop)
-    else:
-        loop.run_until_complete(broadcast_speech_event("speech_started", {}))
+    print("on_speech_started called")
+    try:
+        loop = get_event_loop()
+        if loop.is_running():
+            asyncio.run_coroutine_threadsafe(broadcast_speech_event("speech_started", {}), loop)
+        else:
+            loop.run_until_complete(broadcast_speech_event("speech_started", {}))
+    except Exception as e:
+        print(f"Error in on_speech_started: {e}")
 
 
 def on_transcription(text: str):
     """Callback when a sentence is transcribed."""
-    loop = get_event_loop()
-    if loop.is_running():
-        asyncio.run_coroutine_threadsafe(broadcast_speech_event("transcription", {"text": text}), loop)
-    else:
-        loop.run_until_complete(broadcast_speech_event("transcription", {"text": text}))
+    print(f"on_transcription called with text: {text}")
+    try:
+        loop = get_event_loop()
+        if loop.is_running():
+            asyncio.run_coroutine_threadsafe(broadcast_speech_event("transcription", {"text": text}), loop)
+        else:
+            loop.run_until_complete(broadcast_speech_event("transcription", {"text": text}))
+    except Exception as e:
+        print(f"Error in on_transcription: {e}")
 
 
 def on_speech_error(error: str):
     """Callback on speech-to-text error."""
-    loop = get_event_loop()
-    if loop.is_running():
-        asyncio.run_coroutine_threadsafe(broadcast_speech_event("error", {"error": error}), loop)
-    else:
-        loop.run_until_complete(broadcast_speech_event("error", {"error": error}))
+    print(f"on_speech_error called with error: {error}")
+    try:
+        loop = get_event_loop()
+        if loop.is_running():
+            asyncio.run_coroutine_threadsafe(broadcast_speech_event("error", {"error": error}), loop)
+        else:
+            loop.run_until_complete(broadcast_speech_event("error", {"error": error}))
+    except Exception as e:
+        print(f"Error in on_speech_error: {e}")
 
 
 # Initialize database on startup
@@ -179,6 +195,66 @@ async def interpret_gaze(request: CommunicationRequest):
         "interpreted_text": "Hello",
         "confidence": 0.85,
         "suggestions": ["Hello", "Hi there", "Good morning"]
+    }
+
+
+class Choice(BaseModel):
+    """A choice option for the communication grid"""
+    id: str
+    text: Optional[str] = None
+    icon: Optional[str] = None
+
+
+class ChoicesResponse(BaseModel):
+    """Response with available choices"""
+    choices: List[Choice]
+
+
+class ChoiceSelectionRequest(BaseModel):
+    """Request to select a choice"""
+    choice_id: str
+    choice_text: Optional[str] = None
+    current_text: Optional[str] = None
+
+
+@app.get("/api/communication/choices", response_model=ChoicesResponse, tags=["communication"])
+async def get_choices(context: Optional[str] = None):
+    """
+    Get available choices for the communication grid.
+    Returns 2-8 choices based on context.
+    """
+    # TODO: Implement context-aware choice generation using AI
+    # For now, return example choices
+    # In a real implementation, this would analyze the current text/context
+    # and generate relevant choices using LLM
+    
+    # Example: return 4 choices (corners)
+    choices = [
+        Choice(id="1", text="Yes", icon="✓"),
+        Choice(id="2", text="No", icon="✗"),
+        Choice(id="3", text="More", icon="+"),
+        Choice(id="4", text="Done", icon="✓"),
+    ]
+    
+    return ChoicesResponse(choices=choices)
+
+
+@app.post("/api/communication/select", tags=["communication"])
+async def select_choice(request: ChoiceSelectionRequest):
+    """
+    Handle selection of a choice.
+    This can trigger actions, update context, or generate new choices.
+    """
+    # TODO: Implement choice selection logic
+    # This could:
+    # - Update the current text
+    # - Trigger actions
+    # - Generate new choices based on selection
+    
+    return {
+        "success": True,
+        "message": f"Choice '{request.choice_id}' selected",
+        "updated_text": request.current_text
     }
 
 
@@ -441,17 +517,31 @@ async def websocket_speech_to_text(websocket: WebSocket):
     """WebSocket endpoint for speech-to-text events."""
     await websocket.accept()
     speech_websocket_connections.add(websocket)
+    print(f"WebSocket client connected. Total connections: {len(speech_websocket_connections)}")
+    
+    # Send initial connection confirmation
+    await websocket.send_json({
+        "type": "connected",
+        "data": {"message": "WebSocket connected"},
+        "timestamp": datetime.utcnow().isoformat()
+    })
+    
     try:
         while True:
             # Keep connection alive and handle any incoming messages
-            data = await websocket.receive_text()
-            # Echo back or handle client messages if needed
-            await websocket.send_json({"type": "pong", "data": data})
+            try:
+                data = await websocket.receive_text()
+                # Echo back or handle client messages if needed
+                await websocket.send_json({"type": "pong", "data": data})
+            except WebSocketDisconnect:
+                break
     except WebSocketDisconnect:
-        speech_websocket_connections.discard(websocket)
+        pass
     except Exception as e:
-        speech_websocket_connections.discard(websocket)
         print(f"WebSocket error: {e}")
+    finally:
+        speech_websocket_connections.discard(websocket)
+        print(f"WebSocket client disconnected. Total connections: {len(speech_websocket_connections)}")
 
 
 # Speech-to-text API endpoints
@@ -470,14 +560,19 @@ async def start_speech_to_text():
         return {"success": True, "message": "Speech-to-text is already active"}
     
     try:
+        print("Creating SpeechToTextService...")
         speech_to_text_service = SpeechToTextService(
             on_speech_started=on_speech_started,
             on_transcription=on_transcription,
             on_error=on_speech_error
         )
+        print("Starting speech-to-text service...")
         speech_to_text_service.start(language="fr", model="nova-2")
+        print(f"Speech-to-text started. Active: {speech_to_text_service.is_active}")
         return {"success": True, "message": "Speech-to-text started"}
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to start speech-to-text: {str(e)}"

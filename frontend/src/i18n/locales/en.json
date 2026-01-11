@@ -192,6 +192,7 @@
     "transcriptions": "Transcriptions",
     "speaking": "Speaking...",
     "noTranscriptions": "No transcriptions yet. Start speech-to-text to begin capturing audio.",
+    "noText": "No text yet",
     "clear": "Clear All"
   }
 }

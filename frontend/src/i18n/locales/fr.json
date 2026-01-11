@@ -192,6 +192,7 @@
     "transcriptions": "Transcriptions",
     "speaking": "Parole en cours...",
     "noTranscriptions": "Aucune transcription pour le moment. Démarrez la reconnaissance vocale pour commencer à capturer l'audio.",
+    "noText": "Aucun texte pour le moment",
     "clear": "Tout effacer"
   }
 }

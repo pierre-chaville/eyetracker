@@ -1,17 +1,17 @@
 <template>
   <div id="app" class="min-h-screen">
     <Sidebar 
-      v-if="!isCalibrating && !isEyeTrackingFullscreen"
+      v-if="!isCalibrating && !isEyeTrackingFullscreen && !isCommunicationFullscreen"
       :is-open="sidebarOpen" 
       :is-expanded="sidebarExpanded"
       @close="sidebarOpen = false" 
       @toggle="toggleSidebarExpanded"
     />
     <!-- Main content area with sidebar offset -->
-    <div :class="['transition-all duration-300 min-h-screen', (isCalibrating || isEyeTrackingFullscreen) ? '' : (sidebarExpanded ? 'md:ml-64' : 'md:ml-20')]">
+    <div :class="['transition-all duration-300 min-h-screen', (isCalibrating || isEyeTrackingFullscreen || isCommunicationFullscreen) ? '' : (sidebarExpanded ? 'md:ml-64' : 'md:ml-20')]">
       <!-- Mobile menu button -->
       <button
-        v-if="!isCalibrating && !isEyeTrackingFullscreen"
+        v-if="!isCalibrating && !isEyeTrackingFullscreen && !isCommunicationFullscreen"
         @click="sidebarOpen = !sidebarOpen"
         class="fixed top-4 left-4 z-50 md:hidden p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700"
       >
@@ -37,10 +37,13 @@ const router = useRouter();
 const isCalibrating = ref(false);
 // Eye tracking fullscreen state - shared with EyeTracking component
 const isEyeTrackingFullscreen = ref(false);
+// Communication fullscreen state - shared with Communicate component
+const isCommunicationFullscreen = ref(false);
 
 // Provide states for child components
 provide('isCalibrating', isCalibrating);
 provide('isEyeTrackingFullscreen', isEyeTrackingFullscreen);
+provide('isCommunicationFullscreen', isCommunicationFullscreen);
 
 // Save expanded state to localStorage when it changes
 const toggleSidebarExpanded = () => {
