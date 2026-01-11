@@ -177,6 +177,22 @@
     "averageGaze": "Regard moyen",
     "calibrationApplied": "Calibration appliquée",
     "coefficientsSaved": "Coefficients affines enregistrés"
+  },
+  "communicate": {
+    "speechToText": "Reconnaissance Vocale",
+    "speechToTextDescription": "Capturer l'audio du microphone et transcrire la parole en texte en temps réel.",
+    "active": "Actif",
+    "inactive": "Inactif",
+    "start": "Démarrer",
+    "stop": "Arrêter",
+    "loading": "Chargement...",
+    "started": "Reconnaissance vocale démarrée avec succès",
+    "stopped": "Reconnaissance vocale arrêtée",
+    "error": "Une erreur s'est produite",
+    "transcriptions": "Transcriptions",
+    "speaking": "Parole en cours...",
+    "noTranscriptions": "Aucune transcription pour le moment. Démarrez la reconnaissance vocale pour commencer à capturer l'audio.",
+    "clear": "Tout effacer"
   }
 }
 

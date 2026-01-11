@@ -177,6 +177,22 @@
     "averageGaze": "Average Gaze",
     "calibrationApplied": "Calibration Applied",
     "coefficientsSaved": "Affine coefficients saved"
+  },
+  "communicate": {
+    "speechToText": "Speech-to-Text",
+    "speechToTextDescription": "Capture audio from microphone and transcribe speech to text in real-time.",
+    "active": "Active",
+    "inactive": "Inactive",
+    "start": "Start",
+    "stop": "Stop",
+    "loading": "Loading...",
+    "started": "Speech-to-text started successfully",
+    "stopped": "Speech-to-text stopped",
+    "error": "An error occurred",
+    "transcriptions": "Transcriptions",
+    "speaking": "Speaking...",
+    "noTranscriptions": "No transcriptions yet. Start speech-to-text to begin capturing audio.",
+    "clear": "Clear All"
   }
 }
 

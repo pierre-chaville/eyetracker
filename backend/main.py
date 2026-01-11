@@ -1,13 +1,14 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Set
 from sqlmodel import Session, select
 import uvicorn
 import json
 import os
 from pathlib import Path
 from datetime import datetime
+import asyncio
 
 from database import engine, create_db_and_tables, get_session
 from models import (
@@ -19,6 +20,11 @@ from calibration import (
     CalibrationResponse,
     process_calibration_data,
 )
+try:
+    from speech_to_text_service import SpeechToTextService
+except ImportError:
+    # Speech-to-text service not available (missing dependencies)
+    SpeechToTextService = None
 
 app = FastAPI(title="Eye Tracker API", version="1.0.0")
 
@@ -31,11 +37,85 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Speech-to-text service instance
+speech_to_text_service: Optional[SpeechToTextService] = None
+
+# WebSocket connections for speech-to-text events
+speech_websocket_connections: Set[WebSocket] = set()
+
+# Event loop for broadcasting events
+_event_loop: Optional[asyncio.AbstractEventLoop] = None
+
+
+def get_event_loop():
+    """Get or create event loop for broadcasting events."""
+    global _event_loop
+    if _event_loop is None or _event_loop.is_closed():
+        try:
+            _event_loop = asyncio.get_event_loop()
+        except RuntimeError:
+            _event_loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(_event_loop)
+    return _event_loop
+
+
+async def broadcast_speech_event(event_type: str, data: dict):
+    """Broadcast speech event to all connected WebSocket clients."""
+    message = {
+        "type": event_type,
+        "data": data,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+    disconnected = set()
+    for connection in speech_websocket_connections.copy():
+        try:
+            await connection.send_json(message)
+        except Exception:
+            disconnected.add(connection)
+    # Remove disconnected connections
+    speech_websocket_connections.difference_update(disconnected)
+
+
+def on_speech_started():
+    """Callback when speech starts."""
+    loop = get_event_loop()
+    if loop.is_running():
+        asyncio.run_coroutine_threadsafe(broadcast_speech_event("speech_started", {}), loop)
+    else:
+        loop.run_until_complete(broadcast_speech_event("speech_started", {}))
+
+
+def on_transcription(text: str):
+    """Callback when a sentence is transcribed."""
+    loop = get_event_loop()
+    if loop.is_running():
+        asyncio.run_coroutine_threadsafe(broadcast_speech_event("transcription", {"text": text}), loop)
+    else:
+        loop.run_until_complete(broadcast_speech_event("transcription", {"text": text}))
+
+
+def on_speech_error(error: str):
+    """Callback on speech-to-text error."""
+    loop = get_event_loop()
+    if loop.is_running():
+        asyncio.run_coroutine_threadsafe(broadcast_speech_event("error", {"error": error}), loop)
+    else:
+        loop.run_until_complete(broadcast_speech_event("error", {"error": error}))
+
 
 # Initialize database on startup
 @app.on_event("startup")
 def on_startup():
     create_db_and_tables()
+
+
+@app.on_event("shutdown")
+def on_shutdown():
+    """Cleanup on shutdown."""
+    global speech_to_text_service
+    if speech_to_text_service:
+        speech_to_text_service.stop()
+        speech_to_text_service = None
 
 
 class EyeTrackingStatus(BaseModel):
@@ -353,6 +433,85 @@ async def update_config(config: ConfigModel):
     
     save_config(config)
     return ConfigResponse(**config.model_dump())
+
+
+# Speech-to-text WebSocket endpoint
+@app.websocket("/ws/speech-to-text")
+async def websocket_speech_to_text(websocket: WebSocket):
+    """WebSocket endpoint for speech-to-text events."""
+    await websocket.accept()
+    speech_websocket_connections.add(websocket)
+    try:
+        while True:
+            # Keep connection alive and handle any incoming messages
+            data = await websocket.receive_text()
+            # Echo back or handle client messages if needed
+            await websocket.send_json({"type": "pong", "data": data})
+    except WebSocketDisconnect:
+        speech_websocket_connections.discard(websocket)
+    except Exception as e:
+        speech_websocket_connections.discard(websocket)
+        print(f"WebSocket error: {e}")
+
+
+# Speech-to-text API endpoints
+@app.post("/api/speech-to-text/start", tags=["speech-to-text"])
+async def start_speech_to_text():
+    """Start speech-to-text transcription."""
+    global speech_to_text_service
+    
+    if SpeechToTextService is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Speech-to-text service is not available. Please install required dependencies: python-dotenv, deepgram-sdk, pyaudio"
+        )
+    
+    if speech_to_text_service and speech_to_text_service.is_active:
+        return {"success": True, "message": "Speech-to-text is already active"}
+    
+    try:
+        speech_to_text_service = SpeechToTextService(
+            on_speech_started=on_speech_started,
+            on_transcription=on_transcription,
+            on_error=on_speech_error
+        )
+        speech_to_text_service.start(language="fr", model="nova-2")
+        return {"success": True, "message": "Speech-to-text started"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to start speech-to-text: {str(e)}"
+        )
+
+
+@app.post("/api/speech-to-text/stop", tags=["speech-to-text"])
+async def stop_speech_to_text():
+    """Stop speech-to-text transcription."""
+    global speech_to_text_service
+    
+    if not speech_to_text_service or not speech_to_text_service.is_active:
+        return {"success": True, "message": "Speech-to-text is not active"}
+    
+    try:
+        speech_to_text_service.stop()
+        return {"success": True, "message": "Speech-to-text stopped"}
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to stop speech-to-text: {str(e)}"
+        )
+
+
+@app.get("/api/speech-to-text/status", tags=["speech-to-text"])
+async def get_speech_to_text_status():
+    """Get speech-to-text status."""
+    global speech_to_text_service
+    
+    is_active = speech_to_text_service is not None and speech_to_text_service.is_active
+    return {
+        "is_active": is_active,
+        "websocket_connections": len(speech_websocket_connections)
+    }
 
 
 if __name__ == "__main__":
