@@ -34,6 +34,16 @@ export const communicationAPI = {
     });
     return response.data;
   },
+  
+  getChoices: async (conversationHistory = [], userId = null, caregiverId = null, currentText = null) => {
+    const response = await apiClient.post('/api/communication/choices', {
+      conversation_history: conversationHistory,
+      user_id: userId,
+      caregiver_id: caregiverId,
+      current_text: currentText,
+    });
+    return response.data;
+  },
 };
 
 export const calibrationAPI = {
@@ -73,6 +83,35 @@ export const usersAPI = {
   
   delete: async (userId) => {
     const response = await apiClient.delete(`/api/users/${userId}`);
+    return response.data;
+  },
+};
+
+export const caregiversAPI = {
+  list: async (skip = 0, limit = 100) => {
+    const response = await apiClient.get('/api/caregivers', {
+      params: { skip, limit },
+    });
+    return response.data;
+  },
+  
+  get: async (caregiverId) => {
+    const response = await apiClient.get(`/api/caregivers/${caregiverId}`);
+    return response.data;
+  },
+  
+  create: async (caregiverData) => {
+    const response = await apiClient.post('/api/caregivers', caregiverData);
+    return response.data;
+  },
+  
+  update: async (caregiverId, caregiverData) => {
+    const response = await apiClient.put(`/api/caregivers/${caregiverId}`, caregiverData);
+    return response.data;
+  },
+  
+  delete: async (caregiverId) => {
+    const response = await apiClient.delete(`/api/caregivers/${caregiverId}`);
     return response.data;
   },
 };

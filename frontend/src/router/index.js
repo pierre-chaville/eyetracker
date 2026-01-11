@@ -5,6 +5,8 @@ import Communicate from '../views/Communicate.vue';
 import Calibration from '../views/Calibration.vue';
 import Users from '../views/Users.vue';
 import UserDetail from '../views/UserDetail.vue';
+import Caregivers from '../views/Caregivers.vue';
+import CaregiverDetail from '../views/CaregiverDetail.vue';
 import Setup from '../views/Setup.vue';
 
 const routes = [
@@ -37,6 +39,16 @@ const routes = [
     path: '/users/:id',
     name: 'UserDetail',
     component: UserDetail,
+  },
+  {
+    path: '/caregivers',
+    name: 'Caregivers',
+    component: Caregivers,
+  },
+  {
+    path: '/caregivers/:id',
+    name: 'CaregiverDetail',
+    component: CaregiverDetail,
   },
   {
     path: '/setup',

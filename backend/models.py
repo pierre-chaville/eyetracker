@@ -85,3 +85,50 @@ class UserResponse(BaseModel):
     class Config:
         from_attributes = True
 
+
+# SQLModel Caregiver model
+class Caregiver(SQLModel, table=True):
+    """Caregiver model for storing caregiver data"""
+    __tablename__ = "caregivers"
+    
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(max_length=255)
+    gender: Optional[str] = Field(default=None, max_length=50)
+    description: Optional[str] = Field(default=None, max_length=2000)
+    created_at: Optional[datetime] = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(DateTime(timezone=False), server_default=func.now())
+    )
+    updated_at: Optional[datetime] = Field(
+        default_factory=datetime.utcnow,
+        sa_column=Column(DateTime(timezone=False))
+    )
+
+
+# Pydantic models for Caregiver API requests/responses
+class CaregiverCreate(BaseModel):
+    """Model for creating a new caregiver"""
+    name: str = PydanticField(..., max_length=255)
+    gender: Optional[str] = PydanticField(None, max_length=50)
+    description: Optional[str] = PydanticField(None, max_length=2000)
+
+
+class CaregiverUpdate(BaseModel):
+    """Model for updating an existing caregiver"""
+    name: Optional[str] = PydanticField(None, max_length=255)
+    gender: Optional[str] = PydanticField(None, max_length=50)
+    description: Optional[str] = PydanticField(None, max_length=2000)
+
+
+class CaregiverResponse(BaseModel):
+    """Model for caregiver API responses"""
+    id: int
+    name: str
+    gender: Optional[str] = None
+    description: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    
+    class Config:
+        from_attributes = True
+

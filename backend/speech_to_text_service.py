@@ -216,6 +216,7 @@ class SpeechToTextService:
             if result.is_final:
                 sentence = result.channel.alternatives[0].transcript
                 if len(sentence) > 0 and self.on_transcription:
+                    print(f"--> Transcription: {sentence}")
                     self.on_transcription(sentence)
         except Exception as e:
             if self.on_error:
@@ -228,6 +229,7 @@ class SpeechToTextService:
     def _on_speech_started(self, speech_started, **kwargs):
         """Handle speech started event."""
         if self.on_speech_started:
+            print(f"--> Speech started")
             self.on_speech_started()
     
     def _on_utterance_end(self, utterance_end, **kwargs):

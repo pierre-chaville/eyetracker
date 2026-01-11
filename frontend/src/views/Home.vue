@@ -74,7 +74,7 @@
         </div>
       </div>
 
-      <!-- Select User Card -->
+      <!-- Select User and Caregiver Card -->
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 mb-8 max-w-2xl mx-auto">
         <div class="flex items-center justify-between mb-6">
           <h3 class="text-2xl font-semibold text-gray-900 dark:text-white">{{ $t('home.selectUser') }}</h3>
@@ -87,25 +87,49 @@
         </div>
         
         <div class="space-y-4">
-          <!-- User Selection -->
-          <div v-if="!selectedUser || showUserList">
-            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              {{ $t('home.selectUserLabel') }}
-            </label>
-            <select
-              v-model="selectedUserId"
-              @change="onUserSelected"
-              class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              <option value="">{{ $t('home.noUserSelected') }}</option>
-              <option
-                v-for="user in users"
-                :key="user.id"
-                :value="user.id"
+          <!-- User and Caregiver Selection Row -->
+          <div class="grid grid-cols-2 gap-4">
+            <!-- User Selection -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {{ $t('home.selectUserLabel') }}
+              </label>
+              <select
+                v-model="selectedUserId"
+                @change="onUserSelected"
+                class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                {{ user.name }} {{ user.is_active ? '' : `(${$t('users.inactive')})` }}
-              </option>
-            </select>
+                <option value="">{{ $t('home.noUserSelected') }}</option>
+                <option
+                  v-for="user in users"
+                  :key="user.id"
+                  :value="user.id"
+                >
+                  {{ user.name }} {{ user.is_active ? '' : `(${$t('users.inactive')})` }}
+                </option>
+              </select>
+            </div>
+            
+            <!-- Caregiver Selection -->
+            <div>
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {{ $t('home.selectCaregiverLabel') }}
+              </label>
+              <select
+                v-model="selectedCaregiverId"
+                @change="onCaregiverSelected"
+                class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">{{ $t('home.noCaregiverSelected') }}</option>
+                <option
+                  v-for="caregiver in caregivers"
+                  :key="caregiver.id"
+                  :value="caregiver.id"
+                >
+                  {{ caregiver.name }}
+                </option>
+              </select>
+            </div>
           </div>
           
           <!-- Selected User Info -->
@@ -136,15 +160,38 @@
             </div>
           </div>
           
+          <!-- Selected Caregiver Info -->
+          <div v-if="selectedCaregiver" class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+            <div class="flex items-center justify-between">
+              <div>
+                <p class="font-semibold text-gray-900 dark:text-white">{{ selectedCaregiver.name }}</p>
+                <p v-if="selectedCaregiver.gender" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {{ $t('caregivers.gender') }}: {{ selectedCaregiver.gender }}
+                </p>
+                <p v-if="selectedCaregiver.description" class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                  {{ selectedCaregiver.description }}
+                </p>
+              </div>
+              <button
+                @click="selectedCaregiverId = null; selectedCaregiver = null; localStorage.removeItem('selectedCaregiverId')"
+                class="px-3 py-1 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
+              >
+                {{ $t('home.changeCaregiver') }}
+              </button>
+            </div>
+          </div>
+          
           <!-- Loading State -->
-          <div v-if="loadingUsers" class="text-center py-4">
+          <div v-if="loadingUsers || loadingCaregivers" class="text-center py-4">
             <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto"></div>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">{{ $t('home.loadingUsers') }}</p>
+            <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
+              {{ loadingUsers ? $t('home.loadingUsers') : $t('home.loadingCaregivers') }}
+            </p>
           </div>
           
           <!-- Error State -->
-          <div v-if="userError" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <p class="text-sm text-red-800 dark:text-red-200">{{ userError }}</p>
+          <div v-if="userError || caregiverError" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p class="text-sm text-red-800 dark:text-red-200">{{ userError || caregiverError }}</p>
           </div>
         </div>
       </div>
@@ -193,7 +240,7 @@ import {
   BookOpenIcon,
 } from '@heroicons/vue/24/outline';
 import { useEyeTracking } from '../composables/useEyeTracking';
-import { eyeTrackingAPI, usersAPI } from '@/services/api';
+import { eyeTrackingAPI, usersAPI, caregiversAPI } from '@/services/api';
 
 // Use the shared eye tracking composable
 const {
@@ -213,6 +260,13 @@ const loadingUsers = ref(false);
 const userError = ref(null);
 const showUserList = ref(false);
 
+// Caregiver selection state
+const caregivers = ref([]);
+const selectedCaregiverId = ref(null);
+const selectedCaregiver = ref(null);
+const loadingCaregivers = ref(false);
+const caregiverError = ref(null);
+
 const loadUsers = async () => {
   try {
     loadingUsers.value = true;
@@ -226,10 +280,24 @@ const loadUsers = async () => {
   }
 };
 
+const loadCaregivers = async () => {
+  try {
+    loadingCaregivers.value = true;
+    caregiverError.value = null;
+    caregivers.value = await caregiversAPI.list();
+  } catch (err) {
+    caregiverError.value = err.response?.data?.detail || err.message || 'Failed to load caregivers';
+    console.error('Error loading caregivers:', err);
+  } finally {
+    loadingCaregivers.value = false;
+  }
+};
+
 const onUserSelected = async () => {
   if (!selectedUserId.value) {
     selectedUser.value = null;
     showUserList.value = false;
+    localStorage.removeItem('selectedUserId');
     return;
   }
   
@@ -242,6 +310,24 @@ const onUserSelected = async () => {
   } catch (err) {
     userError.value = err.response?.data?.detail || err.message || 'Failed to load user';
     console.error('Error loading user:', err);
+  }
+};
+
+const onCaregiverSelected = async () => {
+  if (!selectedCaregiverId.value) {
+    selectedCaregiver.value = null;
+    localStorage.removeItem('selectedCaregiverId');
+    return;
+  }
+  
+  try {
+    const caregiver = await caregiversAPI.get(selectedCaregiverId.value);
+    selectedCaregiver.value = caregiver;
+    // Store selected caregiver in localStorage for persistence
+    localStorage.setItem('selectedCaregiverId', selectedCaregiverId.value.toString());
+  } catch (err) {
+    caregiverError.value = err.response?.data?.detail || err.message || 'Failed to load caregiver';
+    console.error('Error loading caregiver:', err);
   }
 };
 
@@ -268,8 +354,8 @@ const toggleTracking = async () => {
 };
 
 onMounted(async () => {
-  // Load users
-  await loadUsers();
+  // Load users and caregivers
+  await Promise.all([loadUsers(), loadCaregivers()]);
   
   // Restore previously selected user
   const savedUserId = localStorage.getItem('selectedUserId');
@@ -279,6 +365,17 @@ onMounted(async () => {
     if (user) {
       selectedUserId.value = userId;
       await onUserSelected();
+    }
+  }
+  
+  // Restore previously selected caregiver
+  const savedCaregiverId = localStorage.getItem('selectedCaregiverId');
+  if (savedCaregiverId) {
+    const caregiverId = parseInt(savedCaregiverId);
+    const caregiver = caregivers.value.find(c => c.id === caregiverId);
+    if (caregiver) {
+      selectedCaregiverId.value = caregiverId;
+      await onCaregiverSelected();
     }
   }
 });

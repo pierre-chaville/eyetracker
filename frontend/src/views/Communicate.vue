@@ -260,6 +260,7 @@ const error = ref(null);
 const successMessage = ref(null);
 const transcriptions = ref([]);
 const currentText = ref('');
+const conversationHistory = ref([]);
 let ws = null;
 let successTimeout = null;
 let fullscreenChangeHandlers = [];
@@ -434,12 +435,52 @@ watch(gazePoint, () => {
 // Load choices from backend
 const loadChoices = async () => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/api/communication/choices`);
+    // Get user and caregiver IDs from localStorage
+    const userId = localStorage.getItem('selectedUserId') ? parseInt(localStorage.getItem('selectedUserId')) : null;
+    const caregiverId = localStorage.getItem('selectedCaregiverId') ? parseInt(localStorage.getItem('selectedCaregiverId')) : null;
+    
+    const response = await axios.post(`${API_BASE_URL}/api/communication/choices`, {
+      conversation_history: conversationHistory.value,
+      user_id: userId,
+      caregiver_id: caregiverId,
+      current_text: currentText.value || null,
+    });
     choices.value = response.data.choices || [];
   } catch (err) {
     console.error('Error loading choices:', err);
     // Use empty choices on error
     choices.value = [];
+  }
+};
+
+// Play audio from base64 data
+const playAudio = (audioBase64) => {
+  if (!audioBase64) return;
+  
+  try {
+    // Convert base64 to blob
+    const audioData = atob(audioBase64);
+    const arrayBuffer = new ArrayBuffer(audioData.length);
+    const uint8Array = new Uint8Array(arrayBuffer);
+    for (let i = 0; i < audioData.length; i++) {
+      uint8Array[i] = audioData.charCodeAt(i);
+    }
+    
+    // Create audio blob and play
+    const blob = new Blob([arrayBuffer], { type: 'audio/wav' });
+    const audioUrl = URL.createObjectURL(blob);
+    const audio = new Audio(audioUrl);
+    
+    audio.play().catch(err => {
+      console.error('Error playing audio:', err);
+    });
+    
+    // Clean up URL after playback
+    audio.addEventListener('ended', () => {
+      URL.revokeObjectURL(audioUrl);
+    });
+  } catch (err) {
+    console.error('Error processing audio:', err);
   }
 };
 
@@ -451,14 +492,25 @@ const selectChoice = async (choice) => {
     // Append choice text to current text
     if (choice.text) {
       currentText.value = (currentText.value + ' ' + choice.text).trim();
+      
+      // Add user's choice to conversation history
+      conversationHistory.value.push({
+        role: 'assistant',
+        content: choice.text
+      });
     }
     
     // Send selection to backend
-    await axios.post(`${API_BASE_URL}/api/communication/select`, {
+    const response = await axios.post(`${API_BASE_URL}/api/communication/select`, {
       choice_id: choice.id,
       choice_text: choice.text,
       current_text: currentText.value,
     });
+    
+    // Play the generated audio if available
+    if (response.data.audio_base64) {
+      playAudio(response.data.audio_base64);
+    }
     
     // Reload choices for next context
     await loadChoices();
@@ -497,8 +549,11 @@ const connectWebSocket = () => {
             isSpeaking.value = false;
             const transcribedText = data.data.text;
             
-            // Append to current text
-            currentText.value = (currentText.value + ' ' + transcribedText).trim();
+            // Add caregiver message to conversation history
+            conversationHistory.value.push({
+              role: 'user',
+              content: transcribedText
+            });
             
             // Add to transcriptions list
             transcriptions.value.push({
@@ -506,7 +561,7 @@ const connectWebSocket = () => {
               timestamp: new Date(data.timestamp)
             });
             
-            // Reload choices based on new context
+            // Generate choices based on the transcription (first time or after caregiver speaks)
             loadChoices();
             break;
           case 'error':
@@ -716,7 +771,7 @@ const updateGridSize = () => {
 
 onMounted(() => {
   loadStatus();
-  loadChoices();
+  // Don't load choices on mount - wait for first transcription
   loadDisplayScaleFactor();
   
   // Check gaze position periodically

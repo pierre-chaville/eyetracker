@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import Optional, List, Set
+from typing import Optional, List, Set, Dict
 from sqlmodel import Session, select
 import uvicorn
 import json
@@ -13,6 +13,7 @@ import asyncio
 from database import engine, create_db_and_tables, get_session
 from models import (
     User, UserCreate, UserUpdate, UserResponse,
+    Caregiver, CaregiverCreate, CaregiverUpdate, CaregiverResponse,
     EyeTrackingSetup, CommunicationSettings
 )
 from calibration import (
@@ -20,6 +21,8 @@ from calibration import (
     CalibrationResponse,
     process_calibration_data,
 )
+from llm import get_llm_service
+from tts_service import get_tts_service
 try:
     from speech_to_text_service import SpeechToTextService
 except ImportError:
@@ -203,6 +206,7 @@ class Choice(BaseModel):
     id: str
     text: Optional[str] = None
     icon: Optional[str] = None
+    probability: Optional[float] = None
 
 
 class ChoicesResponse(BaseModel):
@@ -217,45 +221,123 @@ class ChoiceSelectionRequest(BaseModel):
     current_text: Optional[str] = None
 
 
-@app.get("/api/communication/choices", response_model=ChoicesResponse, tags=["communication"])
-async def get_choices(context: Optional[str] = None):
+class ChoicesRequest(BaseModel):
+    """Request for generating choices"""
+    conversation_history: Optional[List[Dict[str, str]]] = []
+    user_id: Optional[int] = None
+    caregiver_id: Optional[int] = None
+    current_text: Optional[str] = None
+
+
+@app.post("/api/communication/choices", response_model=ChoicesResponse, tags=["communication"])
+async def get_choices(request: ChoicesRequest, session: Session = Depends(get_session)):
     """
     Get available choices for the communication grid.
-    Returns 2-8 choices based on context.
+    Returns 2-8 choices based on context using LLM.
     """
-    # TODO: Implement context-aware choice generation using AI
-    # For now, return example choices
-    # In a real implementation, this would analyze the current text/context
-    # and generate relevant choices using LLM
+    try:
+        # Load config
+        config = load_config()
+        
+        # Get user and caregiver info if provided
+        user_notes = None
+        caregiver_description = None
+        
+        if request.user_id:
+            user = session.get(User, request.user_id)
+            if user:
+                user_notes = user.notes
+        
+        if request.caregiver_id:
+            caregiver = session.get(Caregiver, request.caregiver_id)
+            if caregiver:
+                caregiver_description = caregiver.description
+        
+        # Get LLM service
+        llm_service = get_llm_service(
+            provider=config.provider,
+            model=config.model,
+            temperature=config.temperature
+        )
+        
+        # Generate choices using LLM
+        llm_choices = llm_service.generate_choices(
+            system_prompt=config.prompt,
+            conversation_history=request.conversation_history or [],
+            user_notes=user_notes,
+            caregiver_description=caregiver_description,
+            current_text=request.current_text
+        )
+        
+        # Convert to Choice format with IDs
+        choices = [
+            Choice(
+                id=str(i + 1),
+                text=choice["text"],
+                probability=choice["probability"]
+            )
+            for i, choice in enumerate(llm_choices)
+        ]
+        
+        return ChoicesResponse(choices=choices)
     
-    # Example: return 4 choices (corners)
-    choices = [
-        Choice(id="1", text="Yes", icon="✓"),
-        Choice(id="2", text="No", icon="✗"),
-        Choice(id="3", text="More", icon="+"),
-        Choice(id="4", text="Done", icon="✓"),
-    ]
-    
-    return ChoicesResponse(choices=choices)
+    except Exception as e:
+        print(f"Error generating choices: {e}")
+        # Fallback to default choices
+        choices = [
+            Choice(id="1", text="Yes", icon="✓", probability=0.5),
+            Choice(id="2", text="No", icon="✗", probability=0.5),
+            Choice(id="3", text="More", icon="+", probability=0.3),
+            Choice(id="4", text="Done", icon="✓", probability=0.2)
+        ]
+        return ChoicesResponse(choices=choices)
 
 
 @app.post("/api/communication/select", tags=["communication"])
 async def select_choice(request: ChoiceSelectionRequest):
     """
     Handle selection of a choice.
-    This can trigger actions, update context, or generate new choices.
+    This triggers text-to-speech generation for the selected choice.
     """
-    # TODO: Implement choice selection logic
-    # This could:
-    # - Update the current text
-    # - Trigger actions
-    # - Generate new choices based on selection
-    
-    return {
-        "success": True,
-        "message": f"Choice '{request.choice_id}' selected",
-        "updated_text": request.current_text
-    }
+    try:
+        # Load config to get TTS provider preference
+        config = load_config()
+        
+        # Default to pyttsx3 for offline TTS, but could be configurable
+        tts_provider = "pyttsx3"
+        
+        # If OpenAI is configured and has API key, use OpenAI TTS for better quality
+        if config.provider == "openai" and os.getenv("OPENAI_API_KEY"):
+            tts_provider = "openai"
+        
+        # Get TTS service
+        tts_service = get_tts_service(provider=tts_provider)
+        
+        # Generate speech for the selected choice text
+        audio_base64 = None
+        if request.choice_text:
+            # Determine language from config or default to English
+            language = "en"  # Could be made configurable
+            audio_base64 = tts_service.generate_speech_base64(
+                text=request.choice_text,
+                language=language
+            )
+        
+        return {
+            "success": True,
+            "message": f"Choice '{request.choice_id}' selected",
+            "updated_text": request.current_text,
+            "audio_base64": audio_base64
+        }
+    except Exception as e:
+        print(f"Error in select_choice: {e}")
+        return {
+            "success": True,
+            "message": f"Choice '{request.choice_id}' selected",
+            "updated_text": request.current_text,
+            "audio_base64": None,
+            "error": str(e)
+        }
 
 
 @app.post("/api/calibration/start", tags=["calibration"])
@@ -426,6 +508,108 @@ async def delete_user(user_id: int, session: Session = Depends(get_session)):
     session.delete(user)
     session.commit()
     return None
+
+
+# Caregiver CRUD endpoints
+@app.get("/api/caregivers", response_model=List[CaregiverResponse], tags=["caregivers"])
+async def list_caregivers(
+    skip: int = 0,
+    limit: int = 100,
+    session: Session = Depends(get_session)
+):
+    """List all caregivers"""
+    statement = select(Caregiver).offset(skip).limit(limit)
+    caregivers = session.exec(statement).all()
+    
+    return [caregiver_to_response(caregiver) for caregiver in caregivers]
+
+
+@app.get("/api/caregivers/{caregiver_id}", response_model=CaregiverResponse, tags=["caregivers"])
+async def get_caregiver(caregiver_id: int, session: Session = Depends(get_session)):
+    """Get a specific caregiver by ID"""
+    caregiver = session.get(Caregiver, caregiver_id)
+    if not caregiver:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Caregiver with id {caregiver_id} not found"
+        )
+    return caregiver_to_response(caregiver)
+
+
+@app.post("/api/caregivers", response_model=CaregiverResponse, status_code=status.HTTP_201_CREATED, tags=["caregivers"])
+async def create_caregiver(caregiver_data: CaregiverCreate, session: Session = Depends(get_session)):
+    """Create a new caregiver"""
+    caregiver = Caregiver(
+        name=caregiver_data.name,
+        gender=caregiver_data.gender,
+        description=caregiver_data.description
+    )
+    
+    session.add(caregiver)
+    session.commit()
+    session.refresh(caregiver)
+    
+    return caregiver_to_response(caregiver)
+
+
+@app.put("/api/caregivers/{caregiver_id}", response_model=CaregiverResponse, tags=["caregivers"])
+async def update_caregiver(
+    caregiver_id: int,
+    caregiver_data: CaregiverUpdate,
+    session: Session = Depends(get_session)
+):
+    """Update an existing caregiver"""
+    caregiver = session.get(Caregiver, caregiver_id)
+    if not caregiver:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Caregiver with id {caregiver_id} not found"
+        )
+    
+    # Update fields if provided
+    if caregiver_data.name is not None:
+        caregiver.name = caregiver_data.name
+    if caregiver_data.gender is not None:
+        caregiver.gender = caregiver_data.gender
+    if caregiver_data.description is not None:
+        caregiver.description = caregiver_data.description
+    
+    # Update timestamp
+    caregiver.updated_at = datetime.utcnow()
+    
+    session.add(caregiver)
+    session.commit()
+    session.refresh(caregiver)
+    
+    return caregiver_to_response(caregiver)
+
+
+@app.delete("/api/caregivers/{caregiver_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["caregivers"])
+async def delete_caregiver(caregiver_id: int, session: Session = Depends(get_session)):
+    """Delete a caregiver"""
+    caregiver = session.get(Caregiver, caregiver_id)
+    if not caregiver:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Caregiver with id {caregiver_id} not found"
+        )
+    
+    session.delete(caregiver)
+    session.commit()
+    return None
+
+
+# Helper function for caregiver responses
+def caregiver_to_response(caregiver: Caregiver) -> CaregiverResponse:
+    """Convert Caregiver model to CaregiverResponse"""
+    return CaregiverResponse(
+        id=caregiver.id,
+        name=caregiver.name,
+        gender=caregiver.gender,
+        description=caregiver.description,
+        created_at=caregiver.created_at,
+        updated_at=caregiver.updated_at
+    )
 
 
 # Configuration file path

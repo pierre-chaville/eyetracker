@@ -136,6 +136,11 @@ const menuItems = computed(() => [
     icon: UserGroupIcon,
   },
   {
+    path: '/caregivers',
+    label: t('sidebar.caregivers'),
+    icon: UserGroupIcon,
+  },
+  {
     path: '/setup',
     label: t('sidebar.setup'),
     icon: WrenchScrewdriverIcon,

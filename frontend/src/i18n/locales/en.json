@@ -15,6 +15,7 @@
     "calibration": "Calibration",
     "viewEyeTracking": "View Eye Tracking",
     "users": "Users",
+    "caregivers": "Caregivers",
     "setup": "Setup"
   },
   "home": {
@@ -23,9 +24,13 @@
     "eyeTrackingStatus": "Eye Tracking Status",
     "selectUser": "Select User",
     "selectUserLabel": "Choose a user",
+    "selectCaregiverLabel": "Choose a caregiver",
     "noUserSelected": "No user selected",
+    "noCaregiverSelected": "No caregiver selected",
     "changeUser": "Change",
+    "changeCaregiver": "Change",
     "loadingUsers": "Loading users...",
+    "loadingCaregivers": "Loading caregivers...",
     "active": "Active",
     "inactive": "Inactive",
     "startEyeTracking": "Start Eye Tracking",
@@ -194,6 +199,46 @@
     "noTranscriptions": "No transcriptions yet. Start speech-to-text to begin capturing audio.",
     "noText": "No text yet",
     "clear": "Clear All"
+  },
+  "caregivers": {
+    "title": "Caregivers",
+    "createCaregiver": "Create Caregiver",
+    "name": "Name",
+    "namePlaceholder": "Enter caregiver name",
+    "gender": "Gender",
+    "genderNotSpecified": "Not Specified",
+    "genderMale": "Male",
+    "genderFemale": "Female",
+    "genderOther": "Other",
+    "description": "Description",
+    "descriptionPlaceholder": "Enter description for LLM context...",
+    "noDescription": "No description",
+    "createdAt": "Created",
+    "view": "View",
+    "noCaregivers": "No caregivers yet",
+    "noCaregiversDescription": "Get started by creating your first caregiver profile.",
+    "cancel": "Cancel",
+    "create": "Create",
+    "creating": "Creating...",
+    "loadError": "Failed to load caregivers",
+    "createError": "Failed to create caregiver"
+  },
+  "caregiverDetail": {
+    "back": "Back",
+    "backToCaregivers": "Back to Caregivers",
+    "edit": "Edit",
+    "delete": "Delete",
+    "editCaregiver": "Edit Caregiver",
+    "deleteCaregiver": "Delete Caregiver",
+    "deleteConfirmation": "Are you sure you want to delete {name}? This action cannot be undone.",
+    "save": "Save",
+    "updating": "Updating...",
+    "deleting": "Deleting...",
+    "createdAt": "Created",
+    "description": "Description",
+    "loadError": "Failed to load caregiver",
+    "updateError": "Failed to update caregiver",
+    "deleteError": "Failed to delete caregiver"
   }
 }
 

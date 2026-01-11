@@ -15,6 +15,7 @@
     "calibration": "Calibration",
     "viewEyeTracking": "Voir le Suivi Oculaire",
     "users": "Utilisateurs",
+    "caregivers": "Aidants",
     "setup": "Configuration"
   },
   "home": {
@@ -23,9 +24,13 @@
     "eyeTrackingStatus": "État du Suivi Oculaire",
     "selectUser": "Sélectionner un Utilisateur",
     "selectUserLabel": "Choisir un utilisateur",
+    "selectCaregiverLabel": "Choisir un aidant",
     "noUserSelected": "Aucun utilisateur sélectionné",
+    "noCaregiverSelected": "Aucun aidant sélectionné",
     "changeUser": "Changer",
+    "changeCaregiver": "Changer",
     "loadingUsers": "Chargement des utilisateurs...",
+    "loadingCaregivers": "Chargement des aidants...",
     "active": "Actif",
     "inactive": "Inactif",
     "startEyeTracking": "Démarrer le Suivi Oculaire",
@@ -194,6 +199,46 @@
     "noTranscriptions": "Aucune transcription pour le moment. Démarrez la reconnaissance vocale pour commencer à capturer l'audio.",
     "noText": "Aucun texte pour le moment",
     "clear": "Tout effacer"
+  },
+  "caregivers": {
+    "title": "Aidants",
+    "createCaregiver": "Créer un Aidant",
+    "name": "Nom",
+    "namePlaceholder": "Entrez le nom de l'aidant",
+    "gender": "Genre",
+    "genderNotSpecified": "Non spécifié",
+    "genderMale": "Homme",
+    "genderFemale": "Femme",
+    "genderOther": "Autre",
+    "description": "Description",
+    "descriptionPlaceholder": "Entrez la description pour le contexte LLM...",
+    "noDescription": "Aucune description",
+    "createdAt": "Créé",
+    "view": "Voir",
+    "noCaregivers": "Aucun aidant pour le moment",
+    "noCaregiversDescription": "Commencez par créer votre premier profil d'aidant.",
+    "cancel": "Annuler",
+    "create": "Créer",
+    "creating": "Création...",
+    "loadError": "Échec du chargement des aidants",
+    "createError": "Échec de la création de l'aidant"
+  },
+  "caregiverDetail": {
+    "back": "Retour",
+    "backToCaregivers": "Retour aux Aidants",
+    "edit": "Modifier",
+    "delete": "Supprimer",
+    "editCaregiver": "Modifier l'Aidant",
+    "deleteCaregiver": "Supprimer l'Aidant",
+    "deleteConfirmation": "Êtes-vous sûr de vouloir supprimer {name} ? Cette action ne peut pas être annulée.",
+    "save": "Enregistrer",
+    "updating": "Mise à jour...",
+    "deleting": "Suppression...",
+    "createdAt": "Créé",
+    "description": "Description",
+    "loadError": "Échec du chargement de l'aidant",
+    "updateError": "Échec de la mise à jour de l'aidant",
+    "deleteError": "Échec de la suppression de l'aidant"
   }
 }
 
