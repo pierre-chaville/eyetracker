@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Eye Tracker",
+    "appName": "Iris",
     "connect": "Connect",
     "disconnect": "Disconnect",
     "connected": "Connected",
@@ -20,8 +20,8 @@
     "setup": "Setup"
   },
   "home": {
-    "title": "Communication Through Eye Gaze",
-    "subtitle": "Empowering individuals with Rett syndrome to communicate using advanced eye tracking technology and AI-powered language assistance.",
+    "title": "Iris",
+    "subtitle": "From gaze to grace.",
     "eyeTrackingStatus": "Eye Tracking Status",
     "selectUser": "Select User",
     "selectUserLabel": "Choose a user",
@@ -198,8 +198,8 @@
     "coefficientsSaved": "Affine coefficients saved"
   },
   "communicate": {
-    "speechToText": "Speech-to-Text",
-    "speechToTextDescription": "Capture audio from microphone and transcribe speech to text in real-time.",
+    "speechToText": "Intelligent Eye Communication",
+    "speechToTextDescription": "Advanced communication system combining speech-to-text, AI language processing, eye tracking, and text-to-speech technologies.",
     "active": "Active",
     "inactive": "Inactive",
     "start": "Start",

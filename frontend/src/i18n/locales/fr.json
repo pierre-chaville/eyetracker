@@ -1,6 +1,6 @@
 {
   "common": {
-    "appName": "Suivi Oculaire",
+    "appName": "Orizon",
     "connect": "Connecter",
     "disconnect": "Déconnecter",
     "connected": "Connecté",
@@ -20,8 +20,8 @@
     "setup": "Configuration"
   },
   "home": {
-    "title": "Communication par Regard",
-    "subtitle": "Permettre aux personnes atteintes du syndrome de Rett de communiquer grâce à une technologie de suivi oculaire avancée et à une assistance linguistique alimentée par l'IA.",
+    "title": "Orizon",
+    "subtitle": "Le regard devient parole.",
     "eyeTrackingStatus": "État du Suivi Oculaire",
     "selectUser": "Sélectionner un Utilisateur",
     "selectUserLabel": "Choisir un utilisateur",
@@ -198,8 +198,8 @@
     "coefficientsSaved": "Coefficients affines enregistrés"
   },
   "communicate": {
-    "speechToText": "Reconnaissance Vocale",
-    "speechToTextDescription": "Capturer l'audio du microphone et transcrire la parole en texte en temps réel.",
+    "speechToText": "Communication Intelligente par le Regard",
+    "speechToTextDescription": "Système de communication avancé combinant la reconnaissance vocale, le traitement linguistique par IA, le suivi oculaire et la synthèse vocale.",
     "active": "Actif",
     "inactive": "Inactif",
     "start": "Démarrer",
