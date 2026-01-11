@@ -52,21 +52,6 @@
             </button>
           </div>
           
-          <!-- Start/Stop Eye Tracking Button -->
-          <button
-            @click="toggleTracking"
-            :class="[
-              'w-full py-4 rounded-xl font-semibold text-lg transition-all duration-200',
-              isTracking
-                ? 'bg-red-500 hover:bg-red-600 text-white'
-                : 'bg-primary-600 hover:bg-primary-700 text-white'
-            ]"
-            :disabled="!isConnected"
-          >
-            <span v-if="!isTracking">{{ $t('home.startEyeTracking') }}</span>
-            <span v-else>{{ $t('home.stopEyeTracking') }}</span>
-          </button>
-          
           <!-- Connection Error -->
           <div v-if="error" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
             <p class="text-sm text-red-800 dark:text-red-200">{{ error }}</p>
@@ -78,12 +63,6 @@
       <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 mb-8 max-w-2xl mx-auto">
         <div class="flex items-center justify-between mb-6">
           <h3 class="text-2xl font-semibold text-gray-900 dark:text-white">{{ $t('home.selectUser') }}</h3>
-          <div v-if="selectedUser" class="flex items-center space-x-2">
-            <div class="w-3 h-3 rounded-full bg-green-500"></div>
-            <span class="text-sm font-medium text-gray-600 dark:text-gray-300">
-              {{ selectedUser.name }}
-            </span>
-          </div>
         </div>
         
         <div class="space-y-4">
@@ -134,50 +113,29 @@
           
           <!-- Selected User Info -->
           <div v-if="selectedUser" class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="font-semibold text-gray-900 dark:text-white">{{ selectedUser.name }}</p>
-                <p v-if="selectedUser.notes" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  {{ selectedUser.notes }}
+            <div>
+              <p class="font-semibold text-gray-900 dark:text-white">{{ selectedUser.name }}</p>
+              <div class="flex items-center space-x-4 mt-1">
+                <p v-if="selectedUser.gender" class="text-sm text-gray-600 dark:text-gray-400">
+                  {{ $t('users.gender') }}: {{ selectedUser.gender }}
                 </p>
-                <span
-                  :class="[
-                    'inline-block mt-2 px-2 py-1 rounded-full text-xs font-medium',
-                    selectedUser.is_active
-                      ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
-                      : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
-                  ]"
-                >
-                  {{ selectedUser.is_active ? $t('users.active') : $t('users.inactive') }}
-                </span>
+                <p v-if="selectedUser.age" class="text-sm text-gray-600 dark:text-gray-400">
+                  {{ $t('users.age') }}: {{ selectedUser.age }}
+                </p>
               </div>
-              <button
-                @click="showUserList = true"
-                class="px-3 py-1 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
-              >
-                {{ $t('home.changeUser') }}
-              </button>
             </div>
           </div>
           
           <!-- Selected Caregiver Info -->
           <div v-if="selectedCaregiver" class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-            <div class="flex items-center justify-between">
-              <div>
-                <p class="font-semibold text-gray-900 dark:text-white">{{ selectedCaregiver.name }}</p>
-                <p v-if="selectedCaregiver.gender" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                  {{ $t('caregivers.gender') }}: {{ selectedCaregiver.gender }}
-                </p>
-                <p v-if="selectedCaregiver.description" class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
-                  {{ selectedCaregiver.description }}
-                </p>
-              </div>
-              <button
-                @click="selectedCaregiverId = null; selectedCaregiver = null; localStorage.removeItem('selectedCaregiverId')"
-                class="px-3 py-1 text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300"
-              >
-                {{ $t('home.changeCaregiver') }}
-              </button>
+            <div>
+              <p class="font-semibold text-gray-900 dark:text-white">{{ selectedCaregiver.name }}</p>
+              <p v-if="selectedCaregiver.gender" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {{ $t('caregivers.gender') }}: {{ selectedCaregiver.gender }}
+              </p>
+              <p v-if="selectedCaregiver.description" class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                {{ selectedCaregiver.description }}
+              </p>
             </div>
           </div>
           

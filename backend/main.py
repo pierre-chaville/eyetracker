@@ -467,7 +467,10 @@ def user_to_response(user: User) -> UserResponse:
         created_at=user.created_at,
         updated_at=user.updated_at,
         is_active=user.is_active,
-        notes=user.notes
+        notes=user.notes,
+        gender=user.gender,
+        age=user.age,
+        voice=user.voice
     )
 
 
@@ -516,7 +519,10 @@ async def create_user(user_data: UserCreate, session: Session = Depends(get_sess
         eye_tracking_setup=eye_tracking_json,
         calibration=user_data.calibration,
         communication=communication_json,
-        notes=user_data.notes
+        notes=user_data.notes,
+        gender=user_data.gender,
+        age=user_data.age,
+        voice=user_data.voice
     )
     
     session.add(user)
@@ -553,6 +559,12 @@ async def update_user(
         user.is_active = user_data.is_active
     if user_data.notes is not None:
         user.notes = user_data.notes
+    if user_data.gender is not None:
+        user.gender = user_data.gender
+    if user_data.age is not None:
+        user.age = user_data.age
+    if user_data.voice is not None:
+        user.voice = user_data.voice
     
     # Update timestamp
     user.updated_at = datetime.utcnow()

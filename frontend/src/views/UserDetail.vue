@@ -68,6 +68,27 @@
           </span>
         </div>
 
+        <!-- User Info Section -->
+        <div class="mb-6">
+          <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            {{ $t('userDetail.userInfo') }}
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div v-if="user.gender">
+              <span class="text-gray-500 dark:text-gray-400">{{ $t('users.gender') }}:</span>
+              <span class="ml-2 text-gray-900 dark:text-white">{{ user.gender }}</span>
+            </div>
+            <div v-if="user.age">
+              <span class="text-gray-500 dark:text-gray-400">{{ $t('users.age') }}:</span>
+              <span class="ml-2 text-gray-900 dark:text-white">{{ user.age }}</span>
+            </div>
+            <div v-if="user.voice" class="md:col-span-2">
+              <span class="text-gray-500 dark:text-gray-400">{{ $t('users.voice') }}:</span>
+              <span class="ml-2 text-gray-900 dark:text-white">{{ user.voice }}</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Notes Section -->
         <div class="mb-6">
           <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-2">
@@ -158,6 +179,47 @@
                 required
                 class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {{ $t('users.gender') }}
+              </label>
+              <select
+                v-model="editForm.gender"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">{{ $t('users.genderNotSpecified') }}</option>
+                <option value="Male">{{ $t('users.genderMale') }}</option>
+                <option value="Female">{{ $t('users.genderFemale') }}</option>
+                <option value="Other">{{ $t('users.genderOther') }}</option>
+              </select>
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {{ $t('users.age') }}
+              </label>
+              <input
+                v-model.number="editForm.age"
+                type="number"
+                min="0"
+                max="150"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                :placeholder="$t('users.agePlaceholder')"
+              />
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {{ $t('users.voice') }}
+              </label>
+              <input
+                v-model="editForm.voice"
+                type="text"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                :placeholder="$t('users.voicePlaceholder')"
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ $t('users.voiceDescription') }}
+              </p>
             </div>
             <div class="mb-4">
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -259,6 +321,9 @@ const updating = ref(false);
 const deleting = ref(false);
 const editForm = ref({
   name: '',
+  gender: '',
+  age: null,
+  voice: '',
   notes: '',
   is_active: true,
 });
@@ -271,6 +336,9 @@ const loadUser = async () => {
     user.value = await usersAPI.get(userId);
     editForm.value = {
       name: user.value.name,
+      gender: user.value.gender || '',
+      age: user.value.age || null,
+      voice: user.value.voice || '',
       notes: user.value.notes || '',
       is_active: user.value.is_active,
     };

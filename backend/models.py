@@ -48,6 +48,9 @@ class User(SQLModel, table=True):
     )
     is_active: bool = Field(default=True)
     notes: Optional[str] = Field(default=None, max_length=1000)
+    gender: Optional[str] = Field(default=None, max_length=50)
+    age: Optional[int] = Field(default=None)
+    voice: Optional[str] = Field(default=None, max_length=100, description="Voice identifier for TTS")
 
 
 # Pydantic models for API requests/responses
@@ -58,6 +61,9 @@ class UserCreate(BaseModel):
     calibration: Optional[str] = None
     communication: Optional[CommunicationSettings] = None
     notes: Optional[str] = None
+    gender: Optional[str] = PydanticField(None, max_length=50)
+    age: Optional[int] = None
+    voice: Optional[str] = PydanticField(None, max_length=100)
 
 
 class UserUpdate(BaseModel):
@@ -68,6 +74,9 @@ class UserUpdate(BaseModel):
     communication: Optional[CommunicationSettings] = None
     is_active: Optional[bool] = None
     notes: Optional[str] = None
+    gender: Optional[str] = PydanticField(None, max_length=50)
+    age: Optional[int] = None
+    voice: Optional[str] = PydanticField(None, max_length=100)
 
 
 class UserResponse(BaseModel):
@@ -81,6 +90,9 @@ class UserResponse(BaseModel):
     updated_at: datetime
     is_active: bool
     notes: Optional[str] = None
+    gender: Optional[str] = None
+    age: Optional[int] = None
+    voice: Optional[str] = None
     
     class Config:
         from_attributes = True

@@ -107,6 +107,47 @@
             </div>
             <div class="mb-4">
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {{ $t('users.gender') }}
+              </label>
+              <select
+                v-model="newUser.gender"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              >
+                <option value="">{{ $t('users.genderNotSpecified') }}</option>
+                <option value="Male">{{ $t('users.genderMale') }}</option>
+                <option value="Female">{{ $t('users.genderFemale') }}</option>
+                <option value="Other">{{ $t('users.genderOther') }}</option>
+              </select>
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {{ $t('users.age') }}
+              </label>
+              <input
+                v-model.number="newUser.age"
+                type="number"
+                min="0"
+                max="150"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                :placeholder="$t('users.agePlaceholder')"
+              />
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {{ $t('users.voice') }}
+              </label>
+              <input
+                v-model="newUser.voice"
+                type="text"
+                class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                :placeholder="$t('users.voicePlaceholder')"
+              />
+              <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                {{ $t('users.voiceDescription') }}
+              </p>
+            </div>
+            <div class="mb-4">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {{ $t('users.notes') }}
               </label>
               <textarea
@@ -156,6 +197,9 @@ const showCreateModal = ref(false);
 const creating = ref(false);
 const newUser = ref({
   name: '',
+  gender: '',
+  age: null,
+  voice: '',
   notes: '',
 });
 
@@ -177,7 +221,7 @@ const createUser = async () => {
     creating.value = true;
     await usersAPI.create(newUser.value);
     showCreateModal.value = false;
-    newUser.value = { name: '', notes: '' };
+    newUser.value = { name: '', gender: '', age: null, voice: '', notes: '' };
     await loadUsers();
   } catch (err) {
     error.value = err.response?.data?.detail || err.message || t('users.createError');
