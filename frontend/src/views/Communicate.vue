@@ -466,13 +466,27 @@ const loadChoices = async () => {
 };
 
 // Play audio from base64 data
-const playAudio = (audioBase64) => {
+const playAudio = async (audioBase64) => {
   if (!audioBase64) {
     console.warn('playAudio called with empty audioBase64');
     return;
   }
   
   console.log('playAudio called, base64 length:', audioBase64.length);
+  
+  // Store original STT state
+  const wasSTTActive = isActive.value;
+  
+  // Pause STT if it's active to prevent feedback loop
+  if (wasSTTActive) {
+    console.log('Pausing STT during TTS playback');
+    try {
+      await axios.post(`${API_BASE_URL}/api/speech-to-text/stop`);
+      // Don't update isActive.value here - we'll restore it after playback
+    } catch (err) {
+      console.error('Error stopping STT for TTS playback:', err);
+    }
+  }
   
   try {
     // Convert base64 to blob
@@ -532,6 +546,21 @@ const playAudio = (audioBase64) => {
         MEDIA_ERR_DECODE: 3,
         MEDIA_ERR_SRC_NOT_SUPPORTED: 4
       });
+      // Resume STT even if audio fails
+      if (wasSTTActive) {
+        resumeSTT();
+      }
+    });
+    
+    // Resume STT after audio finishes playing
+    audio.addEventListener('ended', async () => {
+      console.log('Audio playback ended');
+      URL.revokeObjectURL(audioUrl);
+      
+      // Resume STT if it was active before
+      if (wasSTTActive) {
+        await resumeSTT();
+      }
     });
     
     // Try to play audio
@@ -541,6 +570,10 @@ const playAudio = (audioBase64) => {
         console.log('Audio playback started successfully');
       }).catch(err => {
         console.error('Error playing audio (playPromise rejected):', err);
+        // Resume STT if playback fails
+        if (wasSTTActive) {
+          resumeSTT();
+        }
         // Try to play again after user interaction
         console.log('Attempting to play audio after user interaction...');
         document.addEventListener('click', () => {
@@ -548,14 +581,28 @@ const playAudio = (audioBase64) => {
         }, { once: true });
       });
     }
-    
-    // Clean up URL after playback
-    audio.addEventListener('ended', () => {
-      console.log('Audio playback ended');
-      URL.revokeObjectURL(audioUrl);
-    });
   } catch (err) {
     console.error('Error processing audio:', err);
+    // Resume STT if there's an error
+    if (wasSTTActive) {
+      resumeSTT();
+    }
+  }
+};
+
+// Resume STT after TTS playback
+const resumeSTT = async () => {
+  console.log('Resuming STT after TTS playback');
+  try {
+    await axios.post(`${API_BASE_URL}/api/speech-to-text/start`);
+    isActive.value = true;
+    // WebSocket should still be connected, but reconnect if needed
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+      connectWebSocket();
+    }
+  } catch (err) {
+    console.error('Error resuming STT:', err);
+    error.value = err.response?.data?.detail || 'Failed to resume speech-to-text';
   }
 };
 
