@@ -49,7 +49,7 @@
         <!-- 4x5 Grid -->
         <div 
           ref="gridInner"
-          :class="['grid grid-cols-5 gap-2 mx-auto flex-1', isFullscreen ? 'w-full p-6' : 'max-w-5xl']"
+          :class="['grid grid-cols-5 mx-auto', isFullscreen ? 'w-full p-6 flex-1 min-h-0' : 'max-w-5xl']"
           :style="gridStyle"
         >
           <!-- Row 1: Predictive Words (LLM suggestions) -->
@@ -58,11 +58,11 @@
             :key="`word-${index}`"
             :ref="`cell-${index}`"
             :class="[
-              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-semibold text-lg',
+              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-semibold',
               isCellHighlighted(index) 
                 ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 ring-4 ring-primary-300 dark:ring-primary-700' 
                 : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600',
-              'text-gray-900 dark:text-white'
+              'text-gray-900 dark:text-white text-2xl'
             ]"
             :style="cellStyle"
             @click="selectWord(word)"
@@ -84,16 +84,16 @@
             :key="`vowel-${index}`"
             :ref="`vowel-${index}`"
             :class="[
-              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold text-2xl',
+              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold',
               isCellHighlighted(5 + index) 
                 ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 ring-4 ring-primary-300 dark:ring-primary-700' 
                 : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600',
-              'text-gray-900 dark:text-white'
+              'text-gray-900 dark:text-white text-4xl'
             ]"
             :style="cellStyle"
             @click="selectLetter(vowel)"
           >
-            {{ vowel }}
+            {{ vowel.toUpperCase() }}
           </div>
           
           <!-- Row 3: Consonants (b, d, f, l, m) -->
@@ -102,16 +102,16 @@
             :key="`consonant1-${index}`"
             :ref="`consonant1-${index}`"
             :class="[
-              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold text-2xl',
+              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold',
               isCellHighlighted(10 + index) 
                 ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 ring-4 ring-primary-300 dark:ring-primary-700' 
                 : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600',
-              'text-gray-900 dark:text-white'
+              'text-gray-900 dark:text-white text-4xl'
             ]"
             :style="cellStyle"
             @click="selectLetter(consonant)"
           >
-            {{ consonant }}
+            {{ consonant.toUpperCase() }}
           </div>
           
           <!-- Row 4: Consonants (n, p, r, s, t) -->
@@ -120,23 +120,23 @@
             :key="`consonant2-${index}`"
             :ref="`consonant2-${index}`"
             :class="[
-              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold text-2xl',
+              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold',
               isCellHighlighted(15 + index) 
                 ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 ring-4 ring-primary-300 dark:ring-primary-700' 
                 : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600',
-              'text-gray-900 dark:text-white'
+              'text-gray-900 dark:text-white text-4xl'
             ]"
             :style="cellStyle"
             @click="selectLetter(consonant)"
           >
-            {{ consonant }}
+            {{ consonant.toUpperCase() }}
           </div>
         </div>
         
         <!-- Bottom Bar: Microphone and Transcription (only in fullscreen) -->
         <div 
           v-if="isFullscreen"
-          class="w-full p-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-300 dark:border-gray-600 flex items-center justify-center space-x-3"
+          class="w-full p-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-300 dark:border-gray-600 flex items-center justify-center space-x-3 flex-shrink-0"
         >
           <MicrophoneIcon 
             v-if="isSpeaking" 
@@ -218,20 +218,22 @@ const gridStyle = computed(() => {
   if (isFullscreen.value) {
     const scale = window.devicePixelRatio || 1;
     return {
-      gap: '0.5rem',
+      gap: '1rem',
     };
   }
   return {
-    gap: '0.5rem',
+    gap: '1rem',
   };
 });
 
 const cellStyle = computed(() => {
   if (isFullscreen.value) {
-    // Account for bottom bar (microphone/transcription)
-    const bottomBarHeight = 60;
-    const availableHeight = window.innerHeight - bottomBarHeight;
-    const cellHeight = (availableHeight / 4) - 10;
+    // Account for bottom bar (microphone/transcription) and padding
+    const bottomBarHeight = 72; // Height of bottom bar (p-4 = 16px top + 16px bottom + ~40px content)
+    const gridPadding = 48; // Top and bottom padding (24px * 2)
+    const gapTotal = 48; // Gap between 4 rows (1rem * 3 gaps = 16px * 3)
+    const availableHeight = window.innerHeight - bottomBarHeight - gridPadding - gapTotal;
+    const cellHeight = Math.max(availableHeight / 4, 60); // Minimum 60px per cell
     return {
       minHeight: `${cellHeight}px`,
       height: `${cellHeight}px`,
