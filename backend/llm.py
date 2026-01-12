@@ -79,7 +79,7 @@ class LLMService:
         else:
             raise ValueError(f"Unsupported provider: {self.provider}. Supported: 'openai', 'anthropic'")
     
-    def generate_choices(
+    async def generate_choices(
         self,
         system_prompt: str,
         conversation_history: List[Dict[str, str]],
@@ -143,8 +143,8 @@ class LLMService:
         structured_llm = self.llm.with_structured_output(ChoicesOutput)
         
         try:
-            # Generate choices
-            result = structured_llm.invoke(messages)
+            # Generate choices (use async invoke)
+            result = await structured_llm.ainvoke(messages)
             
             # Convert to list of dicts with text and probability
             choices = [

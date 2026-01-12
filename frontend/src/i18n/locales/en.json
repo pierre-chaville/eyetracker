@@ -12,6 +12,7 @@
   "sidebar": {
     "home": "Home",
     "communicate": "Communicate",
+    "keyboard": "Keyboard",
     "communicationSessions": "Sessions",
     "calibration": "Calibration",
     "viewEyeTracking": "View Eye Tracking",
@@ -294,6 +295,17 @@
     "showChoices": "Show Choices",
     "errorLoading": "Failed to load session",
     "errorEnding": "Failed to end session"
+  },
+  "keyboard": {
+    "title": "Predictive Keyboard",
+    "description": "Type using eye tracking with predictive word suggestions.",
+    "start": "Start",
+    "stop": "Stop",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "speaking": "Speaking...",
+    "noText": "Start typing...",
+    "noTranscription": "No transcription yet"
   }
 }
 

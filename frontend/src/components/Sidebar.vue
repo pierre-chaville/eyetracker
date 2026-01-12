@@ -122,6 +122,11 @@ const menuItems = computed(() => [
     icon: ChatBubbleLeftRightIcon,
   },
   {
+    path: '/keyboard',
+    label: t('sidebar.keyboard'),
+    icon: ChatBubbleLeftRightIcon, // Using chat icon as placeholder, can be changed later
+  },
+  {
     path: '/communication-sessions',
     label: t('sidebar.communicationSessions'),
     icon: DocumentTextIcon,

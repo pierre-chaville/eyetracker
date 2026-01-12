@@ -267,7 +267,7 @@ async def get_choices(request: ChoicesRequest, session: Session = Depends(get_se
         )
         
         # Generate choices using LLM
-        llm_choices = llm_service.generate_choices(
+        llm_choices = await llm_service.generate_choices(
             system_prompt=config.prompt,
             conversation_history=request.conversation_history or [],
             user_notes=user_notes,
@@ -338,6 +338,84 @@ async def get_choices(request: ChoicesRequest, session: Session = Depends(get_se
             Choice(id="4", text="Done", icon="✓", probability=0.2)
         ]
         return ChoicesResponse(choices=choices)
+
+
+@app.post("/api/keyboard/predictions", tags=["keyboard"])
+async def get_keyboard_predictions(request: ChoicesRequest, session: Session = Depends(get_session)):
+    """
+    Get predictive words for the keyboard based on current text.
+    Returns up to 5 words suggested by LLM.
+    """
+    try:
+        config = load_config()
+        
+        # Get user and caregiver info if provided
+        user_notes = None
+        caregiver_description = None
+        
+        if request.user_id:
+            user = session.get(User, request.user_id)
+            if user:
+                user_notes = user.notes
+        
+        if request.caregiver_id:
+            caregiver = session.get(Caregiver, request.caregiver_id)
+            if caregiver:
+                caregiver_description = caregiver.description
+        
+        # Use LLM to generate predictive words
+        llm_service = get_llm_service()
+        
+        # Create a simple prompt for word prediction
+        conversation_history = request.conversation_history or []
+        current_text = request.current_text or ""
+        
+        # Generate choices (words) using LLM
+        choices = await llm_service.generate_choices(
+            system_prompt=config.prompt or "You are a helpful assistant that suggests words for text input.",
+            conversation_history=conversation_history,
+            user_notes=user_notes,
+            caregiver_description=caregiver_description,
+            current_text=current_text
+        )
+        
+        # Extract words from choices (limit to 5)
+        # choices is a list of dicts with "text" and "probability" keys
+        words = [choice["text"] for choice in choices[:5] if choice.get("text")]
+        
+        return {"words": words}
+    
+    except Exception as e:
+        print(f"Error generating keyboard predictions: {e}")
+        # Fallback to empty list
+        return {"words": []}
+
+
+@app.post("/api/keyboard/tts", tags=["keyboard"])
+async def keyboard_tts(request: dict, session: Session = Depends(get_session)):
+    """
+    Generate TTS for keyboard input (word or letter).
+    """
+    try:
+        text = request.get("text", "")
+        if not text:
+            return {"audio_base64": None}
+        
+        # Determine TTS provider
+        tts_provider = "pyttsx3"
+        if os.getenv("ELEVEN_LABS_API_KEY") and os.getenv("ELEVEN_LABS_VOICE_ID"):
+            tts_provider = "elevenlabs"
+        elif load_config().provider == "openai" and os.getenv("OPENAI_API_KEY"):
+            tts_provider = "openai"
+        
+        tts_service = get_tts_service(provider=tts_provider)
+        audio_base64 = tts_service.generate_speech_base64(text=text, language="en")
+        
+        return {"audio_base64": audio_base64}
+    
+    except Exception as e:
+        print(f"Error generating TTS for keyboard: {e}")
+        return {"audio_base64": None}
 
 
 @app.post("/api/communication/select", tags=["communication"])

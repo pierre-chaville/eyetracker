@@ -12,6 +12,7 @@
   "sidebar": {
     "home": "Accueil",
     "communicate": "Communiquer",
+    "keyboard": "Clavier",
     "communicationSessions": "Sessions",
     "calibration": "Calibration",
     "viewEyeTracking": "Voir le Suivi Oculaire",
@@ -294,6 +295,17 @@
     "showChoices": "Afficher les Choix",
     "errorLoading": "Échec du chargement de la session",
     "errorEnding": "Échec de la fin de la session"
+  },
+  "keyboard": {
+    "title": "Clavier Prédictif",
+    "description": "Tapez en utilisant le suivi oculaire avec des suggestions de mots prédictifs.",
+    "start": "Démarrer",
+    "stop": "Arrêter",
+    "loading": "Chargement...",
+    "error": "Une erreur s'est produite",
+    "speaking": "Parle...",
+    "noText": "Commencez à taper...",
+    "noTranscription": "Aucune transcription pour le moment"
   }
 }
 
