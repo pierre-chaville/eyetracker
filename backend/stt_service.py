@@ -55,6 +55,10 @@ class SpeechToTextService:
         self.running = False
         self.is_active = False
         
+        # Thread-safe flag to pause audio streaming during TTS playback
+        self.tts_playing = False
+        self._tts_lock = threading.Lock()
+        
         # Audio configuration
         self.CHUNK = 8192
         self.FORMAT = pyaudio.paInt16
@@ -275,7 +279,13 @@ class SpeechToTextService:
                     if not hasattr(self, 'dg_connection_context') or not self.dg_connection_context:
                         break
                     data = self.stream.read(self.CHUNK, exception_on_overflow=False)
-                    if self.dg_connection_context and self.running:
+                    
+                    # Check if TTS is playing - if so, skip sending this frame
+                    with self._tts_lock:
+                        tts_is_playing = self.tts_playing
+                    
+                    # Only send audio frames if TTS is not playing
+                    if not tts_is_playing and self.dg_connection_context and self.running:
                         self.dg_connection_context.send_media(data)
                 except Exception as e:
                     if self.running:
@@ -285,4 +295,16 @@ class SpeechToTextService:
         except Exception as e:
             if self.on_error:
                 self.on_error(f"Error in audio stream: {e}")
+    
+    def pause_for_tts(self):
+        """Pause sending audio frames to Deepgram during TTS playback."""
+        with self._tts_lock:
+            self.tts_playing = True
+        print("STT: Paused audio frame transmission for TTS playback")
+    
+    def resume_after_tts(self):
+        """Resume sending audio frames to Deepgram after TTS playback."""
+        with self._tts_lock:
+            self.tts_playing = False
+        print("STT: Resumed audio frame transmission after TTS playback")
 

@@ -177,7 +177,22 @@
     "reset": "Reset to Defaults",
     "saveSuccess": "Configuration saved successfully!",
     "loadError": "Failed to load configuration",
-    "saveError": "Failed to save configuration"
+    "saveError": "Failed to save configuration",
+    "tts": {
+      "title": "Text-to-Speech Settings",
+      "language": "Language",
+      "languageDescription": "Language code for text-to-speech (e.g., fr, en, es)",
+      "voiceName": "Voice Name",
+      "voiceNamePlaceholder": "e.g., fr-FR-Standard-B (leave empty for default)",
+      "voiceNameDescription": "Specific voice name for Google Cloud TTS (leave empty to use default for selected language)",
+      "pitch": "Pitch",
+      "semitones": "semitones",
+      "pitchDescription": "Pitch adjustment in semitones (-20.0 to 20.0)",
+      "pitchRangeError": "Pitch must be between -20.0 and 20.0 semitones",
+      "speakingRate": "Speaking Rate",
+      "speakingRateDescription": "Speed of speech (0.25x = slow, 4.0x = fast)",
+      "speakingRateRangeError": "Speaking rate must be between 0.25 and 4.0"
+    }
   },
   "calibration": {
     "title": "Calibration",

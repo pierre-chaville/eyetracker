@@ -17,6 +17,7 @@ frontend/dist/
 # Environment variables
 .env
 .env.local
+backend/google.json
 
 # IDE
 .vscode/
@@ -44,4 +45,7 @@ htmlcov/
 
 # Configuration files
 backend/config.json
+
+# TTS cache
+backend/tts_cache/
 

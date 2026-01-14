@@ -6,6 +6,7 @@ from sqlmodel import Session, select
 import uvicorn
 import json
 import os
+import base64
 from pathlib import Path
 from datetime import datetime
 import asyncio
@@ -403,15 +404,55 @@ async def keyboard_tts(request: dict, session: Session = Depends(get_session)):
         
         # Determine TTS provider
         tts_provider = "pyttsx3"
-        if os.getenv("ELEVEN_LABS_API_KEY") and os.getenv("ELEVEN_LABS_VOICE_ID"):
+        # Check for Google Cloud service account credentials
+        google_creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        if not google_creds:
+            backend_dir = Path(__file__).parent
+            google_json_path = backend_dir / "google.json"
+            if google_json_path.exists():
+                google_creds = str(google_json_path)
+        
+        if google_creds:
+            tts_provider = "google"
+        elif os.getenv("ELEVEN_LABS_API_KEY") and os.getenv("ELEVEN_LABS_VOICE_ID"):
             tts_provider = "elevenlabs"
         elif load_config().provider == "openai" and os.getenv("OPENAI_API_KEY"):
             tts_provider = "openai"
         
         tts_service = get_tts_service(provider=tts_provider)
-        audio_base64 = tts_service.generate_speech_base64(text=text, language="en")
         
-        return {"audio_base64": audio_base64}
+        # Get TTS config from settings
+        tts_config = load_config()
+        
+        # Generate audio data with config values
+        audio_data = tts_service.generate_speech(
+            text=text,
+            language=tts_config.tts_language or "fr",
+            voice_name=tts_config.tts_voice_name if tts_config.tts_voice_name else None,
+            pitch=tts_config.tts_pitch if tts_config.tts_pitch is not None else None,
+            speaking_rate=tts_config.tts_speaking_rate if tts_config.tts_speaking_rate is not None else None
+        )
+        
+        if audio_data:
+            # Determine audio format based on provider
+            if tts_provider == "google" or tts_provider == "elevenlabs":
+                audio_format = "mp3"
+            elif tts_provider == "openai":
+                audio_format = "wav"
+            else:  # pyttsx3
+                audio_format = "wav"
+            
+            # Convert to base64 for frontend (if needed)
+            import base64
+            audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+            
+            # Play audio asynchronously in backend
+            print(f"Playing keyboard TTS audio in backend (format: {audio_format})")
+            tts_service.play_audio_async(audio_data, audio_format, stt_service=speech_to_text_service)
+            
+            return {"audio_base64": audio_base64}
+        
+        return {"audio_base64": None}
     
     except Exception as e:
         print(f"Error generating TTS for keyboard: {e}")
@@ -431,10 +472,21 @@ async def select_choice(request: ChoiceSelectionRequest, db_session: Session = D
         # Default to pyttsx3 for offline TTS, but could be configurable
         tts_provider = "pyttsx3"
         
-        # If ElevenLabs API key is available, use ElevenLabs TTS for better quality
-        if os.getenv("ELEVEN_LABS_API_KEY") and os.getenv("ELEVEN_LABS_VOICE_ID"):
+        # If Google Cloud service account is available, use Google Cloud TTS (lowest latency)
+        # Check for GOOGLE_APPLICATION_CREDENTIALS or google.json file
+        google_creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+        if not google_creds:
+            backend_dir = Path(__file__).parent
+            google_json_path = backend_dir / "google.json"
+            if google_json_path.exists():
+                google_creds = str(google_json_path)
+        
+        if google_creds:
+            tts_provider = "google"
+        # Fallback to ElevenLabs if Google is not available
+        elif os.getenv("ELEVEN_LABS_API_KEY") and os.getenv("ELEVEN_LABS_VOICE_ID"):
             tts_provider = "elevenlabs"
-        # Fallback to OpenAI if ElevenLabs is not available
+        # Fallback to OpenAI if neither Google nor ElevenLabs is available
         elif config.provider == "openai" and os.getenv("OPENAI_API_KEY"):
             tts_provider = "openai"
         
@@ -443,16 +495,41 @@ async def select_choice(request: ChoiceSelectionRequest, db_session: Session = D
         
         # Generate speech for the selected choice text
         audio_base64 = None
+        audio_data = None
+        audio_format = "mp3"  # Default format (Google Cloud TTS returns MP3)
+        
         if request.choice_text:
-            # Determine language from config or default to English
-            language = "en"  # Could be made configurable
+            # Get TTS config from settings
+            tts_config = load_config()
             print(f"Generating TTS for text: '{request.choice_text}' using provider: {tts_provider}")
-            audio_base64 = tts_service.generate_speech_base64(
+            
+            # Generate audio data with config values
+            audio_data = tts_service.generate_speech(
                 text=request.choice_text,
-                language=language
+                language=tts_config.tts_language or "en",
+                voice_name=tts_config.tts_voice_name if tts_config.tts_voice_name else None,
+                pitch=tts_config.tts_pitch if tts_config.tts_pitch is not None else None,
+                speaking_rate=tts_config.tts_speaking_rate if tts_config.tts_speaking_rate is not None else None
             )
-            if audio_base64:
-                print(f"TTS generated successfully, audio length: {len(audio_base64)} characters")
+            
+            if audio_data:
+                # Determine audio format based on provider
+                if tts_provider == "google" or tts_provider == "elevenlabs":
+                    audio_format = "mp3"
+                elif tts_provider == "openai":
+                    audio_format = "wav"
+                else:  # pyttsx3
+                    audio_format = "wav"
+                
+                # Convert to base64 for frontend (if needed)
+                audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+                
+                # Play audio asynchronously in backend
+                # Pass STT service to pause it during playback
+                print(f"Playing audio in backend (format: {audio_format})")
+                tts_service.play_audio_async(audio_data, audio_format, stt_service=speech_to_text_service)
+                
+                print(f"TTS generated and playback started, audio length: {len(audio_data)} bytes")
             else:
                 print("WARNING: TTS generation returned None")
         
@@ -496,12 +573,50 @@ async def select_choice(request: ChoiceSelectionRequest, db_session: Session = D
             if request.choice_text:
                 config = load_config()
                 tts_provider = "pyttsx3"
-                if os.getenv("ELEVEN_LABS_API_KEY") and os.getenv("ELEVEN_LABS_VOICE_ID"):
+                # Check for Google Cloud service account credentials
+                google_creds = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+                if not google_creds:
+                    backend_dir = Path(__file__).parent
+                    google_json_path = backend_dir / "google.json"
+                    if google_json_path.exists():
+                        google_creds = str(google_json_path)
+                
+                if google_creds:
+                    tts_provider = "google"
+                elif os.getenv("ELEVEN_LABS_API_KEY") and os.getenv("ELEVEN_LABS_VOICE_ID"):
                     tts_provider = "elevenlabs"
                 elif config.provider == "openai" and os.getenv("OPENAI_API_KEY"):
                     tts_provider = "openai"
                 tts_service = get_tts_service(provider=tts_provider)
-                audio_base64 = tts_service.generate_speech_base64(text=request.choice_text, language="en")
+                
+                # Get TTS config from settings
+                tts_config = load_config()
+                
+                # Generate audio data with config values
+                audio_data = tts_service.generate_speech(
+                    text=request.choice_text,
+                    language=tts_config.tts_language or "en",
+                    voice_name=tts_config.tts_voice_name if tts_config.tts_voice_name else None,
+                    pitch=tts_config.tts_pitch if tts_config.tts_pitch is not None else None,
+                    speaking_rate=tts_config.tts_speaking_rate if tts_config.tts_speaking_rate is not None else None
+                )
+                
+                if audio_data:
+                    # Determine audio format
+                    if tts_provider == "google" or tts_provider == "elevenlabs":
+                        audio_format = "mp3"
+                    elif tts_provider == "openai":
+                        audio_format = "wav"
+                    else:
+                        audio_format = "wav"
+                    
+                    # Convert to base64
+                    audio_base64 = base64.b64encode(audio_data).decode('utf-8')
+                    
+                    # Play audio asynchronously in backend
+                    tts_service.play_audio_async(audio_data, audio_format, stt_service=speech_to_text_service)
+                else:
+                    audio_base64 = None
         except Exception as tts_error:
             print(f"Error generating TTS in exception handler: {tts_error}")
         
@@ -986,6 +1101,11 @@ class ConfigModel(BaseModel):
     prompt: str = ""
     header_height_adjustment: int = 0  # in px
     menu_width_adjustment: int = 0  # in px
+    # TTS configuration
+    tts_language: str = "fr"  # Language code for TTS (e.g., "fr", "en", "es")
+    tts_voice_name: str = ""  # Voice name (e.g., "fr-FR-Standard-B" for Google, empty for default)
+    tts_pitch: float = 0.0  # Pitch adjustment (-20.0 to 20.0 semitones)
+    tts_speaking_rate: float = 1.0  # Speaking rate (0.25 to 4.0)
 
 
 class ConfigResponse(BaseModel):
@@ -996,6 +1116,10 @@ class ConfigResponse(BaseModel):
     prompt: str
     header_height_adjustment: int
     menu_width_adjustment: int
+    tts_language: str
+    tts_voice_name: str
+    tts_pitch: float
+    tts_speaking_rate: float
 
 
 def load_config() -> ConfigModel:

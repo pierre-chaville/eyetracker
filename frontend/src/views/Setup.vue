@@ -115,6 +115,101 @@
           </p>
         </div>
 
+        <!-- TTS Configuration Section -->
+        <div class="pt-6 border-t border-gray-200 dark:border-gray-700">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            {{ $t('setup.tts.title') }}
+          </h2>
+
+          <!-- TTS Language -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {{ $t('setup.tts.language') }}
+            </label>
+            <select
+              v-model="config.tts_language"
+              :disabled="!isEditMode"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
+            >
+              <option value="fr">Français (fr-FR)</option>
+              <option value="en">English (en-US)</option>
+              <option value="es">Español (es-ES)</option>
+              <option value="de">Deutsch (de-DE)</option>
+              <option value="it">Italiano (it-IT)</option>
+            </select>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {{ $t('setup.tts.languageDescription') }}
+            </p>
+          </div>
+
+          <!-- TTS Voice Name -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {{ $t('setup.tts.voiceName') }}
+            </label>
+            <input
+              v-model="config.tts_voice_name"
+              type="text"
+              :disabled="!isEditMode"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
+              :placeholder="$t('setup.tts.voiceNamePlaceholder')"
+            />
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {{ $t('setup.tts.voiceNameDescription') }}
+            </p>
+          </div>
+
+          <!-- TTS Pitch -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {{ $t('setup.tts.pitch') }}: {{ config.tts_pitch.toFixed(1) }} {{ $t('setup.tts.semitones') }}
+            </label>
+            <input
+              v-model.number="config.tts_pitch"
+              type="range"
+              min="-20"
+              max="20"
+              step="0.1"
+              :disabled="!isEditMode"
+              class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none disabled:cursor-not-allowed"
+              :class="isEditMode ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'"
+            />
+            <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <span>-20.0</span>
+              <span>0.0</span>
+              <span>20.0</span>
+            </div>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {{ $t('setup.tts.pitchDescription') }}
+            </p>
+          </div>
+
+          <!-- TTS Speaking Rate -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {{ $t('setup.tts.speakingRate') }}: {{ config.tts_speaking_rate.toFixed(2) }}x
+            </label>
+            <input
+              v-model.number="config.tts_speaking_rate"
+              type="range"
+              min="0.25"
+              max="4.0"
+              step="0.05"
+              :disabled="!isEditMode"
+              class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none disabled:cursor-not-allowed"
+              :class="isEditMode ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'"
+            />
+            <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <span>0.25x</span>
+              <span>1.0x</span>
+              <span>4.0x</span>
+            </div>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {{ $t('setup.tts.speakingRateDescription') }}
+            </p>
+          </div>
+        </div>
+
         <!-- Action Buttons (only shown in edit mode) -->
         <div v-if="isEditMode" class="flex space-x-3 pt-6 border-t border-gray-200 dark:border-gray-700">
           <button
@@ -150,6 +245,10 @@ const config = ref({
   model: '',
   temperature: 0.7,
   prompt: '',
+  tts_language: 'fr',
+  tts_voice_name: '',
+  tts_pitch: 0.0,
+  tts_speaking_rate: 1.0,
 });
 
 const originalConfig = ref({});
@@ -170,6 +269,10 @@ const loadConfig = async () => {
       model: data.model || '',
       temperature: data.temperature ?? 0.7,
       prompt: data.prompt || '',
+      tts_language: data.tts_language || 'fr',
+      tts_voice_name: data.tts_voice_name || '',
+      tts_pitch: data.tts_pitch ?? 0.0,
+      tts_speaking_rate: data.tts_speaking_rate ?? 1.0,
     };
     config.value = { ...loadedConfig };
     originalConfig.value = { ...loadedConfig };
@@ -204,6 +307,18 @@ const saveConfig = async () => {
     // Validate temperature
     if (config.value.temperature < 0 || config.value.temperature > 2) {
       error.value = t('setup.temperatureRangeError');
+      return;
+    }
+    
+    // Validate TTS pitch
+    if (config.value.tts_pitch < -20 || config.value.tts_pitch > 20) {
+      error.value = t('setup.tts.pitchRangeError');
+      return;
+    }
+    
+    // Validate TTS speaking rate
+    if (config.value.tts_speaking_rate < 0.25 || config.value.tts_speaking_rate > 4.0) {
+      error.value = t('setup.tts.speakingRateRangeError');
       return;
     }
     

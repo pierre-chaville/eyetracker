@@ -631,14 +631,10 @@ const selectChoice = async (choice) => {
       step_number: sessionId.value ? stepNumber.value : null,
     });
     
-    // Play the generated audio if available
+    // Audio is played in the backend, so we don't need to play it here
+    // This prevents double playback/echo
     console.log('Response from select_choice:', response.data);
-    if (response.data.audio_base64) {
-      console.log('Audio base64 received, length:', response.data.audio_base64.length);
-      playAudio(response.data.audio_base64);
-    } else {
-      console.warn('No audio_base64 in response');
-    }
+    console.log('Audio is being played in the backend');
     
     // Reload choices for next context
     await loadChoices();

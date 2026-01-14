@@ -177,7 +177,22 @@
     "reset": "Réinitialiser aux Valeurs par Défaut",
     "saveSuccess": "Configuration enregistrée avec succès !",
     "loadError": "Échec du chargement de la configuration",
-    "saveError": "Échec de l'enregistrement de la configuration"
+    "saveError": "Échec de l'enregistrement de la configuration",
+    "tts": {
+      "title": "Paramètres de Synthèse Vocale",
+      "language": "Langue",
+      "languageDescription": "Code de langue pour la synthèse vocale (ex: fr, en, es)",
+      "voiceName": "Nom de la Voix",
+      "voiceNamePlaceholder": "ex: fr-FR-Standard-B (laisser vide pour la valeur par défaut)",
+      "voiceNameDescription": "Nom spécifique de la voix pour Google Cloud TTS (laisser vide pour utiliser la valeur par défaut de la langue sélectionnée)",
+      "pitch": "Hauteur",
+      "semitones": "demi-tons",
+      "pitchDescription": "Ajustement de la hauteur en demi-tons (-20.0 à 20.0)",
+      "pitchRangeError": "La hauteur doit être entre -20.0 et 20.0 demi-tons",
+      "speakingRate": "Vitesse de Parole",
+      "speakingRateDescription": "Vitesse de la parole (0.25x = lent, 4.0x = rapide)",
+      "speakingRateRangeError": "La vitesse de parole doit être entre 0.25 et 4.0"
+    }
   },
   "calibration": {
     "title": "Calibration",

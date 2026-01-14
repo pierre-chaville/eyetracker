@@ -295,9 +295,9 @@ const playTTS = async (text) => {
       text: text,
     });
     
-    if (response.data.audio_base64) {
-      await playAudio(response.data.audio_base64);
-    }
+    // Audio is played in the backend, so we don't need to play it here
+    // This prevents double playback/echo
+    console.log('Audio is being played in the backend');
   } catch (err) {
     console.error('Error generating TTS:', err);
   }
