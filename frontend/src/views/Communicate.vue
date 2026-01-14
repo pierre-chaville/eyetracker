@@ -139,20 +139,24 @@
                 </span>
               </div>
               
-              <!-- Current Text -->
+              <!-- User's Text (from selected choices) - Bigger Font -->
               <div class="flex-1 flex flex-col justify-center items-center text-center">
-                <div v-if="currentText" class="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-                  {{ currentText }}
+                <div v-if="textLines.length > 0" class="text-2xl font-semibold text-gray-900 dark:text-white mb-2 space-y-1">
+                  <div v-for="(line, index) in textLines" :key="index" class="break-words">
+                    {{ line }}
+                  </div>
                 </div>
                 <div v-else class="text-gray-400 dark:text-gray-500 text-sm italic">
                   {{ $t('communicate.noText') }}
                 </div>
               </div>
               
-              <!-- Recent Transcriptions -->
-              <div v-if="transcriptions.length > 0" class="mt-2 text-xs text-gray-500 dark:text-gray-400 max-h-20 overflow-y-auto">
-                <div v-for="(transcription, index) in transcriptions.slice(-3)" :key="index" class="mb-1">
-                  {{ transcription.text }}
+              <!-- Caregiver Transcriptions - Small Font at Bottom -->
+              <div v-if="transcriptions.length > 0" class="mt-auto pt-2 border-t border-gray-300 dark:border-gray-600">
+                <div class="text-xs text-gray-500 dark:text-gray-400 max-h-16 overflow-y-auto">
+                  <div v-for="(transcription, index) in transcriptions.slice(-3)" :key="index" class="mb-1">
+                    {{ transcription.text }}
+                  </div>
                 </div>
               </div>
             </div>
@@ -259,8 +263,9 @@ const isLoading = ref(false);
 const isSpeaking = ref(false);
 const error = ref(null);
 const successMessage = ref(null);
-const transcriptions = ref([]);
-const currentText = ref('');
+const transcriptions = ref([]); // Caregiver transcriptions (displayed at bottom)
+const currentText = ref(''); // Keep for backward compatibility with API
+const textLines = ref([]); // Array of lines (max 4) for user's selected text display
 const conversationHistory = ref([]);
 let ws = null;
 let successTimeout = null;
@@ -611,9 +616,30 @@ const selectChoice = async (choice) => {
   if (!choice) return;
   
   try {
-    // Append choice text to current text
+    // Add choice text to current text
     if (choice.text) {
-      currentText.value = (currentText.value + ' ' + choice.text).trim();
+      const choiceText = choice.text.trim();
+      const isSingleWord = choiceText.split(/\s+/).length === 1;
+      
+      if (isSingleWord) {
+        // Add to the last line if it exists, otherwise create a new line
+        if (textLines.value.length > 0) {
+          const lastLine = textLines.value[textLines.value.length - 1];
+          textLines.value[textLines.value.length - 1] = (lastLine + ' ' + choiceText).trim();
+        } else {
+          textLines.value.push(choiceText);
+        }
+      } else {
+        // Multiple words: add as a new line
+        textLines.value.push(choiceText);
+        // Keep only the last 4 lines
+        if (textLines.value.length > 4) {
+          textLines.value = textLines.value.slice(-4);
+        }
+      }
+      
+      // Update currentText for API compatibility (join all lines)
+      currentText.value = textLines.value.join(' ');
       
       // Add user's choice to conversation history
       conversationHistory.value.push({
@@ -671,7 +697,10 @@ const connectWebSocket = () => {
           case 'transcription':
             console.log('Transcription received:', data.data.text);
             isSpeaking.value = false;
-            const transcribedText = data.data.text;
+            const transcribedText = data.data.text.trim();
+            
+            // Caregiver transcriptions are only added to transcriptions list (displayed at bottom)
+            // They are NOT added to textLines (which is for user's selected text only)
             
             // Add caregiver message to conversation history
             conversationHistory.value.push({
@@ -679,7 +708,7 @@ const connectWebSocket = () => {
               content: transcribedText
             });
             
-            // Add to transcriptions list
+            // Add to transcriptions list (displayed at bottom in small font)
             transcriptions.value.push({
               text: transcribedText,
               timestamp: new Date(data.timestamp)
@@ -817,6 +846,12 @@ const startCommunication = async () => {
     // Enter fullscreen mode
     await enterFullscreen();
     
+    // If conversation is empty, initialize with LLM choices
+    if (conversationHistory.value.length === 0) {
+      console.log('Conversation is empty, initializing with LLM choices');
+      await loadChoices();
+    }
+    
     successMessage.value = t('communicate.started');
   } catch (err) {
     console.error('Error starting communication:', err);
@@ -854,6 +889,10 @@ const stopCommunication = async () => {
       sessionId.value = null;
       stepNumber.value = 0;
     }
+    
+    // Reset text display
+    textLines.value = [];
+    currentText.value = '';
     
     // Reset fullscreen state in App.vue to show sidebar
     isCommunicationFullscreenApp.value = false;
