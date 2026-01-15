@@ -152,6 +152,9 @@
   },
   "setup": {
     "title": "Configuration",
+    "aiSettings": {
+      "title": "Paramètres IA"
+    },
     "provider": "Fournisseur IA",
     "providerDescription": "Sélectionnez le fournisseur IA pour l'assistance linguistique",
     "model": "Modèle",
@@ -160,9 +163,15 @@
     "temperature": "Température",
     "temperatureDescription": "Contrôle le caractère aléatoire des réponses (0 = déterministe, 2 = très créatif)",
     "temperatureRangeError": "La température doit être entre 0 et 2",
-    "prompt": "Invite Système",
-    "promptPlaceholder": "Entrez l'invite système pour l'assistant IA...",
-    "promptDescription": "Instructions pour l'assistant IA sur la façon d'aider à la communication",
+    "communicatePrompt": "Invite de Communication",
+    "communicatePromptPlaceholder": "Entrez l'invite système pour la page de communication...",
+    "communicatePromptDescription": "Instructions pour l'assistant IA sur la façon d'aider à la communication dans la page Communiquer",
+    "keyboardPrompt": "Invite du Clavier",
+    "keyboardPromptPlaceholder": "Entrez l'invite système pour la page clavier (lettres/mots uniques)...",
+    "keyboardPromptDescription": "Instructions pour l'assistant IA sur la façon de suggérer des mots lorsque l'utilisateur sélectionne des lettres ou mots uniques",
+    "keyboardMultipleLettersPrompt": "Invite du Clavier (Plusieurs Lettres)",
+    "keyboardMultipleLettersPromptPlaceholder": "Entrez l'invite système pour la page clavier (plusieurs lettres sélectionnées)...",
+    "keyboardMultipleLettersPromptDescription": "Instructions pour l'assistant IA sur la façon de suggérer des mots lorsque l'utilisateur sélectionne plusieurs lettres",
     "uiAdjustments": "Ajustements de l'Interface",
     "headerHeightAdjustment": "Ajustement de la Hauteur de l'En-tête",
     "headerHeightPlaceholder": "0",
@@ -178,6 +187,18 @@
     "saveSuccess": "Configuration enregistrée avec succès !",
     "loadError": "Échec du chargement de la configuration",
     "saveError": "Échec de l'enregistrement de la configuration",
+    "eyeTracking": {
+      "title": "Paramètres de Suivi Oculaire",
+      "eyeUsed": "Œil Utilisé",
+      "eyeLeft": "Gauche",
+      "eyeRight": "Droit",
+      "eyeBoth": "Les Deux",
+      "eyeUsedDescription": "Sélectionnez quel œil utiliser pour le suivi (gauche, droit ou les deux)",
+      "dwellTime": "Temps de Fixation",
+      "seconds": "secondes",
+      "dwellTimeDescription": "Temps en secondes pendant lequel l'utilisateur doit regarder une cellule avant qu'elle ne soit sélectionnée",
+      "dwellTimeRangeError": "Le temps de fixation doit être entre 0.5 et 10.0 secondes"
+    },
     "tts": {
       "title": "Paramètres de Synthèse Vocale",
       "language": "Langue",

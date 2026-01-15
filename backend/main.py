@@ -269,7 +269,7 @@ async def get_choices(request: ChoicesRequest, session: Session = Depends(get_se
         
         # Generate choices using LLM
         llm_choices = await llm_service.generate_choices(
-            system_prompt=config.prompt,
+            system_prompt=config.communicate_prompt,
             conversation_history=request.conversation_history or [],
             user_notes=user_notes,
             caregiver_description=caregiver_description,
@@ -371,9 +371,20 @@ async def get_keyboard_predictions(request: ChoicesRequest, session: Session = D
         conversation_history = request.conversation_history or []
         current_text = request.current_text or ""
         
+        # Determine which prompt to use based on current text
+        # If current_text has multiple single letters (like "a e i"), use multiple letters prompt
+        # Otherwise use regular keyboard prompt
+        text_words = current_text.split() if current_text else []
+        is_multiple_letters = len(text_words) > 1 and all(len(word) == 1 for word in text_words)
+        
+        system_prompt = (
+            config.keyboard_multiple_letters_prompt if is_multiple_letters 
+            else config.keyboard_prompt
+        ) or "You are a helpful assistant that suggests words for text input."
+        
         # Generate choices (words) using LLM
         choices = await llm_service.generate_choices(
-            system_prompt=config.prompt or "You are a helpful assistant that suggests words for text input.",
+            system_prompt=system_prompt,
             conversation_history=conversation_history,
             user_notes=user_notes,
             caregiver_description=caregiver_description,
@@ -1093,12 +1104,20 @@ CONFIG_FILE = Path(__file__).parent / "config.json"
 
 
 # Configuration models
+class EyeTrackingConfig(BaseModel):
+    """Eye tracking configuration model"""
+    eye_used: str = "both"  # "left", "right", or "both"
+    dwell_time: float = 2.0  # Dwell time in seconds
+
+
 class ConfigModel(BaseModel):
     """Application configuration model"""
     provider: str = "openai"  # openai, anthropic, google, azure
     model: str = ""
     temperature: float = 0.7
-    prompt: str = ""
+    communicate_prompt: str = ""  # Prompt for communication page
+    keyboard_prompt: str = ""  # Prompt for keyboard page (single letters/words)
+    keyboard_multiple_letters_prompt: str = ""  # Prompt for keyboard page (multiple letters selected)
     header_height_adjustment: int = 0  # in px
     menu_width_adjustment: int = 0  # in px
     # TTS configuration
@@ -1106,6 +1125,8 @@ class ConfigModel(BaseModel):
     tts_voice_name: str = ""  # Voice name (e.g., "fr-FR-Standard-B" for Google, empty for default)
     tts_pitch: float = 0.0  # Pitch adjustment (-20.0 to 20.0 semitones)
     tts_speaking_rate: float = 1.0  # Speaking rate (0.25 to 4.0)
+    # Eye tracking configuration
+    eye_tracking: EyeTrackingConfig = EyeTrackingConfig()
 
 
 class ConfigResponse(BaseModel):
@@ -1113,13 +1134,16 @@ class ConfigResponse(BaseModel):
     provider: str
     model: str
     temperature: float
-    prompt: str
+    communicate_prompt: str
+    keyboard_prompt: str
+    keyboard_multiple_letters_prompt: str
     header_height_adjustment: int
     menu_width_adjustment: int
     tts_language: str
     tts_voice_name: str
     tts_pitch: float
     tts_speaking_rate: float
+    eye_tracking: EyeTrackingConfig
 
 
 def load_config() -> ConfigModel:
@@ -1128,6 +1152,18 @@ def load_config() -> ConfigModel:
         try:
             with open(CONFIG_FILE, 'r', encoding='utf-8') as f:
                 data = json.load(f)
+                # Handle backward compatibility: migrate old 'prompt' to 'communicate_prompt'
+                if 'prompt' in data and 'communicate_prompt' not in data:
+                    data['communicate_prompt'] = data['prompt']
+                    del data['prompt']
+                # Handle backward compatibility: add default keyboard prompts if missing
+                if 'keyboard_prompt' not in data:
+                    data['keyboard_prompt'] = "You are a helpful assistant that suggests words for text input using eye tracking. Based on the conversation history and current text, suggest 5 words that the user might want to type next."
+                if 'keyboard_multiple_letters_prompt' not in data:
+                    data['keyboard_multiple_letters_prompt'] = "You are a helpful assistant that suggests words for text input using eye tracking. The user has selected multiple letters. Based on the conversation history, current text, and the selected letters, suggest 5 words that match or could be formed from these letters."
+                # Handle backward compatibility: if eye_tracking is missing, add defaults
+                if 'eye_tracking' not in data:
+                    data['eye_tracking'] = {'eye_used': 'both', 'dwell_time': 2.0}
                 return ConfigModel(**data)
         except (json.JSONDecodeError, ValueError, KeyError) as e:
             # If file is corrupted, return default config
@@ -1175,6 +1211,19 @@ async def update_config(config: ConfigModel):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Temperature must be between 0 and 2"
         )
+    
+    # Validate eye tracking configuration
+    if config.eye_tracking:
+        if config.eye_tracking.eye_used not in ["left", "right", "both"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="eye_used must be one of: left, right, both"
+            )
+        if config.eye_tracking.dwell_time < 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="dwell_time must be a positive number"
+            )
     
     save_config(config)
     return ConfigResponse(**config.model_dump())

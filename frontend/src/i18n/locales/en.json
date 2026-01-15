@@ -152,6 +152,9 @@
   },
   "setup": {
     "title": "Setup",
+    "aiSettings": {
+      "title": "AI Settings"
+    },
     "provider": "AI Provider",
     "providerDescription": "Select the AI provider for language assistance",
     "model": "Model",
@@ -160,9 +163,15 @@
     "temperature": "Temperature",
     "temperatureDescription": "Controls randomness in responses (0 = deterministic, 2 = very creative)",
     "temperatureRangeError": "Temperature must be between 0 and 2",
-    "prompt": "System Prompt",
-    "promptPlaceholder": "Enter the system prompt for the AI assistant...",
-    "promptDescription": "Instructions for the AI assistant on how to help with communication",
+    "communicatePrompt": "Communicate Prompt",
+    "communicatePromptPlaceholder": "Enter the system prompt for the communication page...",
+    "communicatePromptDescription": "Instructions for the AI assistant on how to help with communication in the Communicate page",
+    "keyboardPrompt": "Keyboard Prompt",
+    "keyboardPromptPlaceholder": "Enter the system prompt for the keyboard page (single letters/words)...",
+    "keyboardPromptDescription": "Instructions for the AI assistant on how to suggest words when user selects single letters or words",
+    "keyboardMultipleLettersPrompt": "Keyboard Prompt (Multiple Letters)",
+    "keyboardMultipleLettersPromptPlaceholder": "Enter the system prompt for the keyboard page (multiple letters selected)...",
+    "keyboardMultipleLettersPromptDescription": "Instructions for the AI assistant on how to suggest words when user selects multiple letters",
     "uiAdjustments": "UI Adjustments",
     "headerHeightAdjustment": "Header Height Adjustment",
     "headerHeightPlaceholder": "0",
@@ -178,6 +187,18 @@
     "saveSuccess": "Configuration saved successfully!",
     "loadError": "Failed to load configuration",
     "saveError": "Failed to save configuration",
+    "eyeTracking": {
+      "title": "Eye Tracking Settings",
+      "eyeUsed": "Eye Used",
+      "eyeLeft": "Left",
+      "eyeRight": "Right",
+      "eyeBoth": "Both",
+      "eyeUsedDescription": "Select which eye to use for tracking (left, right, or both)",
+      "dwellTime": "Dwell Time",
+      "seconds": "seconds",
+      "dwellTimeDescription": "Time in seconds the user must look at a cell before it is selected",
+      "dwellTimeRangeError": "Dwell time must be between 0.5 and 10.0 seconds"
+    },
     "tts": {
       "title": "Text-to-Speech Settings",
       "language": "Language",

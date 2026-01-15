@@ -36,8 +36,14 @@
 
       <!-- Configuration Form -->
       <form v-else @submit.prevent="saveConfig" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 space-y-6">
-        <!-- AI Provider -->
-        <div>
+        <!-- AI Settings Section -->
+        <div class="pb-6 border-b border-gray-200 dark:border-gray-700">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            {{ $t('setup.aiSettings.title') }}
+          </h2>
+
+          <!-- AI Provider -->
+          <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {{ $t('setup.provider') }}
           </label>
@@ -98,21 +104,107 @@
           </p>
         </div>
 
-        <!-- Prompt -->
+        <!-- Communicate Prompt -->
         <div>
           <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {{ $t('setup.prompt') }}
+            {{ $t('setup.communicatePrompt') }}
           </label>
           <textarea
-            v-model="config.prompt"
+            v-model="config.communicate_prompt"
             rows="6"
             :disabled="!isEditMode"
             class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
-            :placeholder="$t('setup.promptPlaceholder')"
+            :placeholder="$t('setup.communicatePromptPlaceholder')"
           />
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {{ $t('setup.promptDescription') }}
+            {{ $t('setup.communicatePromptDescription') }}
           </p>
+        </div>
+
+        <!-- Keyboard Prompt -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {{ $t('setup.keyboardPrompt') }}
+          </label>
+          <textarea
+            v-model="config.keyboard_prompt"
+            rows="4"
+            :disabled="!isEditMode"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
+            :placeholder="$t('setup.keyboardPromptPlaceholder')"
+          />
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {{ $t('setup.keyboardPromptDescription') }}
+          </p>
+        </div>
+
+        <!-- Keyboard Multiple Letters Prompt -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+            {{ $t('setup.keyboardMultipleLettersPrompt') }}
+          </label>
+          <textarea
+            v-model="config.keyboard_multiple_letters_prompt"
+            rows="4"
+            :disabled="!isEditMode"
+            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
+            :placeholder="$t('setup.keyboardMultipleLettersPromptPlaceholder')"
+          />
+          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+            {{ $t('setup.keyboardMultipleLettersPromptDescription') }}
+          </p>
+          </div>
+        </div>
+
+        <!-- Eye Tracking Configuration Section -->
+        <div class="pt-6 border-t border-gray-200 dark:border-gray-700">
+          <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-4">
+            {{ $t('setup.eyeTracking.title') }}
+          </h2>
+
+          <!-- Eye Used -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {{ $t('setup.eyeTracking.eyeUsed') }}
+            </label>
+            <select
+              v-model="config.eye_tracking.eye_used"
+              :disabled="!isEditMode"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
+            >
+              <option value="left">{{ $t('setup.eyeTracking.eyeLeft') }}</option>
+              <option value="right">{{ $t('setup.eyeTracking.eyeRight') }}</option>
+              <option value="both">{{ $t('setup.eyeTracking.eyeBoth') }}</option>
+            </select>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {{ $t('setup.eyeTracking.eyeUsedDescription') }}
+            </p>
+          </div>
+
+          <!-- Dwell Time -->
+          <div class="mb-4">
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {{ $t('setup.eyeTracking.dwellTime') }}: {{ config.eye_tracking.dwell_time.toFixed(1) }} {{ $t('setup.eyeTracking.seconds') }}
+            </label>
+            <input
+              v-model.number="config.eye_tracking.dwell_time"
+              type="range"
+              min="0.5"
+              max="10.0"
+              step="0.1"
+              :disabled="!isEditMode"
+              class="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none disabled:cursor-not-allowed"
+              :class="isEditMode ? 'cursor-pointer' : 'cursor-not-allowed opacity-50'"
+            />
+            <div class="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <span>0.5s</span>
+              <span>2.0s</span>
+              <span>10.0s</span>
+            </div>
+            <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+              {{ $t('setup.eyeTracking.dwellTimeDescription') }}
+            </p>
+          </div>
         </div>
 
         <!-- TTS Configuration Section -->
@@ -244,11 +336,17 @@ const config = ref({
   provider: 'openai',
   model: '',
   temperature: 0.7,
-  prompt: '',
+  communicate_prompt: '',
+  keyboard_prompt: '',
+  keyboard_multiple_letters_prompt: '',
   tts_language: 'fr',
   tts_voice_name: '',
   tts_pitch: 0.0,
   tts_speaking_rate: 1.0,
+  eye_tracking: {
+    eye_used: 'both',
+    dwell_time: 2.0,
+  },
 });
 
 const originalConfig = ref({});
@@ -268,11 +366,17 @@ const loadConfig = async () => {
       provider: data.provider || 'openai',
       model: data.model || '',
       temperature: data.temperature ?? 0.7,
-      prompt: data.prompt || '',
+      communicate_prompt: data.communicate_prompt || data.prompt || '', // Backward compatibility
+      keyboard_prompt: data.keyboard_prompt || '',
+      keyboard_multiple_letters_prompt: data.keyboard_multiple_letters_prompt || '',
       tts_language: data.tts_language || 'fr',
       tts_voice_name: data.tts_voice_name || '',
       tts_pitch: data.tts_pitch ?? 0.0,
       tts_speaking_rate: data.tts_speaking_rate ?? 1.0,
+      eye_tracking: {
+        eye_used: data.eye_tracking?.eye_used || 'both',
+        dwell_time: data.eye_tracking?.dwell_time ?? 2.0,
+      },
     };
     config.value = { ...loadedConfig };
     originalConfig.value = { ...loadedConfig };
@@ -319,6 +423,12 @@ const saveConfig = async () => {
     // Validate TTS speaking rate
     if (config.value.tts_speaking_rate < 0.25 || config.value.tts_speaking_rate > 4.0) {
       error.value = t('setup.tts.speakingRateRangeError');
+      return;
+    }
+    
+    // Validate eye tracking dwell time
+    if (config.value.eye_tracking.dwell_time < 0.5 || config.value.eye_tracking.dwell_time > 10.0) {
+      error.value = t('setup.eyeTracking.dwellTimeRangeError');
       return;
     }
     
