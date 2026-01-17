@@ -56,25 +56,32 @@
       <!-- 3x3 Grid Layout -->
       <div 
         ref="gridContainer"
-        :class="['bg-white dark:bg-gray-800', isFullscreen ? 'h-screen w-screen rounded-none overflow-hidden' : 'rounded-xl shadow-lg p-6']"
+        :class="['bg-white dark:bg-gray-800', isFullscreen ? 'h-screen w-screen rounded-none overflow-hidden flex flex-col' : 'rounded-xl shadow-lg p-6']"
         :style="gridContainerStyle"
       >
         <div 
           ref="gridInner"
-          :class="['grid grid-cols-3 mx-auto', isFullscreen ? 'h-full w-full p-6' : 'max-w-4xl']"
+          :class="['grid grid-cols-3', isFullscreen ? 'flex-1 w-full p-6' : 'max-w-4xl mx-auto']"
           :style="gridStyle"
         >
           <!-- Cell 1: Top Left -->
           <div
             v-if="shouldShowCell(1)"
             ref="cell1"
+            data-cell="1"
             :class="[
-              'border-2 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200',
+              'border-2 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden',
               getCellClasses(1)
             ]"
             :style="cellStyle"
             @click="selectChoice(getChoiceForCell(1))"
           >
+            <!-- Progress bar at bottom -->
+            <div
+              v-if="dwellingCell === 1"
+              class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
+              :style="{ width: `${getDwellingProgress(1) * 100}%` }"
+            ></div>
             <ChoiceCell :choice="getChoiceForCell(1)" :is-highlighted="isCellHighlighted(1)" />
           </div>
           <div v-else :style="cellStyle"></div>
@@ -83,13 +90,20 @@
           <div
             v-if="shouldShowCell(2)"
             ref="cell2"
+            data-cell="2"
             :class="[
-              'border-2 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200',
+              'border-2 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden',
               getCellClasses(2)
             ]"
             :style="cellStyle"
             @click="selectChoice(getChoiceForCell(2))"
           >
+            <!-- Progress bar at bottom -->
+            <div
+              v-if="dwellingCell === 2"
+              class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
+              :style="{ width: `${getDwellingProgress(2) * 100}%` }"
+            ></div>
             <ChoiceCell :choice="getChoiceForCell(2)" :is-highlighted="isCellHighlighted(2)" />
           </div>
           <div v-else :style="cellStyle"></div>
@@ -98,13 +112,20 @@
           <div
             v-if="shouldShowCell(3)"
             ref="cell3"
+            data-cell="3"
             :class="[
-              'border-2 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200',
+              'border-2 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden',
               getCellClasses(3)
             ]"
             :style="cellStyle"
             @click="selectChoice(getChoiceForCell(3))"
           >
+            <!-- Progress bar at bottom -->
+            <div
+              v-if="dwellingCell === 3"
+              class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
+              :style="{ width: `${getDwellingProgress(3) * 100}%` }"
+            ></div>
             <ChoiceCell :choice="getChoiceForCell(3)" :is-highlighted="isCellHighlighted(3)" />
           </div>
           <div v-else :style="cellStyle"></div>
@@ -113,13 +134,20 @@
           <div
             v-if="shouldShowCell(4)"
             ref="cell4"
+            data-cell="4"
             :class="[
-              'border-2 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200',
+              'border-2 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden',
               getCellClasses(4)
             ]"
             :style="cellStyle"
             @click="selectChoice(getChoiceForCell(4))"
           >
+            <!-- Progress bar at bottom -->
+            <div
+              v-if="dwellingCell === 4"
+              class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
+              :style="{ width: `${getDwellingProgress(4) * 100}%` }"
+            ></div>
             <ChoiceCell :choice="getChoiceForCell(4)" :is-highlighted="isCellHighlighted(4)" />
           </div>
           <div v-else :style="cellStyle"></div>
@@ -141,12 +169,12 @@
               
               <!-- User's Text (from selected choices) - Bigger Font -->
               <div class="flex-1 flex flex-col justify-center items-center text-center">
-                <div v-if="textLines.length > 0" class="text-2xl font-semibold text-gray-900 dark:text-white mb-2 space-y-1">
+                <div v-if="textLines.length > 0" class="text-4xl font-semibold text-gray-900 dark:text-white mb-2 space-y-1">
                   <div v-for="(line, index) in textLines" :key="index" class="break-words">
                     {{ line }}
                   </div>
                 </div>
-                <div v-else class="text-gray-400 dark:text-gray-500 text-sm italic">
+                <div v-else class="text-gray-400 dark:text-gray-500 text-xl italic">
                   {{ $t('communicate.noText') }}
                 </div>
               </div>
@@ -166,13 +194,20 @@
           <div
             v-if="shouldShowCell(6)"
             ref="cell6"
+            data-cell="6"
             :class="[
-              'border-2 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200',
+              'border-2 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden',
               getCellClasses(6)
             ]"
             :style="cellStyle"
             @click="selectChoice(getChoiceForCell(6))"
           >
+            <!-- Progress bar at bottom -->
+            <div
+              v-if="dwellingCell === 6"
+              class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
+              :style="{ width: `${getDwellingProgress(6) * 100}%` }"
+            ></div>
             <ChoiceCell :choice="getChoiceForCell(6)" :is-highlighted="isCellHighlighted(6)" />
           </div>
           <div v-else :style="cellStyle"></div>
@@ -181,13 +216,20 @@
           <div
             v-if="shouldShowCell(7)"
             ref="cell7"
+            data-cell="7"
             :class="[
-              'border-2 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200',
+              'border-2 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden',
               getCellClasses(7)
             ]"
             :style="cellStyle"
             @click="selectChoice(getChoiceForCell(7))"
           >
+            <!-- Progress bar at bottom -->
+            <div
+              v-if="dwellingCell === 7"
+              class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
+              :style="{ width: `${getDwellingProgress(7) * 100}%` }"
+            ></div>
             <ChoiceCell :choice="getChoiceForCell(7)" :is-highlighted="isCellHighlighted(7)" />
           </div>
           <div v-else :style="cellStyle"></div>
@@ -196,13 +238,20 @@
           <div
             v-if="shouldShowCell(8)"
             ref="cell8"
+            data-cell="8"
             :class="[
-              'border-2 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200',
+              'border-2 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden',
               getCellClasses(8)
             ]"
             :style="cellStyle"
             @click="selectChoice(getChoiceForCell(8))"
           >
+            <!-- Progress bar at bottom -->
+            <div
+              v-if="dwellingCell === 8"
+              class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
+              :style="{ width: `${getDwellingProgress(8) * 100}%` }"
+            ></div>
             <ChoiceCell :choice="getChoiceForCell(8)" :is-highlighted="isCellHighlighted(8)" />
           </div>
           <div v-else :style="cellStyle"></div>
@@ -211,13 +260,20 @@
           <div
             v-if="shouldShowCell(9)"
             ref="cell9"
+            data-cell="9"
             :class="[
-              'border-2 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200',
+              'border-2 rounded-lg flex flex-col items-center justify-center cursor-pointer transition-all duration-200 relative overflow-hidden',
               getCellClasses(9)
             ]"
             :style="cellStyle"
             @click="selectChoice(getChoiceForCell(9))"
           >
+            <!-- Progress bar at bottom -->
+            <div
+              v-if="dwellingCell === 9"
+              class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
+              :style="{ width: `${getDwellingProgress(9) * 100}%` }"
+            ></div>
             <ChoiceCell :choice="getChoiceForCell(9)" :is-highlighted="isCellHighlighted(9)" />
           </div>
           <div v-else :style="cellStyle"></div>
@@ -238,7 +294,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, watch, inject } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch, inject, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import { MicrophoneIcon } from '@heroicons/vue/24/solid';
@@ -246,6 +302,7 @@ import { useEyeTracking } from '../composables/useEyeTracking';
 import { useCalibration } from '../composables/useCalibration';
 import EyeTrackingGaze from '../components/EyeTrackingGaze.vue';
 import ChoiceCell from '../components/ChoiceCell.vue';
+import { configAPI } from '../services/api';
 
 const { t } = useI18n();
 
@@ -281,9 +338,16 @@ const {
   isConnected: isEyeTrackingConnected,
   gazePoint,
   trackingData,
+  calibrationCoefficients: trackingCalibrationCoefficients,
+  isFullscreen: trackingIsFullscreen,
+  toggleConnection: toggleEyeTrackingConnection,
+  disconnectWebSocket: disconnectEyeTracking,
+  updateWindowPosition,
+  updateHeaderHeight,
 } = useEyeTracking({ 
   skipCalibration: false,
-  calibrationCoefficients: calibrationCoefficients.value 
+  calibrationCoefficients: calibrationCoefficients.value,
+  isFullscreen: isFullscreen
 });
 
 // Choices from backend
@@ -300,6 +364,13 @@ const cellRefs = {
   cell8: ref(null),
   cell9: ref(null),
 };
+
+// Dwelling state
+const dwellTime = ref(2.0); // Default dwell time in seconds
+const dwellingCell = ref(null); // Currently dwelling cell number
+const dwellingStartTime = ref(null); // When dwelling started
+const dwellingProgress = ref(0); // Progress from 0 to 1
+let dwellingInterval = null;
 
 // Grid layout and scaling
 const gridContainer = ref(null);
@@ -328,22 +399,16 @@ const gridStyle = computed(() => {
     const availableWidth = containerWidth - padding;
     const availableHeight = containerHeight - padding;
     
-    // Calculate cell dimensions - make them rectangular (wider than tall)
+    // Calculate cell dimensions - use full height
     const cellWidth = (availableWidth - gapsTotal) / 3;
     const cellHeight = (availableHeight - gapsTotal) / 3;
     
-    // Ensure cells fit without scrolling
-    const maxCellWidth = cellWidth;
-    const maxCellHeight = cellHeight;
-    
     return {
       gap: `${gap}px`,
-      gridTemplateColumns: `repeat(3, ${maxCellWidth}px)`,
-      gridTemplateRows: `repeat(3, ${maxCellHeight}px)`,
+      gridTemplateColumns: `repeat(3, ${cellWidth}px)`,
+      gridTemplateRows: `repeat(3, ${cellHeight}px)`,
       width: '100%',
       height: '100%',
-      maxWidth: '100%',
-      maxHeight: '100%',
     };
   } else {
     // In normal mode, use aspect ratio with rectangular cells
@@ -402,24 +467,109 @@ const getCellClasses = (cellNumber) => {
   return baseClasses;
 };
 
-// Check which cell the gaze is pointing at
+// Get dwelling progress for a cell (0 to 1)
+const getDwellingProgress = (cellNumber) => {
+  if (dwellingCell.value === cellNumber) {
+    return dwellingProgress.value;
+  }
+  return 0;
+};
+
+
+// Track if we've found cells at least once
+let cellsFoundOnce = false;
+let cellCheckCounter = 0;
+
+// Check which cell the gaze is pointing at and handle dwelling
 const checkGazePosition = () => {
-  if (!gazePoint.value || !isEyeTrackingConnected.value || !trackingData.value?.valid) {
-    highlightedCell.value = null;
+  // Only check if eye tracking is connected and we have a gaze point
+  // Don't require trackingData.valid to be true - just check if we have coordinates
+  if (!gazePoint.value || !isEyeTrackingConnected.value) {
+    if (highlightedCell.value !== null || dwellingCell.value !== null) {
+      highlightedCell.value = null;
+      stopDwelling();
+    }
+    return;
+  }
+  
+  // Verify grid is rendered
+  if (!gridInner.value) {
     return;
   }
   
   const gazeX = gazePoint.value.x;
   const gazeY = gazePoint.value.y;
   
+  // Try to get cell element - first try ref, then fallback to DOM query
+  const getCellElement = (cellNum) => {
+    // Try ref first
+    const cellRef = cellRefs[`cell${cellNum}`];
+    if (cellRef?.value) {
+      return cellRef.value;
+    }
+    
+    // Fallback: query DOM directly using data attribute or class
+    // We'll add a data-cell attribute to make this easier
+    if (gridInner.value) {
+      const cellElement = gridInner.value.querySelector(`[data-cell="${cellNum}"]`);
+      if (cellElement) {
+        return cellElement;
+      }
+    }
+    
+    return null;
+  };
+  
+  // Check if we have any cells available
+  let hasAnyCells = false;
+  let cellsFound = 0;
+  
+  for (let cellNum = 1; cellNum <= 9; cellNum++) {
+    if (cellNum === 5) continue;
+    if (shouldShowCell(cellNum)) {
+      const cellElement = getCellElement(cellNum);
+      if (cellElement) {
+        const rect = cellElement.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+          hasAnyCells = true;
+          cellsFound++;
+        }
+      }
+    }
+  }
+  
+  // Log when cells are first found
+  if (hasAnyCells && !cellsFoundOnce) {
+    console.log(`[Dwelling Debug] Cells are now available! Found ${cellsFound} cells`);
+    cellsFoundOnce = true;
+  }
+  
+  // If no cells available, can't check gaze
+  if (!hasAnyCells) {
+    return;
+  }
+  
   // Check each cell
   for (let cellNum = 1; cellNum <= 9; cellNum++) {
     if (cellNum === 5) continue; // Skip center cell
     
-    const cellRef = cellRefs[`cell${cellNum}`];
-    if (!cellRef?.value || !shouldShowCell(cellNum)) continue;
+    // Skip if cell shouldn't be shown
+    if (!shouldShowCell(cellNum)) {
+      continue;
+    }
     
-    const rect = cellRef.value.getBoundingClientRect();
+    const cellElement = getCellElement(cellNum);
+    if (!cellElement) {
+      continue;
+    }
+    
+    const rect = cellElement.getBoundingClientRect();
+    
+    // Skip if rect has zero dimensions (cell not visible)
+    if (rect.width === 0 || rect.height === 0) {
+      continue;
+    }
+    
     // gazePoint is in window coordinates, rect is also in window coordinates
     const isInside = (
       gazeX >= rect.left &&
@@ -429,17 +579,109 @@ const checkGazePosition = () => {
     );
     
     if (isInside) {
-      highlightedCell.value = cellNum;
+      // Update highlighted cell
+      if (highlightedCell.value !== cellNum) {
+        console.log(`[Dwelling Debug] Gaze entered cell ${cellNum} at (${gazeX.toFixed(1)}, ${gazeY.toFixed(1)}), rect: (${rect.left.toFixed(1)}, ${rect.top.toFixed(1)}) to (${rect.right.toFixed(1)}, ${rect.bottom.toFixed(1)})`);
+        highlightedCell.value = cellNum;
+      }
+      
+      // Start or continue dwelling
+      if (dwellingCell.value !== cellNum) {
+        console.log(`[Dwelling Debug] Starting dwelling on cell ${cellNum}`);
+        startDwelling(cellNum);
+      }
+      
       return;
     }
   }
   
-  highlightedCell.value = null;
+  // Gaze is not inside any cell
+  if (highlightedCell.value !== null) {
+    highlightedCell.value = null;
+  }
+  stopDwelling();
+};
+
+// Start dwelling on a cell
+const startDwelling = (cellNum) => {
+  // Stop any existing dwelling
+  stopDwelling();
+  
+  dwellingCell.value = cellNum;
+  dwellingStartTime.value = Date.now();
+  dwellingProgress.value = 0;
+  
+  console.log(`Starting dwelling on cell ${cellNum}, dwell_time: ${dwellTime.value}s`);
+  
+  // Update progress every frame (60fps)
+  dwellingInterval = setInterval(() => {
+    if (!dwellingStartTime.value || dwellingCell.value !== cellNum) {
+      stopDwelling();
+      return;
+    }
+    
+    const elapsed = (Date.now() - dwellingStartTime.value) / 1000; // seconds
+    const progress = Math.min(elapsed / dwellTime.value, 1.0);
+    dwellingProgress.value = progress;
+    
+    // If dwelling is complete, trigger click
+    if (progress >= 1.0) {
+      console.log(`Dwelling complete on cell ${cellNum}, selecting choice`);
+      const choice = getChoiceForCell(cellNum);
+      if (choice) {
+        selectChoice(choice);
+      }
+      stopDwelling();
+    }
+  }, 16); // ~60fps
+};
+
+// Stop dwelling
+const stopDwelling = () => {
+  if (dwellingInterval) {
+    clearInterval(dwellingInterval);
+    dwellingInterval = null;
+  }
+  dwellingCell.value = null;
+  dwellingStartTime.value = null;
+  dwellingProgress.value = 0;
 };
 
 // Watch gaze point to update highlighted cell
-watch(gazePoint, () => {
-  checkGazePosition();
+watch(gazePoint, (newGazePoint) => {
+  if (newGazePoint && isEyeTrackingConnected.value) {
+    checkGazePosition();
+  }
+}, { immediate: true });
+
+// Also watch connection state
+watch(isEyeTrackingConnected, (connected) => {
+  console.log('Eye tracking connection changed:', connected);
+  if (connected && gazePoint.value) {
+    checkGazePosition();
+  } else {
+    highlightedCell.value = null;
+    stopDwelling();
+  }
+}, { immediate: true });
+
+// Track if we've logged cell availability
+let cellsAvailabilityLogged = false;
+
+// Watch for choices to be loaded
+watch(choices, async (newChoices) => {
+  console.log(`[Dwelling Debug] Choices loaded: ${newChoices.length} choices`);
+  cellsFoundOnce = false; // Reset when choices change
+  cellCheckCounter = 0; // Reset counter
+  
+  // Wait for DOM to update, then verify cells
+  await nextTick();
+  setTimeout(() => {
+    // Force a gaze check to see if cells are available now
+    if (isEyeTrackingConnected.value && gazePoint.value) {
+      checkGazePosition();
+    }
+  }, 200);
 }, { immediate: true });
 
 // Load choices from backend
@@ -870,10 +1112,19 @@ const stopCommunication = async () => {
   successMessage.value = null;
   
   try {
+    // Stop dwelling if active
+    stopDwelling();
+    highlightedCell.value = null;
+    
     // Stop speech-to-text
     await axios.post(`${API_BASE_URL}/api/speech-to-text/stop`);
     isActive.value = false;
     disconnectWebSocket();
+    
+    // Disconnect eye tracking
+    if (isEyeTrackingConnected.value && disconnectEyeTracking) {
+      disconnectEyeTracking();
+    }
     
     // End the session if it exists
     if (sessionId.value) {
@@ -893,6 +1144,9 @@ const stopCommunication = async () => {
     // Reset text display
     textLines.value = [];
     currentText.value = '';
+    transcriptions.value = [];
+    conversationHistory.value = [];
+    choices.value = [];
     
     // Reset fullscreen state in App.vue to show sidebar
     isCommunicationFullscreenApp.value = false;
@@ -927,11 +1181,23 @@ const toggleSpeechToText = async () => {
 };
 
 // Update calibration coefficients when they change
+// Update calibration coefficients in eye tracking when they change
 watch(calibrationCoefficients, (newCoefficients) => {
-  // The useEyeTracking composable should handle this, but we can update if needed
+  if (trackingCalibrationCoefficients) {
+    trackingCalibrationCoefficients.value = newCoefficients;
+  }
+}, { immediate: true });
+
+// Update fullscreen state in eye tracking when it changes
+watch(isFullscreen, (newIsFullscreen) => {
+  if (trackingIsFullscreen) {
+    trackingIsFullscreen.value = newIsFullscreen;
+  }
 }, { immediate: true });
 
 let gazeCheckInterval = null;
+let positionInterval = null;
+let resizeHandler = null;
 
 // Load display scale factor
 const loadDisplayScaleFactor = async () => {
@@ -957,6 +1223,20 @@ const loadDisplayScaleFactor = async () => {
   }
 };
 
+// Load configuration to get dwell_time
+const loadConfig = async () => {
+  try {
+    const data = await configAPI.get();
+    if (data.eye_tracking?.dwell_time) {
+      dwellTime.value = data.eye_tracking.dwell_time;
+      console.log('Loaded dwell_time:', dwellTime.value);
+    }
+  } catch (err) {
+    console.error('Error loading config:', err);
+    // Use default dwell_time
+  }
+};
+
 // Update grid size on window resize
 const updateGridSize = () => {
   // Force reactivity update
@@ -969,11 +1249,52 @@ onMounted(() => {
   loadStatus();
   // Don't load choices on mount - wait for first transcription
   loadDisplayScaleFactor();
+  loadConfig();
   
+  // Initialize eye tracking offsets (important for correct gaze coordinates)
+  updateWindowPosition();
+  updateHeaderHeight();
+  
+  // Update window position periodically (in case window is moved)
+  positionInterval = setInterval(() => {
+    updateWindowPosition();
+    updateHeaderHeight();
+  }, 1000);
+  
+  // Also update on window resize/move events
+  resizeHandler = () => {
+    updateWindowPosition();
+    updateHeaderHeight();
+  };
+  window.addEventListener('resize', resizeHandler);
+  
+  // Start gaze check immediately - it will handle missing refs gracefully
   // Check gaze position periodically
   gazeCheckInterval = setInterval(() => {
-    checkGazePosition();
-  }, 100); // Check every 100ms
+    if (isEyeTrackingConnected.value && gazePoint.value) {
+      checkGazePosition();
+    }
+  }, 50); // Check every 50ms for smoother dwelling
+  
+  console.log('[Dwelling Debug] Gaze check interval started');
+  
+  // Also verify cells after a delay (for debugging)
+  setTimeout(() => {
+    let cellsAvailable = 0;
+    for (let cellNum = 1; cellNum <= 9; cellNum++) {
+      if (cellNum === 5) continue;
+      if (shouldShowCell(cellNum)) {
+        const cellRef = cellRefs[`cell${cellNum}`];
+        if (cellRef?.value) {
+          const rect = cellRef.value.getBoundingClientRect();
+          if (rect.width > 0 && rect.height > 0) {
+            cellsAvailable++;
+          }
+        }
+      }
+    }
+    console.log(`[Dwelling Debug] Cells available: ${cellsAvailable} (choices: ${choices.value.length})`);
+  }, 1000);
   
   // Listen for window resize to update grid
   window.addEventListener('resize', updateGridSize);
@@ -1004,6 +1325,17 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  // Stop dwelling
+  stopDwelling();
+  
+  // Clean up position tracking
+  if (positionInterval) {
+    clearInterval(positionInterval);
+  }
+  if (resizeHandler) {
+    window.removeEventListener('resize', resizeHandler);
+  }
+  
   // Remove window resize listener
   window.removeEventListener('resize', updateGridSize);
   
@@ -1029,3 +1361,4 @@ onBeforeUnmount(() => {
   }
 });
 </script>
+
