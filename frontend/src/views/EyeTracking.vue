@@ -51,7 +51,7 @@
       v-if="isFullscreen"
       class="relative w-screen h-screen cursor-pointer bg-white dark:bg-gray-900" 
       ref="trackingArea"
-      @click="stopEyeTracking"
+      @click="showAnimalIcon"
     >
       <!-- Gaze Visualization Component -->
       <EyeTrackingGaze
@@ -63,6 +63,19 @@
         :frozen-tracking-data="frozenTrackingData"
         :show-coordinates="false"
       />
+
+      <!-- Animal Icon (10% of screen size) -->
+      <div
+        v-if="showAnimal"
+        :style="{
+          left: `${animalPosition.x}px`,
+          top: `${animalPosition.y}px`,
+          fontSize: `${animalSize}px`,
+        }"
+        class="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none z-40 flex items-center justify-center select-none"
+      >
+        🦁
+      </div>
 
       <!-- Crosshair at center (for reference) -->
       <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none opacity-20">
@@ -186,6 +199,11 @@ const isFullscreen = ref(false);
 // Get eye tracking fullscreen state from App.vue to hide sidebar
 const isEyeTrackingFullscreenApp = inject('isEyeTrackingFullscreen', ref(false));
 
+// Animal icon state
+const showAnimal = ref(false);
+const animalPosition = ref({ x: 0, y: 0 });
+const animalSize = ref(0);
+
 // Use calibration composable to get coefficients for selected user
 const { calibrationCoefficients } = useCalibration();
 
@@ -236,6 +254,9 @@ const startEyeTracking = async () => {
     return;
   }
   
+  // Reset animal icon state
+  showAnimal.value = false;
+  
   // Set fullscreen state in App.vue to hide sidebar
   isEyeTrackingFullscreenApp.value = true;
   
@@ -275,6 +296,9 @@ const exitFullscreen = () => {
 };
 
 const stopEyeTracking = () => {
+  // Hide animal icon when stopping
+  showAnimal.value = false;
+  
   // Reset fullscreen state in App.vue to show sidebar
   isEyeTrackingFullscreenApp.value = false;
   
@@ -286,6 +310,23 @@ const stopEyeTracking = () => {
   if (trackingIsFullscreen) {
     trackingIsFullscreen.value = false;
   }
+};
+
+const showAnimalIcon = (event) => {
+  // Calculate 10% of screen size
+  const screenWidth = window.innerWidth;
+  const screenHeight = window.innerHeight;
+  const size = Math.min(screenWidth, screenHeight) * 0.1;
+  animalSize.value = size;
+  
+  // Position animal at click location
+  animalPosition.value = {
+    x: event.clientX,
+    y: event.clientY
+  };
+  
+  // Show the animal icon
+  showAnimal.value = true;
 };
 
 // Fullscreen change handlers
