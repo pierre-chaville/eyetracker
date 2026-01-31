@@ -167,11 +167,22 @@
                 </span>
               </div>
               
-              <!-- User's Text (from selected choices) - Bigger Font -->
+              <!-- User's Text (from selected choices) - Last sentence large, previous 2 smaller -->
               <div class="flex-1 flex flex-col justify-center items-center text-center">
-                <div v-if="textLines.length > 0" class="text-4xl font-semibold text-gray-900 dark:text-white mb-2 space-y-1">
-                  <div v-for="(line, index) in textLines" :key="index" class="break-words">
-                    {{ line }}
+                <div v-if="textLines.length > 0" class="mb-2 space-y-1">
+                  <!-- Previous sentences (last 2, excluding the last one) - smaller and lighter -->
+                  <div v-if="textLines.length > 1" class="space-y-1 mb-2">
+                    <div 
+                      v-for="(line, index) in textLines.slice(0, -1).slice(-2)" 
+                      :key="`prev-${index}`" 
+                      class="break-words text-xl font-normal text-gray-400 dark:text-gray-500"
+                    >
+                      {{ line }}
+                    </div>
+                  </div>
+                  <!-- Last sentence - large and bold -->
+                  <div class="break-words text-4xl font-semibold text-gray-900 dark:text-white">
+                    {{ textLines[textLines.length - 1] }}
                   </div>
                 </div>
                 <div v-else class="text-gray-400 dark:text-gray-500 text-xl italic">
