@@ -46,7 +46,7 @@
         :class="['bg-white dark:bg-gray-800', isFullscreen ? 'h-screen w-screen rounded-none overflow-hidden flex flex-col' : 'rounded-xl shadow-lg p-6']"
         :style="gridContainerStyle"
       >
-        <!-- 4x5 Grid -->
+        <!-- 5x5 Grid -->
         <div 
           ref="gridInner"
           :class="['grid grid-cols-5 mx-auto', isFullscreen ? 'w-full p-6 flex-1 min-h-0' : 'max-w-5xl']"
@@ -96,7 +96,7 @@
             {{ vowel.toUpperCase() }}
           </div>
           
-          <!-- Row 3: Consonants (b, d, f, l, m) -->
+          <!-- Row 3: Consonants (B, C, D, F, G) -->
           <div
             v-for="(consonant, index) in consonants1"
             :key="`consonant1-${index}`"
@@ -114,7 +114,7 @@
             {{ consonant.toUpperCase() }}
           </div>
           
-          <!-- Row 4: Consonants (n, p, r, s, t) -->
+          <!-- Row 4: Consonants (J, L, M, N, P) -->
           <div
             v-for="(consonant, index) in consonants2"
             :key="`consonant2-${index}`"
@@ -122,6 +122,24 @@
             :class="[
               'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold',
               isCellHighlighted(15 + index) 
+                ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 ring-4 ring-primary-300 dark:ring-primary-700' 
+                : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600',
+              'text-gray-900 dark:text-white text-4xl'
+            ]"
+            :style="cellStyle"
+            @click="selectLetter(consonant)"
+          >
+            {{ consonant.toUpperCase() }}
+          </div>
+          
+          <!-- Row 5: Consonants (Q, R, S, T, V) -->
+          <div
+            v-for="(consonant, index) in consonants3"
+            :key="`consonant3-${index}`"
+            :ref="`consonant3-${index}`"
+            :class="[
+              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold',
+              isCellHighlighted(20 + index) 
                 ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 ring-4 ring-primary-300 dark:ring-primary-700' 
                 : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600',
               'text-gray-900 dark:text-white text-4xl'
@@ -186,8 +204,9 @@ let ws = null;
 
 // Keyboard layout
 const vowels = ['a', 'e', 'i', 'o', 'u'];
-const consonants1 = ['b', 'd', 'f', 'l', 'm'];
-const consonants2 = ['n', 'p', 'r', 's', 't'];
+const consonants1 = ['b', 'c', 'd', 'f', 'g'];
+const consonants2 = ['j', 'l', 'm', 'n', 'p'];
+const consonants3 = ['q', 'r', 's', 't', 'v'];
 
 // Eye tracking
 const { gazePoint, isConnected, connect, disconnect } = useEyeTracking({ skipCalibration: false });
@@ -231,9 +250,9 @@ const cellStyle = computed(() => {
     // Account for bottom bar (microphone/transcription) and padding
     const bottomBarHeight = 72; // Height of bottom bar (p-4 = 16px top + 16px bottom + ~40px content)
     const gridPadding = 48; // Top and bottom padding (24px * 2)
-    const gapTotal = 48; // Gap between 4 rows (1rem * 3 gaps = 16px * 3)
+    const gapTotal = 64; // Gap between 5 rows (1rem * 4 gaps = 16px * 4)
     const availableHeight = window.innerHeight - bottomBarHeight - gridPadding - gapTotal;
-    const cellHeight = Math.max(availableHeight / 4, 60); // Minimum 60px per cell
+    const cellHeight = Math.max(availableHeight / 5, 60); // Minimum 60px per cell, divide by 5 rows
     return {
       minHeight: `${cellHeight}px`,
       height: `${cellHeight}px`,
@@ -546,10 +565,10 @@ const detectCellFromGaze = () => {
   }
   
   // Calculate which cell the gaze is on
-  // Total cells: 5 (words) + 5 (vowels) + 5 (consonants1) + 5 (consonants2) = 20 cells
-  const totalCells = 20;
+  // Total cells: 5 (words) + 5 (vowels) + 5 (consonants1) + 5 (consonants2) + 5 (consonants3) = 25 cells
+  const totalCells = 25;
   const cols = 5;
-  const rows = 4;
+  const rows = 5;
   
   if (!gridInner.value) return;
   
@@ -574,6 +593,8 @@ const detectCellFromGaze = () => {
     } else if (row === 2 && col < consonants1.length) {
       highlightedCellIndex.value = cellIndex;
     } else if (row === 3 && col < consonants2.length) {
+      highlightedCellIndex.value = cellIndex;
+    } else if (row === 4 && col < consonants3.length) {
       highlightedCellIndex.value = cellIndex;
     } else {
       highlightedCellIndex.value = null;
