@@ -58,7 +58,7 @@
             :key="`word-${index}`"
             :ref="`cell-${index}`"
             :class="[
-              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-semibold',
+              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-semibold relative overflow-hidden',
               isCellHighlighted(index) 
                 ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 ring-4 ring-primary-300 dark:ring-primary-700' 
                 : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600',
@@ -67,6 +67,12 @@
             :style="cellStyle"
             @click="selectWord(word)"
           >
+            <!-- Progress bar at bottom -->
+            <div
+              v-if="dwellingCellIndex === index"
+              class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
+              :style="{ width: `${getDwellingProgress(index) * 100}%` }"
+            ></div>
             {{ word }}
           </div>
           
@@ -84,7 +90,7 @@
             :key="`vowel-${index}`"
             :ref="`vowel-${index}`"
             :class="[
-              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold',
+              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold relative overflow-hidden',
               isCellHighlighted(5 + index) 
                 ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 ring-4 ring-primary-300 dark:ring-primary-700' 
                 : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600',
@@ -93,6 +99,12 @@
             :style="cellStyle"
             @click="selectLetter(vowel)"
           >
+            <!-- Progress bar at bottom -->
+            <div
+              v-if="dwellingCellIndex === (5 + index)"
+              class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
+              :style="{ width: `${getDwellingProgress(5 + index) * 100}%` }"
+            ></div>
             {{ vowel.toUpperCase() }}
           </div>
           
@@ -102,7 +114,7 @@
             :key="`consonant1-${index}`"
             :ref="`consonant1-${index}`"
             :class="[
-              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold',
+              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold relative overflow-hidden',
               isCellHighlighted(10 + index) 
                 ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 ring-4 ring-primary-300 dark:ring-primary-700' 
                 : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600',
@@ -111,6 +123,12 @@
             :style="cellStyle"
             @click="selectLetter(consonant)"
           >
+            <!-- Progress bar at bottom -->
+            <div
+              v-if="dwellingCellIndex === (10 + index)"
+              class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
+              :style="{ width: `${getDwellingProgress(10 + index) * 100}%` }"
+            ></div>
             {{ consonant.toUpperCase() }}
           </div>
           
@@ -120,7 +138,7 @@
             :key="`consonant2-${index}`"
             :ref="`consonant2-${index}`"
             :class="[
-              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold',
+              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold relative overflow-hidden',
               isCellHighlighted(15 + index) 
                 ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 ring-4 ring-primary-300 dark:ring-primary-700' 
                 : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600',
@@ -129,6 +147,12 @@
             :style="cellStyle"
             @click="selectLetter(consonant)"
           >
+            <!-- Progress bar at bottom -->
+            <div
+              v-if="dwellingCellIndex === (15 + index)"
+              class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
+              :style="{ width: `${getDwellingProgress(15 + index) * 100}%` }"
+            ></div>
             {{ consonant.toUpperCase() }}
           </div>
           
@@ -138,7 +162,7 @@
             :key="`consonant3-${index}`"
             :ref="`consonant3-${index}`"
             :class="[
-              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold',
+              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold relative overflow-hidden',
               isCellHighlighted(20 + index) 
                 ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 ring-4 ring-primary-300 dark:ring-primary-700' 
                 : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600',
@@ -147,6 +171,12 @@
             :style="cellStyle"
             @click="selectLetter(consonant)"
           >
+            <!-- Progress bar at bottom -->
+            <div
+              v-if="dwellingCellIndex === (20 + index)"
+              class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
+              :style="{ width: `${getDwellingProgress(20 + index) * 100}%` }"
+            ></div>
             {{ consonant.toUpperCase() }}
           </div>
         </div>
@@ -175,11 +205,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount, inject } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, inject, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import { useEyeTracking } from '../composables/useEyeTracking';
 import { MicrophoneIcon } from '@heroicons/vue/24/solid';
+import { configAPI } from '../services/api';
 
 const { t } = useI18n();
 
@@ -201,6 +232,13 @@ const predictiveWords = ref([]);
 const highlightedCellIndex = ref(null);
 const lastTranscription = ref('');
 let ws = null;
+
+// Dwelling state
+const dwellTime = ref(2.0); // Default dwell time in seconds
+const dwellingCellIndex = ref(null); // Currently dwelling cell index
+const dwellingStartTime = ref(null); // When dwelling started
+const dwellingProgress = ref(0); // Progress from 0 to 1
+let dwellingInterval = null;
 
 // Keyboard layout
 const vowels = ['a', 'e', 'i', 'o', 'u'];
@@ -267,6 +305,83 @@ const cellStyle = computed(() => {
 // Check if cell is highlighted
 const isCellHighlighted = (index) => {
   return highlightedCellIndex.value === index;
+};
+
+// Get dwelling progress for a cell (0 to 1)
+const getDwellingProgress = (cellIndex) => {
+  if (dwellingCellIndex.value === cellIndex) {
+    return dwellingProgress.value;
+  }
+  return 0;
+};
+
+// Start dwelling on a cell
+const startDwelling = (cellIndex) => {
+  // Stop any existing dwelling
+  stopDwelling();
+  
+  dwellingCellIndex.value = cellIndex;
+  dwellingStartTime.value = Date.now();
+  dwellingProgress.value = 0;
+  
+  // Update progress every frame (60fps)
+  dwellingInterval = setInterval(() => {
+    if (!dwellingStartTime.value || dwellingCellIndex.value !== cellIndex) {
+      stopDwelling();
+      return;
+    }
+    
+    const elapsed = (Date.now() - dwellingStartTime.value) / 1000; // seconds
+    const progress = Math.min(elapsed / dwellTime.value, 1.0);
+    dwellingProgress.value = progress;
+    
+    // If dwelling is complete, trigger selection
+    if (progress >= 1.0) {
+      // Determine what to select based on cell index
+      if (cellIndex < 5) {
+        // Row 1: Predictive words
+        if (cellIndex < predictiveWords.value.length) {
+          selectWord(predictiveWords.value[cellIndex]);
+        }
+      } else if (cellIndex < 10) {
+        // Row 2: Vowels
+        const vowelIndex = cellIndex - 5;
+        if (vowelIndex < vowels.length) {
+          selectLetter(vowels[vowelIndex]);
+        }
+      } else if (cellIndex < 15) {
+        // Row 3: Consonants1
+        const consonantIndex = cellIndex - 10;
+        if (consonantIndex < consonants1.length) {
+          selectLetter(consonants1[consonantIndex]);
+        }
+      } else if (cellIndex < 20) {
+        // Row 4: Consonants2
+        const consonantIndex = cellIndex - 15;
+        if (consonantIndex < consonants2.length) {
+          selectLetter(consonants2[consonantIndex]);
+        }
+      } else if (cellIndex < 25) {
+        // Row 5: Consonants3
+        const consonantIndex = cellIndex - 20;
+        if (consonantIndex < consonants3.length) {
+          selectLetter(consonants3[consonantIndex]);
+        }
+      }
+      stopDwelling();
+    }
+  }, 16); // ~60fps
+};
+
+// Stop dwelling
+const stopDwelling = () => {
+  if (dwellingInterval) {
+    clearInterval(dwellingInterval);
+    dwellingInterval = null;
+  }
+  dwellingCellIndex.value = null;
+  dwellingStartTime.value = null;
+  dwellingProgress.value = 0;
 };
 
 // Load predictive words from backend
@@ -502,6 +617,8 @@ const startCommunication = async () => {
 
 // Stop communication
 const stopCommunication = async () => {
+  stopDwelling();
+  highlightedCellIndex.value = null;
   isLoading.value = true;
   error.value = null;
   
@@ -561,6 +678,7 @@ const exitFullscreen = () => {
 const detectCellFromGaze = () => {
   if (!gazePoint.value || !isConnected.value || !isFullscreen.value) {
     highlightedCellIndex.value = null;
+    stopDwelling();
     return;
   }
   
@@ -586,26 +704,40 @@ const detectCellFromGaze = () => {
     const cellIndex = row * cols + col;
     
     // Check if cell has content
+    let hasContent = false;
     if (row === 0 && col < predictiveWords.value.length) {
-      highlightedCellIndex.value = cellIndex;
+      hasContent = true;
     } else if (row === 1 && col < vowels.length) {
-      highlightedCellIndex.value = cellIndex;
+      hasContent = true;
     } else if (row === 2 && col < consonants1.length) {
-      highlightedCellIndex.value = cellIndex;
+      hasContent = true;
     } else if (row === 3 && col < consonants2.length) {
-      highlightedCellIndex.value = cellIndex;
+      hasContent = true;
     } else if (row === 4 && col < consonants3.length) {
-      highlightedCellIndex.value = cellIndex;
+      hasContent = true;
+    }
+    
+    if (hasContent) {
+      // Update highlighted cell
+      if (highlightedCellIndex.value !== cellIndex) {
+        highlightedCellIndex.value = cellIndex;
+      }
+      
+      // Start or continue dwelling
+      if (dwellingCellIndex.value !== cellIndex) {
+        startDwelling(cellIndex);
+      }
     } else {
       highlightedCellIndex.value = null;
+      stopDwelling();
     }
   } else {
     highlightedCellIndex.value = null;
+    stopDwelling();
   }
 };
 
 // Watch gaze point for cell detection
-import { watch } from 'vue';
 watch(gazePoint, () => {
   detectCellFromGaze();
 });
@@ -619,9 +751,32 @@ const handleFullscreenChange = () => {
   }
 };
 
+// Load configuration to get dwell_time
+const loadConfig = async () => {
+  try {
+    const data = await configAPI.get();
+    if (data.eye_tracking?.dwell_time) {
+      dwellTime.value = data.eye_tracking.dwell_time;
+    }
+  } catch (err) {
+    console.error('Error loading config:', err);
+    // Use default dwell_time
+  }
+};
+
+let gazeCheckInterval = null;
+
 // Connect eye tracking on mount
 onMounted(() => {
   connectWebSocket();
+  loadConfig();
+  
+  // Check gaze position periodically
+  gazeCheckInterval = setInterval(() => {
+    if (isConnected.value && gazePoint.value && isFullscreen.value) {
+      detectCellFromGaze();
+    }
+  }, 50); // Check every 50ms for smoother dwelling
   
   // Handle fullscreen changes
   document.addEventListener('fullscreenchange', handleFullscreenChange);
@@ -630,6 +785,11 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  stopDwelling();
+  if (gazeCheckInterval) {
+    clearInterval(gazeCheckInterval);
+    gazeCheckInterval = null;
+  }
   disconnectWebSocket();
   if (isFullscreen.value) {
     exitFullscreen();
