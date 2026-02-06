@@ -896,7 +896,7 @@ const selectChoice = async (choice) => {
       
       // Add user's choice to conversation history
       conversationHistory.value.push({
-        role: 'assistant',
+        role: 'user',
         content: choice.text
       });
     }
@@ -957,7 +957,7 @@ const connectWebSocket = () => {
             
             // Add caregiver message to conversation history
             conversationHistory.value.push({
-              role: 'user',
+              role: 'caregiver',
               content: transcribedText
             });
             

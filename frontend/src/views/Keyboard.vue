@@ -209,6 +209,7 @@ import { ref, computed, onMounted, onBeforeUnmount, inject, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import axios from 'axios';
 import { useEyeTracking } from '../composables/useEyeTracking';
+import { useCalibration } from '../composables/useCalibration';
 import { MicrophoneIcon } from '@heroicons/vue/24/solid';
 import { configAPI } from '../services/api';
 
@@ -247,7 +248,35 @@ const consonants2 = ['j', 'l', 'm', 'n', 'p'];
 const consonants3 = ['q', 'r', 's', 't', 'v'];
 
 // Eye tracking
-const { gazePoint, isConnected, connect, disconnect } = useEyeTracking({ skipCalibration: false });
+const { calibrationCoefficients } = useCalibration();
+const {
+  gazePoint,
+  isConnected,
+  connect,
+  disconnect,
+  calibrationCoefficients: trackingCalibrationCoefficients,
+  isFullscreen: trackingIsFullscreen,
+  updateWindowPosition,
+  updateHeaderHeight,
+} = useEyeTracking({ 
+  skipCalibration: false,
+  calibrationCoefficients: calibrationCoefficients.value,
+  isFullscreen: isFullscreen
+});
+
+// Update calibration coefficients in eye tracking when they change
+watch(calibrationCoefficients, (newCoefficients) => {
+  if (trackingCalibrationCoefficients) {
+    trackingCalibrationCoefficients.value = newCoefficients;
+  }
+}, { immediate: true });
+
+// Watch isFullscreen to update trackingIsFullscreen
+watch(isFullscreen, (newValue) => {
+  if (trackingIsFullscreen) {
+    trackingIsFullscreen.value = newValue;
+  }
+});
 
 // Grid refs
 const gridContainer = ref(null);
@@ -415,11 +444,9 @@ const selectWord = async (word) => {
 
 // Select a letter
 const selectLetter = async (letter) => {
-  currentText.value = currentText.value + letter;
+  const keyToken = `<${letter.toUpperCase()}>`;
+  currentText.value = currentText.value + keyToken;
   await loadPredictiveWords();
-  
-  // Generate TTS for the letter
-  await playTTS(letter);
 };
 
 // Play TTS
@@ -765,11 +792,30 @@ const loadConfig = async () => {
 };
 
 let gazeCheckInterval = null;
+let positionInterval = null;
+let resizeHandler = null;
 
 // Connect eye tracking on mount
 onMounted(() => {
   connectWebSocket();
   loadConfig();
+  
+  // Initialize window position and header height
+  updateWindowPosition();
+  updateHeaderHeight();
+  
+  // Update window position periodically (in case window is moved)
+  positionInterval = setInterval(() => {
+    updateWindowPosition();
+    updateHeaderHeight();
+  }, 1000);
+  
+  // Also update on window resize/move events
+  resizeHandler = () => {
+    updateWindowPosition();
+    updateHeaderHeight();
+  };
+  window.addEventListener('resize', resizeHandler);
   
   // Check gaze position periodically
   gazeCheckInterval = setInterval(() => {
@@ -789,6 +835,14 @@ onBeforeUnmount(() => {
   if (gazeCheckInterval) {
     clearInterval(gazeCheckInterval);
     gazeCheckInterval = null;
+  }
+  if (positionInterval) {
+    clearInterval(positionInterval);
+    positionInterval = null;
+  }
+  if (resizeHandler) {
+    window.removeEventListener('resize', resizeHandler);
+    resizeHandler = null;
   }
   disconnectWebSocket();
   if (isFullscreen.value) {

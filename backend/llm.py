@@ -135,8 +135,11 @@ class LLMService:
             content = msg.get("content", "")
             
             if role == "user" or role == "human":
-                messages.append(HumanMessage(content=content))
+                messages.append(HumanMessage(content=f"User: {content}"))
+            elif role == "caregiver":
+                messages.append(HumanMessage(content=f"Caregiver: {content}"))
             elif role == "assistant" or role == "ai":
+                # Legacy role mapping
                 messages.append(AIMessage(content=content))
         
         # Use structured output

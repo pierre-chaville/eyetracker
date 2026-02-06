@@ -5,6 +5,7 @@ from typing import Optional, List, Set, Dict
 from sqlmodel import Session, select
 import uvicorn
 import json
+import re
 import os
 import base64
 from pathlib import Path
@@ -296,11 +297,14 @@ async def get_choices(request: ChoicesRequest, session: Session = Depends(get_se
                     last_message = request.conversation_history[-1]
                     message_role = last_message.get("role", "").lower()
                     message_content = last_message.get("content", "")
-                    # Map 'user' to 'caregiver' and 'assistant' to 'user' for clarity
-                    if message_role == "user":
-                        message_role = "caregiver"
-                    elif message_role == "assistant":
+                    # Normalize roles to match session_steps (user/caregiver)
+                    if message_role == "assistant":
+                        # Legacy: assistant was used for user selections
                         message_role = "user"
+                    elif message_role == "human":
+                        message_role = "user"
+                    elif message_role not in ("user", "caregiver"):
+                        message_role = None
                 
                 # Prepare choices data
                 choices_data = [{"text": c.text, "probability": c.probability} for c in choices]
@@ -375,7 +379,11 @@ async def get_keyboard_predictions(request: ChoicesRequest, session: Session = D
         # If current_text has multiple single letters (like "a e i"), use multiple letters prompt
         # Otherwise use regular keyboard prompt
         text_words = current_text.split() if current_text else []
-        is_multiple_letters = len(text_words) > 1 and all(len(word) == 1 for word in text_words)
+        normalized_words = []
+        for word in text_words:
+            match = re.match(r"^<([A-Za-z])>$", word)
+            normalized_words.append(match.group(1) if match else word)
+        is_multiple_letters = len(normalized_words) > 1 and all(len(word) == 1 for word in normalized_words)
         
         system_prompt = (
             config.keyboard_multiple_letters_prompt if is_multiple_letters 
