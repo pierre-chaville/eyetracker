@@ -1,0 +1,35 @@
+from __future__ import annotations
+
+from fastapi import Depends
+from sqlmodel import Session
+
+from app.config import ConfigService
+from app.database import get_session
+from app.services.caregivers import CaregiverService
+from app.services.communication import CommunicationService, CommunicationSessionService
+from app.services.keyboard import KeyboardService
+from app.services.users import UserService
+
+
+def get_config_service() -> ConfigService:
+    return ConfigService()
+
+
+def get_user_service(session: Session = Depends(get_session)) -> UserService:
+    return UserService(session)
+
+
+def get_caregiver_service(session: Session = Depends(get_session)) -> CaregiverService:
+    return CaregiverService(session)
+
+
+def get_session_service(session: Session = Depends(get_session)) -> CommunicationSessionService:
+    return CommunicationSessionService(session)
+
+
+def get_communication_service(session: Session = Depends(get_session)) -> CommunicationService:
+    return CommunicationService(session)
+
+
+def get_keyboard_service(session: Session = Depends(get_session)) -> KeyboardService:
+    return KeyboardService(session)
