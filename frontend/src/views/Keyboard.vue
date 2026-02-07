@@ -14,6 +14,51 @@
             <p class="text-gray-600 dark:text-gray-400 text-sm">
               {{ $t('keyboard.description') }}
             </p>
+            <div class="mt-4 max-w-sm">
+              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                {{ $t('keyboard.layoutLabel') }}
+              </label>
+              <Listbox v-model="selectedLayoutId">
+                <div class="relative">
+                  <ListboxButton
+                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-left text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  >
+                    <span>
+                      {{ selectedLayout ? selectedLayout.name : $t('keyboard.layoutPlaceholder') }}
+                    </span>
+                  </ListboxButton>
+                  <ListboxOptions
+                    class="absolute z-10 mt-2 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg focus:outline-none max-h-60 overflow-auto"
+                  >
+                    <ListboxOption
+                      v-for="layout in keyboardLayouts"
+                      :key="layout.id"
+                      :value="layout.id"
+                      v-slot="{ active, selected }"
+                    >
+                      <div
+                        class="px-3 py-2 cursor-pointer"
+                        :class="[
+                          active ? 'bg-primary-50 dark:bg-primary-900/30' : '',
+                          selected ? 'font-semibold text-primary-700 dark:text-primary-300' : 'text-gray-700 dark:text-gray-200',
+                        ]"
+                      >
+                        <p>{{ layout.name }}</p>
+                        <p v-if="layout.description" class="text-xs text-gray-500 dark:text-gray-400">
+                          {{ layout.description }}
+                        </p>
+                      </div>
+                    </ListboxOption>
+                    <div v-if="keyboardLayouts.length === 0" class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
+                      {{ $t('keyboard.layoutEmpty') }}
+                    </div>
+                  </ListboxOptions>
+                </div>
+              </Listbox>
+              <p v-if="layoutError" class="text-xs text-red-600 dark:text-red-400 mt-2">
+                {{ layoutError }}
+              </p>
+            </div>
           </div>
           <div class="flex items-center space-x-4">
             <button
@@ -46,138 +91,59 @@
         :class="['bg-white dark:bg-gray-800', isFullscreen ? 'h-screen w-screen rounded-none overflow-hidden flex flex-col' : 'rounded-xl shadow-lg p-6']"
         :style="gridContainerStyle"
       >
-        <!-- 5x5 Grid -->
-        <div 
-          ref="gridInner"
-          :class="['grid grid-cols-5 mx-auto', isFullscreen ? 'w-full p-6 flex-1 min-h-0' : 'max-w-5xl']"
-          :style="gridStyle"
-        >
-          <!-- Row 1: Predictive Words (LLM suggestions) -->
+        <div class="flex flex-col" :class="isFullscreen ? 'w-full p-6 flex-1 min-h-0' : 'max-w-5xl mx-auto'">
           <div
-            v-for="(word, index) in predictiveWords"
-            :key="`word-${index}`"
-            :ref="`cell-${index}`"
-            :class="[
-              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-semibold relative overflow-hidden',
-              isCellHighlighted(index) 
-                ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 ring-4 ring-primary-300 dark:ring-primary-700' 
-                : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600',
-              'text-gray-900 dark:text-white text-2xl'
-            ]"
-            :style="cellStyle"
-            @click="selectWord(word)"
+            v-if="predictiveCount > 0"
+            ref="predictiveGrid"
+            class="grid"
+            :style="predictiveGridStyle"
           >
-            <!-- Progress bar at bottom -->
             <div
-              v-if="dwellingCellIndex === index"
-              class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
-              :style="{ width: `${getDwellingProgress(index) * 100}%` }"
-            ></div>
-            {{ word }}
+              v-for="colIndex in predictiveIndices"
+              :key="`predictive-${colIndex}`"
+              :class="[
+                'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-semibold relative overflow-hidden text-2xl text-gray-900 dark:text-white',
+                isCellHighlighted(getPredictiveCellIndex(colIndex))
+                  ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 ring-4 ring-primary-300 dark:ring-primary-700'
+                  : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600',
+              ]"
+              :style="cellStyle"
+              @click="handlePredictiveClick(colIndex)"
+            >
+              <div
+                v-if="dwellingCellIndex === getPredictiveCellIndex(colIndex)"
+                class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
+                :style="{ width: `${getDwellingProgress(getPredictiveCellIndex(colIndex)) * 100}%` }"
+              ></div>
+              {{ predictiveWords[colIndex] || '' }}
+            </div>
           </div>
-          
-          <!-- Fill empty cells in row 1 if less than 5 words -->
           <div
-            v-for="n in (5 - predictiveWords.length)"
-            :key="`empty-${n}`"
-            :style="cellStyle"
-            class="border-2 border-transparent"
-          ></div>
-          
-          <!-- Row 2: Vowels (a, e, i, o, u) -->
-          <div
-            v-for="(vowel, index) in vowels"
-            :key="`vowel-${index}`"
-            :ref="`vowel-${index}`"
-            :class="[
-              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold relative overflow-hidden',
-              isCellHighlighted(5 + index) 
-                ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 ring-4 ring-primary-300 dark:ring-primary-700' 
-                : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600',
-              'text-gray-900 dark:text-white text-4xl'
-            ]"
-            :style="cellStyle"
-            @click="selectLetter(vowel)"
+            ref="layoutGrid"
+            class="grid"
+            :style="layoutGridStyle"
           >
-            <!-- Progress bar at bottom -->
-            <div
-              v-if="dwellingCellIndex === (5 + index)"
-              class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
-              :style="{ width: `${getDwellingProgress(5 + index) * 100}%` }"
-            ></div>
-            {{ vowel.toUpperCase() }}
-          </div>
-          
-          <!-- Row 3: Consonants (B, C, D, F, G) -->
-          <div
-            v-for="(consonant, index) in consonants1"
-            :key="`consonant1-${index}`"
-            :ref="`consonant1-${index}`"
-            :class="[
-              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold relative overflow-hidden',
-              isCellHighlighted(10 + index) 
-                ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 ring-4 ring-primary-300 dark:ring-primary-700' 
-                : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600',
-              'text-gray-900 dark:text-white text-4xl'
-            ]"
-            :style="cellStyle"
-            @click="selectLetter(consonant)"
-          >
-            <!-- Progress bar at bottom -->
-            <div
-              v-if="dwellingCellIndex === (10 + index)"
-              class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
-              :style="{ width: `${getDwellingProgress(10 + index) * 100}%` }"
-            ></div>
-            {{ consonant.toUpperCase() }}
-          </div>
-          
-          <!-- Row 4: Consonants (J, L, M, N, P) -->
-          <div
-            v-for="(consonant, index) in consonants2"
-            :key="`consonant2-${index}`"
-            :ref="`consonant2-${index}`"
-            :class="[
-              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold relative overflow-hidden',
-              isCellHighlighted(15 + index) 
-                ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 ring-4 ring-primary-300 dark:ring-primary-700' 
-                : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600',
-              'text-gray-900 dark:text-white text-4xl'
-            ]"
-            :style="cellStyle"
-            @click="selectLetter(consonant)"
-          >
-            <!-- Progress bar at bottom -->
-            <div
-              v-if="dwellingCellIndex === (15 + index)"
-              class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
-              :style="{ width: `${getDwellingProgress(15 + index) * 100}%` }"
-            ></div>
-            {{ consonant.toUpperCase() }}
-          </div>
-          
-          <!-- Row 5: Consonants (Q, R, S, T, V) -->
-          <div
-            v-for="(consonant, index) in consonants3"
-            :key="`consonant3-${index}`"
-            :ref="`consonant3-${index}`"
-            :class="[
-              'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-bold relative overflow-hidden',
-              isCellHighlighted(20 + index) 
-                ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 ring-4 ring-primary-300 dark:ring-primary-700' 
-                : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600',
-              'text-gray-900 dark:text-white text-4xl'
-            ]"
-            :style="cellStyle"
-            @click="selectLetter(consonant)"
-          >
-            <!-- Progress bar at bottom -->
-            <div
-              v-if="dwellingCellIndex === (20 + index)"
-              class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
-              :style="{ width: `${getDwellingProgress(20 + index) * 100}%` }"
-            ></div>
-            {{ consonant.toUpperCase() }}
+            <template v-for="rowIndex in rowIndices" :key="`row-${rowIndex}`">
+              <div
+                v-for="colIndex in colIndices"
+                :key="`cell-${rowIndex}-${colIndex}`"
+                :class="[
+                  'border-4 rounded-lg flex items-center justify-center cursor-pointer transition-all duration-200 font-semibold relative overflow-hidden text-3xl text-gray-900 dark:text-white',
+                  isCellHighlighted(getLayoutCellIndex(rowIndex, colIndex))
+                    ? 'border-primary-500 bg-primary-100 dark:bg-primary-900/30 ring-4 ring-primary-300 dark:ring-primary-700'
+                    : 'border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600',
+                ]"
+                :style="cellStyle"
+                @click="handleLayoutClick(rowIndex, colIndex)"
+              >
+                <div
+                  v-if="dwellingCellIndex === getLayoutCellIndex(rowIndex, colIndex)"
+                  class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
+                  :style="{ width: `${getDwellingProgress(getLayoutCellIndex(rowIndex, colIndex)) * 100}%` }"
+                ></div>
+                {{ getLayoutCellDisplay(rowIndex, colIndex) }}
+              </div>
+            </template>
           </div>
         </div>
         
@@ -207,11 +173,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, inject, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/vue';
 import { useEyeTracking } from '../composables/useEyeTracking';
 import { useCalibration } from '../composables/useCalibration';
 import { useSTTEvents } from '../composables/useSTTEvents';
 import { MicrophoneIcon } from '@heroicons/vue/24/solid';
-import { configAPI, keyboardAPI, speechToTextAPI } from '../services/api';
+import { configAPI, keyboardAPI, keyboardLayoutsAPI, speechToTextAPI } from '../services/api';
+import type { KeyboardLayoutRead } from '../types/api';
 
 const { t } = useI18n();
 
@@ -228,6 +196,36 @@ const predictiveWords = ref<string[]>([]);
 const highlightedCellIndex = ref<number | null>(null);
 const lastTranscription = ref('');
 
+const keyboardLayouts = ref<KeyboardLayoutRead[]>([]);
+const selectedLayoutId = ref<number | null>(null);
+const layoutError = ref<string | null>(null);
+
+const selectedLayout = computed(() =>
+  keyboardLayouts.value.find((layout) => layout.id === selectedLayoutId.value) ?? null,
+);
+const layoutRows = computed(() => selectedLayout.value?.rows ?? 5);
+const layoutColumns = computed(() => selectedLayout.value?.columns ?? 5);
+const predictiveCount = computed(() =>
+  Math.min(selectedLayout.value?.predictive_cells ?? 0, 5),
+);
+const layoutCellsMatrix = computed(() => {
+  const rows = selectedLayout.value?.rows ?? 5;
+  const columns = layoutColumns.value;
+  const existing = selectedLayout.value?.cells || [];
+  const matrix: string[][] = [];
+  for (let r = 0; r < rows; r += 1) {
+    const row: string[] = [];
+    for (let c = 0; c < columns; c += 1) {
+      row.push(existing[r]?.[c] ?? '');
+    }
+    matrix.push(row);
+  }
+  return matrix;
+});
+const rowIndices = computed(() => Array.from({ length: layoutRows.value }, (_, i) => i));
+const colIndices = computed(() => Array.from({ length: layoutColumns.value }, (_, i) => i));
+const predictiveIndices = computed(() => Array.from({ length: predictiveCount.value }, (_, i) => i));
+
 // Dwelling state
 const dwellTime = ref(2.0); // Default dwell time in seconds
 const dwellingCellIndex = ref<number | null>(null); // Currently dwelling cell index
@@ -235,11 +233,39 @@ const dwellingStartTime = ref(null); // When dwelling started
 const dwellingProgress = ref(0); // Progress from 0 to 1
 let dwellingInterval = null;
 
-// Keyboard layout
-const vowels = ['a', 'e', 'i', 'o', 'u'];
-const consonants1 = ['b', 'c', 'd', 'f', 'g'];
-const consonants2 = ['j', 'l', 'm', 'n', 'p'];
-const consonants3 = ['q', 'r', 's', 't', 'v'];
+const getPredictiveCellIndex = (col: number) => col;
+const getLayoutCellIndex = (row: number, col: number) =>
+  predictiveCount.value + row * layoutColumns.value + col;
+
+const getLayoutCellValue = (row: number, col: number) =>
+  layoutCellsMatrix.value[row]?.[col] ?? '';
+
+const getLayoutCellDisplay = (row: number, col: number) => {
+  const value = getLayoutCellValue(row, col);
+  if (!value) {
+    return '';
+  }
+  return value.length === 1 ? value.toUpperCase() : value;
+};
+
+const handlePredictiveClick = (col: number) => {
+  const value = predictiveWords.value[col];
+  if (value) {
+    selectWord(value);
+  }
+};
+
+const handleLayoutClick = (row: number, col: number) => {
+  const value = getLayoutCellValue(row, col);
+  if (!value) {
+    return;
+  }
+  if (value.length === 1) {
+    selectLetter(value);
+  } else {
+    selectWord(value);
+  }
+};
 
 // Eye tracking
 const { calibrationCoefficients } = useCalibration();
@@ -288,7 +314,8 @@ watch(isFullscreen, (newValue) => {
 
 // Grid refs
 const gridContainer = ref(null);
-const gridInner = ref(null);
+const predictiveGrid = ref<HTMLElement | null>(null);
+const layoutGrid = ref<HTMLElement | null>(null);
 
 // Cell positions for eye tracking
 const cellPositions = ref([]);
@@ -308,26 +335,26 @@ const gridContainerStyle = computed(() => {
   return {};
 });
 
-const gridStyle = computed(() => {
-  if (isFullscreen.value) {
-    const scale = window.devicePixelRatio || 1;
-    return {
-      gap: '1rem',
-    };
-  }
-  return {
-    gap: '1rem',
-  };
-});
+const predictiveGridStyle = computed(() => ({
+  gap: '1rem',
+  gridTemplateColumns: `repeat(${predictiveCount.value}, minmax(0, 1fr))`,
+  marginBottom: predictiveCount.value > 0 ? '1rem' : '0',
+}));
+
+const layoutGridStyle = computed(() => ({
+  gap: '1rem',
+  gridTemplateColumns: `repeat(${layoutColumns.value}, minmax(0, 1fr))`,
+}));
 
 const cellStyle = computed(() => {
   if (isFullscreen.value) {
     // Account for bottom bar (microphone/transcription) and padding
     const bottomBarHeight = 72; // Height of bottom bar (p-4 = 16px top + 16px bottom + ~40px content)
     const gridPadding = 48; // Top and bottom padding (24px * 2)
-    const gapTotal = 64; // Gap between 5 rows (1rem * 4 gaps = 16px * 4)
+    const totalRows = layoutRows.value + (predictiveCount.value > 0 ? 1 : 0);
+    const gapTotal = Math.max(totalRows - 1, 0) * 16;
     const availableHeight = window.innerHeight - bottomBarHeight - gridPadding - gapTotal;
-    const cellHeight = Math.max(availableHeight / 5, 60); // Minimum 60px per cell, divide by 5 rows
+    const cellHeight = Math.max(availableHeight / Math.max(totalRows, 1), 60);
     return {
       minHeight: `${cellHeight}px`,
       height: `${cellHeight}px`,
@@ -374,36 +401,13 @@ const startDwelling = (cellIndex) => {
     
     // If dwelling is complete, trigger selection
     if (progress >= 1.0) {
-      // Determine what to select based on cell index
-      if (cellIndex < 5) {
-        // Row 1: Predictive words
-        if (cellIndex < predictiveWords.value.length) {
-          selectWord(predictiveWords.value[cellIndex]);
-        }
-      } else if (cellIndex < 10) {
-        // Row 2: Vowels
-        const vowelIndex = cellIndex - 5;
-        if (vowelIndex < vowels.length) {
-          selectLetter(vowels[vowelIndex]);
-        }
-      } else if (cellIndex < 15) {
-        // Row 3: Consonants1
-        const consonantIndex = cellIndex - 10;
-        if (consonantIndex < consonants1.length) {
-          selectLetter(consonants1[consonantIndex]);
-        }
-      } else if (cellIndex < 20) {
-        // Row 4: Consonants2
-        const consonantIndex = cellIndex - 15;
-        if (consonantIndex < consonants2.length) {
-          selectLetter(consonants2[consonantIndex]);
-        }
-      } else if (cellIndex < 25) {
-        // Row 5: Consonants3
-        const consonantIndex = cellIndex - 20;
-        if (consonantIndex < consonants3.length) {
-          selectLetter(consonants3[consonantIndex]);
-        }
+      if (cellIndex < predictiveCount.value) {
+        handlePredictiveClick(cellIndex);
+      } else {
+        const layoutIndex = cellIndex - predictiveCount.value;
+        const rowIndex = Math.floor(layoutIndex / layoutColumns.value);
+        const colIndex = layoutIndex % layoutColumns.value;
+        handleLayoutClick(rowIndex, colIndex);
       }
       stopDwelling();
     }
@@ -433,11 +437,24 @@ const loadPredictiveWords = async () => {
       caregiver_id: caregiverId,
     });
     
-    predictiveWords.value = (response as { words?: string[] }).words || [];
+    const words = (response as { words?: string[] }).words || [];
+    predictiveWords.value = words.slice(0, predictiveCount.value);
   } catch (err) {
     console.error('Error loading predictive words:', err);
     // Fallback to empty array
     predictiveWords.value = [];
+  }
+};
+
+const loadKeyboardLayouts = async () => {
+  try {
+    layoutError.value = null;
+    keyboardLayouts.value = await keyboardLayoutsAPI.list();
+    if (!selectedLayoutId.value && keyboardLayouts.value.length > 0) {
+      selectedLayoutId.value = keyboardLayouts.value[0].id;
+    }
+  } catch (err) {
+    layoutError.value = err instanceof Error ? err.message : t('keyboard.layoutError');
   }
 };
 
@@ -656,48 +673,49 @@ const detectCellFromGaze = () => {
     return;
   }
   
-  // Calculate which cell the gaze is on
-  // Total cells: 5 (words) + 5 (vowels) + 5 (consonants1) + 5 (consonants2) + 5 (consonants3) = 25 cells
-  const totalCells = 25;
-  const cols = 5;
-  const rows = 5;
-  
-  if (!gridInner.value) return;
-  
-  const rect = gridInner.value.getBoundingClientRect();
+  const cols = layoutColumns.value;
+  const rows = layoutRows.value;
+
+  if (predictiveCount.value > 0 && predictiveGrid.value) {
+    const rect = predictiveGrid.value.getBoundingClientRect();
+    const cellWidth = rect.width / predictiveCount.value;
+    const relativeX = gazePoint.value.x - rect.left;
+    const relativeY = gazePoint.value.y - rect.top;
+    if (relativeX >= 0 && relativeX <= rect.width && relativeY >= 0 && relativeY <= rect.height) {
+      const col = Math.floor(relativeX / cellWidth);
+      const value = predictiveWords.value[col];
+      const cellIndex = getPredictiveCellIndex(col);
+      if (value) {
+        if (highlightedCellIndex.value !== cellIndex) {
+          highlightedCellIndex.value = cellIndex;
+        }
+        if (dwellingCellIndex.value !== cellIndex) {
+          startDwelling(cellIndex);
+        }
+      } else {
+        highlightedCellIndex.value = null;
+        stopDwelling();
+      }
+      return;
+    }
+  }
+
+  if (!layoutGrid.value) return;
+
+  const rect = layoutGrid.value.getBoundingClientRect();
   const cellWidth = rect.width / cols;
   const cellHeight = rect.height / rows;
-  
   const relativeX = gazePoint.value.x - rect.left;
   const relativeY = gazePoint.value.y - rect.top;
-  
   const col = Math.floor(relativeX / cellWidth);
   const row = Math.floor(relativeY / cellHeight);
-  
   if (col >= 0 && col < cols && row >= 0 && row < rows) {
-    const cellIndex = row * cols + col;
-    
-    // Check if cell has content
-    let hasContent = false;
-    if (row === 0 && col < predictiveWords.value.length) {
-      hasContent = true;
-    } else if (row === 1 && col < vowels.length) {
-      hasContent = true;
-    } else if (row === 2 && col < consonants1.length) {
-      hasContent = true;
-    } else if (row === 3 && col < consonants2.length) {
-      hasContent = true;
-    } else if (row === 4 && col < consonants3.length) {
-      hasContent = true;
-    }
-    
-    if (hasContent) {
-      // Update highlighted cell
+    const cellIndex = getLayoutCellIndex(row, col);
+    const value = getLayoutCellValue(row, col);
+    if (value) {
       if (highlightedCellIndex.value !== cellIndex) {
         highlightedCellIndex.value = cellIndex;
       }
-      
-      // Start or continue dwelling
       if (dwellingCellIndex.value !== cellIndex) {
         startDwelling(cellIndex);
       }
@@ -718,7 +736,11 @@ watch(gazePoint, () => {
 
 // Handle fullscreen changes
 const handleFullscreenChange = () => {
-  if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+  const doc = document as Document & {
+    webkitFullscreenElement?: Element | null
+    msFullscreenElement?: Element | null
+  };
+  if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
     if (isFullscreen.value) {
       stopCommunication();
     }
@@ -746,6 +768,7 @@ let resizeHandler = null;
 onMounted(() => {
   connectSTT();
   loadConfig();
+  loadKeyboardLayouts();
   
   // Initialize window position and header height
   updateWindowPosition();

@@ -1,6 +1,6 @@
 <template>
   <div class="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-    <div class="max-w-4xl mx-auto">
+    <div class="max-w-7xl mx-auto">
       <!-- Header -->
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
@@ -493,13 +493,23 @@
                       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                         {{ $t('setup.keyboards.cells') }}
                       </label>
-                      <textarea
-                        v-model="keyboardForm.cellsJson"
-                        rows="6"
-                        :disabled="!isEditMode"
-                        class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-xs disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
-                        :placeholder="$t('setup.keyboards.cellsPlaceholder')"
-                      />
+                      <div class="space-y-2">
+                        <div
+                          v-for="(row, rowIndex) in cellsMatrix"
+                          :key="`row-${rowIndex}`"
+                          class="grid gap-2"
+                          :style="{ gridTemplateColumns: `repeat(${keyboardForm.columns}, minmax(0, 1fr))` }"
+                        >
+                          <input
+                            v-for="(cell, colIndex) in row"
+                            :key="`cell-${rowIndex}-${colIndex}`"
+                            v-model="cellsMatrix[rowIndex][colIndex]"
+                            type="text"
+                            :disabled="!isEditMode"
+                            class="w-full px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
+                          />
+                        </div>
+                      </div>
                       <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
                         {{ $t('setup.keyboards.cellsHelp') }}
                       </p>
@@ -553,7 +563,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/vue';
 import { PencilIcon } from '@heroicons/vue/24/outline';
@@ -562,7 +572,24 @@ import type { KeyboardLayoutRead } from '../types/api';
 
 const { t } = useI18n();
 
-const config = ref({
+interface AppConfig {
+  provider: string
+  model: string
+  temperature: number
+  communicate_prompt: string
+  keyboard_prompt: string
+  keyboard_multiple_letters_prompt: string
+  tts_language: string
+  tts_voice_name: string
+  tts_pitch: number
+  tts_speaking_rate: number
+  eye_tracking: {
+    eye_used: string
+    dwell_time: number
+  }
+}
+
+const config = ref<AppConfig>({
   provider: 'openai',
   model: '',
   temperature: 0.7,
@@ -579,12 +606,12 @@ const config = ref({
   },
 });
 
-const originalConfig = ref({});
+const originalConfig = ref<AppConfig>({ ...config.value });
 const isEditMode = ref(false);
 const loading = ref(true);
 const saving = ref(false);
-const error = ref(null);
-const successMessage = ref(null);
+const error = ref<string | null>(null);
+const successMessage = ref<string | null>(null);
 
 const keyboardLayouts = ref<KeyboardLayoutRead[]>([]);
 const keyboardLoading = ref(false);
@@ -598,16 +625,19 @@ const keyboardForm = ref({
   rows: 3,
   columns: 3,
   predictive_cells: 0,
-  cellsJson: '',
 });
+const cellsMatrix = ref<string[][]>([]);
 
 const loadConfig = async () => {
   try {
     loading.value = true;
     error.value = null;
     successMessage.value = null;
-    const data = await configAPI.get();
-    const loadedConfig = {
+    const data = (await configAPI.get()) as Partial<AppConfig> & {
+      prompt?: string
+      eye_tracking?: Partial<AppConfig['eye_tracking']>
+    };
+    const loadedConfig: AppConfig = {
       provider: data.provider || 'openai',
       model: data.model || '',
       temperature: data.temperature ?? 0.7,
@@ -623,7 +653,7 @@ const loadConfig = async () => {
         dwell_time: data.eye_tracking?.dwell_time ?? 2.0,
       },
     };
-    config.value = { ...loadedConfig };
+    config.value = loadedConfig;
     originalConfig.value = { ...loadedConfig };
   } catch (err) {
     error.value = err.response?.data?.detail || err.message || t('setup.loadError');
@@ -653,8 +683,8 @@ const resetKeyboardForm = () => {
     rows: 3,
     columns: 3,
     predictive_cells: 0,
-    cellsJson: '',
   };
+  cellsMatrix.value = buildCellsMatrix(3, 3);
   keyboardError.value = null;
   keyboardSuccess.value = null;
 };
@@ -667,8 +697,8 @@ const selectKeyboardLayout = (layout: KeyboardLayoutRead) => {
     rows: layout.rows,
     columns: layout.columns,
     predictive_cells: layout.predictive_cells,
-    cellsJson: layout.cells ? JSON.stringify(layout.cells, null, 2) : '',
   };
+  cellsMatrix.value = buildCellsMatrix(layout.rows, layout.columns, layout.cells || undefined);
   keyboardError.value = null;
   keyboardSuccess.value = null;
 };
@@ -678,22 +708,13 @@ const saveKeyboardLayout = async () => {
   keyboardError.value = null;
   keyboardSuccess.value = null;
   try {
-    let parsedCells: string[][] | null = null;
-    if (keyboardForm.value.cellsJson.trim()) {
-      const parsed = JSON.parse(keyboardForm.value.cellsJson) as unknown;
-      if (!Array.isArray(parsed)) {
-        throw new Error(t('setup.keyboards.invalidCells'));
-      }
-      parsedCells = parsed as string[][];
-    }
-
     const payload = {
       name: keyboardForm.value.name,
       description: keyboardForm.value.description || null,
       rows: keyboardForm.value.rows,
       columns: keyboardForm.value.columns,
       predictive_cells: keyboardForm.value.predictive_cells,
-      cells: parsedCells,
+      cells: cellsMatrix.value,
     };
 
     if (selectedKeyboardId.value) {
@@ -726,6 +747,35 @@ const deleteKeyboardLayout = async (layoutId: number) => {
     keyboardError.value = err instanceof Error ? err.message : t('setup.keyboards.deleteError');
   }
 };
+
+const buildCellsMatrix = (
+  rows: number,
+  columns: number,
+  existing?: string[][],
+): string[][] => {
+  const result: string[][] = [];
+  for (let r = 0; r < rows; r += 1) {
+    const row: string[] = [];
+    for (let c = 0; c < columns; c += 1) {
+      row.push(existing?.[r]?.[c] ?? '');
+    }
+    result.push(row);
+  }
+  return result;
+};
+
+const resizeCellsMatrix = () => {
+  const rows = Math.max(1, Number(keyboardForm.value.rows));
+  const columns = Math.max(1, Number(keyboardForm.value.columns));
+  cellsMatrix.value = buildCellsMatrix(rows, columns, cellsMatrix.value);
+};
+
+watch(
+  () => [keyboardForm.value.rows, keyboardForm.value.columns],
+  () => {
+    resizeCellsMatrix();
+  },
+);
 
 const enterEditMode = () => {
   // Store current config as original before editing
@@ -794,5 +844,6 @@ const saveConfig = async () => {
 onMounted(() => {
   loadConfig();
   loadKeyboardLayouts();
+  resizeCellsMatrix();
 });
 </script>
