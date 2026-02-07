@@ -91,7 +91,11 @@
         :class="['bg-white dark:bg-gray-800', isFullscreen ? 'h-screen w-screen rounded-none overflow-hidden flex flex-col' : 'rounded-xl shadow-lg p-6']"
         :style="gridContainerStyle"
       >
-        <div class="flex flex-col" :class="isFullscreen ? 'w-full p-6 flex-1 min-h-0' : 'max-w-5xl mx-auto'">
+        <div
+          class="grid"
+          :class="isFullscreen ? 'w-full p-6 flex-1 min-h-0' : 'max-w-5xl mx-auto'"
+          :style="keyboardGridStyle"
+        >
           <div
             v-if="predictiveCount > 0"
             ref="predictiveGrid"
@@ -335,15 +339,29 @@ const gridContainerStyle = computed(() => {
   return {};
 });
 
+const keyboardGridStyle = computed(() => {
+  const totalRows = layoutRows.value + (predictiveCount.value > 0 ? 1 : 0);
+  return {
+    gap: '1rem',
+    gridTemplateRows: `repeat(${Math.max(totalRows, 1)}, minmax(0, 1fr))`,
+    height: '100%',
+  };
+});
+
 const predictiveGridStyle = computed(() => ({
   gap: '1rem',
   gridTemplateColumns: `repeat(${predictiveCount.value}, minmax(0, 1fr))`,
-  marginBottom: predictiveCount.value > 0 ? '1rem' : '0',
+  gridTemplateRows: 'repeat(1, minmax(0, 1fr))',
+  height: '100%',
+  gridRow: '1 / 2',
 }));
 
 const layoutGridStyle = computed(() => ({
   gap: '1rem',
   gridTemplateColumns: `repeat(${layoutColumns.value}, minmax(0, 1fr))`,
+  gridTemplateRows: `repeat(${layoutRows.value}, minmax(0, 1fr))`,
+  height: '100%',
+  gridRow: predictiveCount.value > 0 ? '2 / -1' : '1 / -1',
 }));
 
 const cellStyle = computed(() => {

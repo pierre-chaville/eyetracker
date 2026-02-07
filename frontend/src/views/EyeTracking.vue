@@ -58,9 +58,6 @@
         :gaze-point="gazePoint"
         :tracking-data="trackingData"
         :is-connected="isConnected"
-        :is-frozen="isFrozen"
-        :frozen-gaze-point="frozenGazePoint"
-        :frozen-tracking-data="frozenTrackingData"
         :show-coordinates="false"
       />
 
@@ -101,8 +98,11 @@
       </div>
     </div>
 
-    <!-- Info Panel (hidden in fullscreen) -->
-    <div v-if="!isFullscreen" class="absolute bottom-4 left-4 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 shadow-xl max-w-xs border border-gray-200 dark:border-gray-700">
+    <!-- Info Panel (toggleable in fullscreen) -->
+    <div
+      v-if="isFullscreen && showDebugPanel"
+      class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm rounded-lg p-4 shadow-xl max-w-xs border border-gray-200 dark:border-gray-700"
+    >
       <h3 class="text-sm font-semibold text-gray-900 dark:text-gray-300 mb-2">{{ $t('eyeTracking.eyeTrackingData') }}</h3>
       <div class="space-y-1 text-xs font-mono">
         <div class="text-gray-600 dark:text-gray-400">
@@ -118,7 +118,7 @@
           <span class="text-gray-700 dark:text-gray-500">X:</span>
           <span class="text-gray-900 dark:text-white ml-2">{{ gazePoint ? gazePoint.x.toFixed(1) : '--' }}px</span>
           <span v-if="trackingData" class="text-gray-700 dark:text-gray-500 ml-1">
-            ({{ (trackingData.x * 100).toFixed(1) }}%)
+            ({{ (((trackingData?.x ?? 0) * 100).toFixed(1)) }}%)
           </span>
         </div>
         <div v-if="trackingData?.pixelX !== undefined" class="text-gray-600 dark:text-gray-400 text-[10px]">
@@ -129,7 +129,7 @@
           <span class="text-gray-700 dark:text-gray-500">Y:</span>
           <span class="text-gray-900 dark:text-white ml-2">{{ gazePoint ? gazePoint.y.toFixed(1) : '--' }}px</span>
           <span v-if="trackingData" class="text-gray-700 dark:text-gray-500 ml-1">
-            ({{ (trackingData.y * 100).toFixed(1) }}%)
+            ({{ (((trackingData?.y ?? 0) * 100).toFixed(1)) }}%)
           </span>
         </div>
         <div v-if="trackingData?.pixelY !== undefined" class="text-gray-600 dark:text-gray-400 text-[10px]">
@@ -142,39 +142,11 @@
         </div>
         <div class="text-gray-600 dark:text-gray-400">
           <span class="text-gray-700 dark:text-gray-500">{{ $t('eyeTracking.fps') }}:</span>
-          <span class="text-gray-900 dark:text-white ml-2">{{ fps.toFixed(1) }}</span>
+          <span class="text-gray-900 dark:text-white ml-2">{{ fps?.toFixed(1) ?? '--' }}</span>
         </div>
         <div class="text-gray-600 dark:text-gray-400">
           <span class="text-gray-700 dark:text-gray-500">{{ $t('eyeTracking.messages') }}:</span>
           <span class="text-gray-900 dark:text-white ml-2">{{ messageCount }}</span>
-        </div>
-        <div class="text-gray-600 dark:text-gray-400 pt-2 border-t border-gray-300 dark:border-gray-700 mt-2">
-          <span class="text-gray-700 dark:text-gray-500">{{ $t('eyeTracking.windowOffset') }}:</span>
-          <span class="text-gray-900 dark:text-white ml-2">{{ windowOffset.x }}, {{ windowOffset.y }}</span>
-        </div>
-        <div v-if="manualOffset.x !== 0 || manualOffset.y !== 0" class="text-gray-600 dark:text-gray-400">
-          <span class="text-gray-700 dark:text-gray-500">{{ $t('eyeTracking.manualOffset') }}:</span>
-          <span class="text-yellow-600 dark:text-yellow-400 ml-2">{{ manualOffset.x }}, {{ manualOffset.y }}</span>
-        </div>
-        <div class="text-gray-600 dark:text-gray-400">
-          <span class="text-gray-700 dark:text-gray-500">{{ $t('eyeTracking.scaleFactor') }}:</span>
-          <span class="text-gray-900 dark:text-white ml-2">{{ scaleFactor.toFixed(2) }}x</span>
-        </div>
-        <div class="text-gray-600 dark:text-gray-400">
-          <span class="text-gray-700 dark:text-gray-500">{{ $t('eyeTracking.scaleApplied') }}:</span>
-          <span :class="[
-            'ml-2 font-semibold',
-            applyScaling ? 'text-green-600 dark:text-green-400' : 'text-gray-700 dark:text-gray-500'
-          ]">
-            {{ applyScaling ? scaleMode : $t('eyeTracking.scaleModeNone') }}
-          </span>
-        </div>
-        <div class="text-gray-600 dark:text-gray-400">
-          <span class="text-gray-700 dark:text-gray-500">{{ $t('eyeTracking.headerHeight') }}:</span>
-          <span class="text-gray-900 dark:text-white ml-2">
-            {{ (manualHeaderHeight !== null && manualHeaderHeight > 0 ? manualHeaderHeight : headerHeight).toFixed(0) }}px
-          </span>
-          <span v-if="manualHeaderHeight !== null && manualHeaderHeight > 0" class="text-yellow-600 dark:text-yellow-400 text-[10px] ml-1">({{ $t('eyeTracking.manual') }})</span>
         </div>
       </div>
     </div>
@@ -182,27 +154,28 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, watch, inject } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, inject, type Ref } from 'vue';
 import { EyeIcon } from '@heroicons/vue/24/outline';
 import { useEyeTracking } from '../composables/useEyeTracking';
 import { useCalibration } from '../composables/useCalibration';
 import EyeTrackingGaze from '../components/EyeTrackingGaze.vue';
 
-const trackingArea = ref(null);
-const headerElement = ref(null);
-let positionInterval = null;
-let resizeObserver = null;
-let resizeHandler = null;
+const trackingArea = ref<HTMLElement | null>(null);
+const headerElement = ref<HTMLElement | null>(null);
+let positionInterval: ReturnType<typeof setInterval> | null = null;
+let resizeObserver: ResizeObserver | null = null;
+let resizeHandler: (() => void) | null = null;
 
 // Fullscreen state
 const isFullscreen = ref(false);
 // Get eye tracking fullscreen state from App.vue to hide sidebar
-const isEyeTrackingFullscreenApp = inject('isEyeTrackingFullscreen', ref(false));
+const isEyeTrackingFullscreenApp = inject<Ref<boolean>>('isEyeTrackingFullscreen', ref(false));
 
 // Animal icon state
 const showAnimal = ref(false);
 const animalPosition = ref({ x: 0, y: 0 });
 const animalSize = ref(0);
+const showDebugPanel = ref(false);
 
 // Use calibration composable to get coefficients for selected user
 const { calibrationCoefficients } = useCalibration();
@@ -216,9 +189,6 @@ const {
   messageCount,
   fps,
   error,
-  isFrozen,
-  frozenGazePoint,
-  frozenTrackingData,
   windowOffset,
   manualOffset,
   invertY,
@@ -231,7 +201,6 @@ const {
   calibrationCoefficients: trackingCalibrationCoefficients,
   isFullscreen: trackingIsFullscreen,
   toggleConnection,
-  toggleFreeze,
   updateWindowPosition,
   updateHeaderHeight: updateHeaderHeightFromComposable,
 } = useEyeTracking({ isFullscreen });
@@ -262,7 +231,10 @@ const startEyeTracking = async () => {
   
   // Enter fullscreen mode
   try {
-    const element = document.documentElement;
+    const element = document.documentElement as HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void>
+      msRequestFullscreen?: () => Promise<void>
+    };
     if (element.requestFullscreen) {
       await element.requestFullscreen();
     } else if (element.webkitRequestFullscreen) {
@@ -283,12 +255,16 @@ const startEyeTracking = async () => {
 
 const exitFullscreen = () => {
   try {
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-    } else if (document.webkitExitFullscreen) {
-      document.webkitExitFullscreen();
-    } else if (document.msExitFullscreen) {
-      document.msExitFullscreen();
+    const doc = document as Document & {
+      webkitExitFullscreen?: () => Promise<void>
+      msExitFullscreen?: () => Promise<void>
+    };
+    if (doc.exitFullscreen) {
+      doc.exitFullscreen();
+    } else if (doc.webkitExitFullscreen) {
+      doc.webkitExitFullscreen();
+    } else if (doc.msExitFullscreen) {
+      doc.msExitFullscreen();
     }
   } catch (error) {
     console.warn('Could not exit fullscreen mode:', error);
@@ -330,7 +306,7 @@ const showAnimalIcon = (event) => {
 };
 
 // Fullscreen change handlers
-let fullscreenChangeHandlers = [];
+let fullscreenChangeHandlers: Array<{ event: string; handler: (event: Event) => void }> = [];
 
 onMounted(() => {
   // Wait for next tick to ensure header element is rendered
@@ -340,10 +316,11 @@ onMounted(() => {
     
     // Use ResizeObserver to watch for header size changes
     if (headerElement.value && window.ResizeObserver) {
-      resizeObserver = new ResizeObserver(() => {
+      const observer = new ResizeObserver(() => {
         updateHeaderHeight();
       });
-      resizeObserver.observe(headerElement.value);
+      observer.observe(headerElement.value);
+      resizeObserver = observer;
     }
   }, 0);
   
@@ -361,12 +338,33 @@ onMounted(() => {
     updateWindowPosition();
     updateHeaderHeight();
   };
-  window.addEventListener('resize', resizeHandler);
+  if (resizeHandler) {
+    window.addEventListener('resize', resizeHandler);
+  }
+
+  const handleKeyToggle = (event: Event) => {
+    if (!isFullscreen.value) {
+      return;
+    }
+    const target = event.target as HTMLElement | null;
+    if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) {
+      return;
+    }
+    const keyEvent = event as KeyboardEvent;
+    if (keyEvent.key.toLowerCase() === 'd') {
+      showDebugPanel.value = !showDebugPanel.value;
+    }
+  };
+  window.addEventListener('keydown', handleKeyToggle);
   
   // Listen for fullscreen changes to handle ESC key
   const handleFullscreenChange = () => {
     // If user exits fullscreen manually (ESC key), reset state
-    if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element | null
+      msFullscreenElement?: Element | null
+    };
+    if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
       if (isFullscreen.value) {
         stopEyeTracking();
       }
@@ -381,6 +379,7 @@ onMounted(() => {
     { event: 'fullscreenchange', handler: handleFullscreenChange },
     { event: 'webkitfullscreenchange', handler: handleFullscreenChange },
     { event: 'msfullscreenchange', handler: handleFullscreenChange },
+    { event: 'keydown', handler: handleKeyToggle },
   ];
 });
 
@@ -388,7 +387,11 @@ onBeforeUnmount(() => {
   // Remove fullscreen event listeners
   if (fullscreenChangeHandlers && fullscreenChangeHandlers.length > 0) {
     fullscreenChangeHandlers.forEach(({ event, handler }) => {
-      document.removeEventListener(event, handler);
+      if (event === 'keydown') {
+        window.removeEventListener(event, handler);
+      } else {
+        document.removeEventListener(event, handler);
+      }
     });
   }
   

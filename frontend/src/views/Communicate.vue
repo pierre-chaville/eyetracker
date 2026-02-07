@@ -407,47 +407,26 @@ const gridContainerStyle = computed(() => {
 });
 
 const gridStyle = computed(() => {
-  // Calculate cell size based on available space
-  // 3 columns, 3 rows, with gaps
   const gap = gridGap.value;
-  const gapsTotal = gap * 2; // 2 gaps (between 3 cells)
-  
   if (isFullscreen.value) {
-    // In fullscreen, use viewport dimensions
-    const containerWidth = window.innerWidth;
-    const containerHeight = window.innerHeight;
-    const padding = 48; // p-6 = 24px * 2
-    
-    const availableWidth = containerWidth - padding;
-    const availableHeight = containerHeight - padding;
-    
-    // Calculate cell dimensions - use full height
-    const cellWidth = (availableWidth - gapsTotal) / 3;
-    const cellHeight = (availableHeight - gapsTotal) / 3;
-    
     return {
       gap: `${gap}px`,
-      gridTemplateColumns: `repeat(3, ${cellWidth}px)`,
-      gridTemplateRows: `repeat(3, ${cellHeight}px)`,
+      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+      gridTemplateRows: 'repeat(3, minmax(0, 1fr))',
       width: '100%',
       height: '100%',
     };
-  } else {
-    // In normal mode, use aspect ratio with rectangular cells
-    return {
-      gap: `${gap}px`,
-      aspectRatio: '4 / 3', // Rectangular instead of square
-    };
   }
-});
-
-const cellStyle = computed(() => {
-  // Cells will be sized by grid-template-columns/rows
   return {
-    minWidth: 0,
-    minHeight: 0,
+    gap: `${gap}px`,
+    aspectRatio: '4 / 3',
   };
 });
+
+const cellStyle = computed(() => ({
+  minWidth: 0,
+  minHeight: 0,
+}));
 
 // Cell position mapping based on number of choices
 const getCellPositions = (count) => {

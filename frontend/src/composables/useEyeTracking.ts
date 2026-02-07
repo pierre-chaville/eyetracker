@@ -22,9 +22,6 @@ interface EyeTrackingState {
   messageCount: ReturnType<typeof ref<number>>
   fps: ReturnType<typeof ref<number>>
   error: ReturnType<typeof ref<string | null>>
-  isFrozen: ReturnType<typeof ref<boolean>>
-  frozenGazePoint: ReturnType<typeof ref<GazePoint | null>>
-  frozenTrackingData: ReturnType<typeof ref<TrackingData | null>>
   windowOffset: ReturnType<typeof ref<{ x: number; y: number }>>
   manualOffset: ReturnType<typeof ref<{ x: number; y: number }>>
   invertY: ReturnType<typeof ref<boolean>>
@@ -41,8 +38,6 @@ interface EyeTrackingState {
   updateHeaderHeight: (headerElement?: HTMLElement | null) => void
   connectWebSocket: () => void
   disconnectWebSocket: () => void
-  freezeTracking: () => void
-  unfreezeTracking: () => void
   toggleConnection: () => void
 }
 
@@ -68,6 +63,8 @@ function createEyeTrackingState(options: EyeTrackingOptions): EyeTrackingState {
     skipCalibration: initialSkipCalibration = false,
   } = options
 
+  console.log('window.innerWidth', window.innerWidth);
+  console.log('window.innerHeight', window.innerHeight);
   const wsUrl = ref(defaultWsUrl)
   const isConnected = ref(false)
   const ws = ref<WebSocket | null>(null)
@@ -78,9 +75,6 @@ function createEyeTrackingState(options: EyeTrackingOptions): EyeTrackingState {
   const messageCount = ref(0)
   const fps = ref(0)
 
-  const isFrozen = ref(false)
-  const frozenGazePoint = ref<GazePoint | null>(null)
-  const frozenTrackingData = ref<TrackingData | null>(null)
 
   const windowOffset = ref({ x: 0, y: 0 })
   const manualOffset = ref({ x: 0, y: 0 })
@@ -130,116 +124,27 @@ function createEyeTrackingState(options: EyeTrackingOptions): EyeTrackingState {
         try {
           const data = JSON.parse(event.data) as TrackingData
 
-          if (!isFrozen.value) {
-            trackingData.value = data
-            if (onTrackingDataUpdate) {
-              onTrackingDataUpdate(data)
-            }
+          trackingData.value = data
+          if (onTrackingDataUpdate) {
+            onTrackingDataUpdate(data)
           }
 
-          let screenX: number
-          let screenY: number
+          // We will use the coordinates in percentages of the screen size, and then convert them to pixels based on the screen size.
+          // NB: screen size is provided by browser and not the actual screen size: scale factor and also some space for the browser UI.
 
-          if (data.pixelX !== undefined && data.pixelY !== undefined) {
-            screenX = data.pixelX
-            screenY = data.pixelY
-          } else if (data.x !== undefined && data.y !== undefined && data.screenWidth && data.screenHeight) {
-            screenX = data.x * data.screenWidth
-            screenY = data.y * data.screenHeight
-          } else {
-            return
-          }
+          let x = Math.max(0, Math.min((data.x ?? 0) * window.innerWidth, window.innerWidth))
+          let y = Math.max(0, Math.min((data.y ?? 0) * window.innerHeight, window.innerHeight))
 
-          let logicalX = screenX
-          let logicalY = screenY
-
-          if (applyScaling.value) {
-            const effectiveScaleFactor =
-              manualScaleFactor.value !== null && manualScaleFactor.value > 0
-                ? manualScaleFactor.value
-                : scaleFactor.value
-
-            if (scaleMode.value === 'divide') {
-              logicalX = screenX / effectiveScaleFactor
-              logicalY = screenY / effectiveScaleFactor
-            } else if (scaleMode.value === 'multiply') {
-              logicalX = screenX * effectiveScaleFactor
-              logicalY = screenY * effectiveScaleFactor
-            }
-          }
-
-          let windowX: number
-          let windowY: number
-
-          if (isFullscreen.value) {
-            windowX = logicalX
-            windowY = logicalY
-
-            if (invertY.value && data.screenHeight) {
-              const screenHeightLogical =
-                applyScaling.value && scaleFactor.value !== 1.0
-                  ? data.screenHeight / scaleFactor.value
-                  : data.screenHeight
-              windowY = screenHeightLogical - logicalY
-            }
-          } else {
-            const totalOffsetX = windowOffset.value.x + manualOffset.value.x
-            const totalOffsetY = windowOffset.value.y + manualOffset.value.y
-
-            let adjustedLogicalY = logicalY
-            if (invertY.value && data.screenHeight) {
-              const screenHeightLogical =
-                applyScaling.value && scaleFactor.value !== 1.0
-                  ? data.screenHeight / scaleFactor.value
-                  : data.screenHeight
-              adjustedLogicalY = screenHeightLogical - logicalY
-            }
-
-            let effectiveHeaderHeight =
-              manualHeaderHeight.value !== null && manualHeaderHeight.value > 0
-                ? manualHeaderHeight.value
-                : headerHeight.value
-
-            if (applyScaling.value && scaleMode.value === 'divide') {
-              const effectiveScaleFactor =
-                manualScaleFactor.value !== null && manualScaleFactor.value > 0
-                  ? manualScaleFactor.value
-                  : scaleFactor.value
-
-              if (manualHeaderHeight.value === null || manualHeaderHeight.value === 0) {
-                effectiveHeaderHeight = headerHeight.value * effectiveScaleFactor * effectiveScaleFactor
-              }
-            }
-
-            windowX = logicalX - totalOffsetX
-            windowY = adjustedLogicalY - totalOffsetY - effectiveHeaderHeight
-          }
-
-          let x: number
-          let y: number
-          if (isFullscreen.value) {
-            x = Math.max(0, Math.min(window.innerWidth, windowX))
-            y = Math.max(0, Math.min(window.innerHeight, windowY))
-          } else {
-            const effectiveHeaderHeight =
-              manualHeaderHeight.value !== null && manualHeaderHeight.value > 0
-                ? manualHeaderHeight.value
-                : headerHeight.value
-            x = Math.max(0, Math.min(window.innerWidth, windowX))
-            y = Math.max(0, Math.min(window.innerHeight - effectiveHeaderHeight, windowY))
-          }
-
+          // then apply calibration coefficients if they are available and calibration is not skipped
           if (calibrationCoefficients.value && !skipCalibration.value) {
             const calibrated = applyAffineTransformation({ x, y }, calibrationCoefficients.value)
             x = calibrated.x
             y = calibrated.y
           }
 
-          if (!isFrozen.value) {
-            gazePoint.value = { x, y }
-            if (onGazeUpdate) {
-              onGazeUpdate({ x, y })
-            }
+          gazePoint.value = { x, y }
+          if (onGazeUpdate) {
+            onGazeUpdate({ x, y })
           }
 
           messageCount.value += 1
@@ -275,9 +180,7 @@ function createEyeTrackingState(options: EyeTrackingOptions): EyeTrackingState {
   }
 
   const updateWindowPosition = () => {
-    const x = typeof window.screenX === 'number' ? window.screenX : window.screenLeft || 0
-    const y = typeof window.screenY === 'number' ? window.screenY : window.screenTop || 0
-    windowOffset.value = { x, y }
+    windowOffset.value = { x: 0, y: 0 }
   }
 
   const updateHeaderHeight = (headerElement?: HTMLElement | null) => {
@@ -296,18 +199,6 @@ function createEyeTrackingState(options: EyeTrackingOptions): EyeTrackingState {
     }
   }
 
-  const freezeTracking = () => {
-    isFrozen.value = true
-    frozenGazePoint.value = gazePoint.value
-    frozenTrackingData.value = trackingData.value
-  }
-
-  const unfreezeTracking = () => {
-    isFrozen.value = false
-    frozenGazePoint.value = null
-    frozenTrackingData.value = null
-  }
-
   if (autoConnect) {
     connectWebSocket()
   }
@@ -320,9 +211,6 @@ function createEyeTrackingState(options: EyeTrackingOptions): EyeTrackingState {
     messageCount,
     fps,
     error,
-    isFrozen,
-    frozenGazePoint,
-    frozenTrackingData,
     windowOffset,
     manualOffset,
     invertY,
@@ -339,8 +227,6 @@ function createEyeTrackingState(options: EyeTrackingOptions): EyeTrackingState {
     updateHeaderHeight,
     connectWebSocket,
     disconnectWebSocket,
-    freezeTracking,
-    unfreezeTracking,
     toggleConnection,
   }
 }
