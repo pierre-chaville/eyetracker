@@ -18,15 +18,16 @@
 </template>
 
 <script setup lang="ts">
-defineProps({
-  choice: {
-    type: Object,
-    default: null,
-  },
-  isHighlighted: {
-    type: Boolean,
-    default: false,
-  },
+import type { Choice } from '../types/api';
+
+interface Props {
+  choice?: Choice | null
+  isHighlighted?: boolean
+}
+
+withDefaults(defineProps<Props>(), {
+  choice: null,
+  isHighlighted: false,
 });
 </script>
 

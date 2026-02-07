@@ -305,7 +305,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onBeforeUnmount, watch, inject, nextTick } from 'vue';
+import { ref, computed, onMounted, onBeforeUnmount, watch, inject, nextTick, type Ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { MicrophoneIcon } from '@heroicons/vue/24/solid';
 import { useEyeTracking } from '../composables/useEyeTracking';
@@ -321,7 +321,7 @@ const { t } = useI18n();
 // Fullscreen state
 const isFullscreen = ref(false);
 // Get communication fullscreen state from App.vue to hide sidebar
-const isCommunicationFullscreenApp = inject('isCommunicationFullscreen', ref(false));
+const isCommunicationFullscreenApp = inject<Ref<boolean>>('isCommunicationFullscreen', ref(false));
 
 // Speech-to-text state
 const isActive = ref(false);
@@ -333,7 +333,7 @@ const currentText = ref('');
 const textLines = ref<string[]>([]);
 const conversationHistory = ref<{ role: 'user' | 'caregiver'; content: string }[]>([]);
 let successTimeout: ReturnType<typeof setTimeout> | null = null;
-let fullscreenChangeHandlers: Array<{ event: string; handler: () => void }> = [];
+let fullscreenChangeHandlers: Array<{ event: string; handler: (event: Event) => void }> = [];
 
 const {
   connectionStatus: sttConnectionStatus,
@@ -351,7 +351,7 @@ watch(sttError, (value) => {
 });
 
 // Session tracking
-const sessionId = ref(null);
+const sessionId = ref<number | null>(null);
 const stepNumber = ref(0);
 
 // Eye tracking
@@ -374,29 +374,29 @@ const {
 
 // Choices from backend
 const choices = ref<Choice[]>([]);
-const highlightedCell = ref(null);
-const cellRefs = {
-  cell1: ref(null),
-  cell2: ref(null),
-  cell3: ref(null),
-  cell4: ref(null),
-  cell5: ref(null),
-  cell6: ref(null),
-  cell7: ref(null),
-  cell8: ref(null),
-  cell9: ref(null),
+const highlightedCell = ref<number | null>(null);
+const cellRefs: Record<string, Ref<HTMLElement | null>> = {
+  cell1: ref<HTMLElement | null>(null),
+  cell2: ref<HTMLElement | null>(null),
+  cell3: ref<HTMLElement | null>(null),
+  cell4: ref<HTMLElement | null>(null),
+  cell5: ref<HTMLElement | null>(null),
+  cell6: ref<HTMLElement | null>(null),
+  cell7: ref<HTMLElement | null>(null),
+  cell8: ref<HTMLElement | null>(null),
+  cell9: ref<HTMLElement | null>(null),
 };
 
 // Dwelling state
 const dwellTime = ref(2.0); // Default dwell time in seconds
-const dwellingCell = ref(null); // Currently dwelling cell number
-const dwellingStartTime = ref(null); // When dwelling started
+const dwellingCell = ref<number | null>(null); // Currently dwelling cell number
+const dwellingStartTime = ref<number | null>(null); // When dwelling started
 const dwellingProgress = ref(0); // Progress from 0 to 1
-let dwellingInterval = null;
+let dwellingInterval: ReturnType<typeof setInterval> | null = null;
 
 // Grid layout and scaling
-const gridContainer = ref(null);
-const gridInner = ref(null);
+const gridContainer = ref<HTMLElement | null>(null);
+const gridInner = ref<HTMLElement | null>(null);
 const displayScaleFactor = ref(1.0);
 const gridGap = ref(24); // Gap between cells in pixels (increased from 16)
 
@@ -511,8 +511,9 @@ const checkGazePosition = () => {
     
     // Fallback: query DOM directly using data attribute or class
     // We'll add a data-cell attribute to make this easier
-    if (gridInner.value) {
-      const cellElement = gridInner.value.querySelector(`[data-cell="${cellNum}"]`);
+    const grid = gridInner.value;
+    if (grid) {
+      const cellElement = grid.querySelector<HTMLElement>(`[data-cell="${cellNum}"]`);
       if (cellElement) {
         return cellElement;
       }
@@ -689,8 +690,10 @@ watch(choices, async (newChoices) => {
 const loadChoices = async () => {
   try {
     // Get user and caregiver IDs from localStorage
-    const userId = localStorage.getItem('selectedUserId') ? parseInt(localStorage.getItem('selectedUserId')) : null;
-    const caregiverId = localStorage.getItem('selectedCaregiverId') ? parseInt(localStorage.getItem('selectedCaregiverId')) : null;
+    const userIdValue = localStorage.getItem('selectedUserId');
+    const caregiverIdValue = localStorage.getItem('selectedCaregiverId');
+    const userId = userIdValue ? Number.parseInt(userIdValue, 10) : null;
+    const caregiverId = caregiverIdValue ? Number.parseInt(caregiverIdValue, 10) : null;
     
     // Increment step number for this session
     if (sessionId.value) {
@@ -940,7 +943,10 @@ const loadStatus = async () => {
 
 const enterFullscreen = async () => {
   try {
-    const element = document.documentElement;
+    const element = document.documentElement as HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void>
+      msRequestFullscreen?: () => Promise<void>
+    };
     if (element.requestFullscreen) {
       await element.requestFullscreen();
     } else if (element.webkitRequestFullscreen) {
@@ -957,12 +963,16 @@ const enterFullscreen = async () => {
 
 const exitFullscreen = () => {
   try {
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-    } else if (document.webkitExitFullscreen) {
-      document.webkitExitFullscreen();
-    } else if (document.msExitFullscreen) {
-      document.msExitFullscreen();
+    const doc = document as Document & {
+      webkitExitFullscreen?: () => Promise<void>
+      msExitFullscreen?: () => Promise<void>
+    };
+    if (doc.exitFullscreen) {
+      doc.exitFullscreen();
+    } else if (doc.webkitExitFullscreen) {
+      doc.webkitExitFullscreen();
+    } else if (doc.msExitFullscreen) {
+      doc.msExitFullscreen();
     }
     isFullscreen.value = false;
   } catch (error) {
@@ -972,7 +982,11 @@ const exitFullscreen = () => {
 };
 
 const handleFullscreenChange = () => {
-  if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+  const doc = document as Document & {
+    webkitFullscreenElement?: Element | null
+    msFullscreenElement?: Element | null
+  };
+  if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
     // Exited fullscreen, reset state
     if (isFullscreen.value) {
       stopCommunication();
@@ -987,8 +1001,10 @@ const startCommunication = async () => {
   
   try {
     // Get user and caregiver IDs from localStorage
-    const userId = localStorage.getItem('selectedUserId') ? parseInt(localStorage.getItem('selectedUserId')) : null;
-    const caregiverId = localStorage.getItem('selectedCaregiverId') ? parseInt(localStorage.getItem('selectedCaregiverId')) : null;
+    const userIdValue = localStorage.getItem('selectedUserId');
+    const caregiverIdValue = localStorage.getItem('selectedCaregiverId');
+    const userId = userIdValue ? Number.parseInt(userIdValue, 10) : null;
+    const caregiverId = caregiverIdValue ? Number.parseInt(caregiverIdValue, 10) : null;
     
     // Create a new communication session
     try {
@@ -1122,16 +1138,19 @@ watch(isFullscreen, (newIsFullscreen) => {
   }
 }, { immediate: true });
 
-let gazeCheckInterval = null;
-let positionInterval = null;
-let resizeHandler = null;
+let gazeCheckInterval: ReturnType<typeof setInterval> | null = null;
+let positionInterval: ReturnType<typeof setInterval> | null = null;
+let resizeHandler: (() => void) | null = null;
 
 // Load display scale factor
 const loadDisplayScaleFactor = async () => {
   try {
     // Try to get scale factor from Electron API
-    if (window.electronAPI && window.electronAPI.getDisplayScaleFactor) {
-      const scale = await window.electronAPI.getDisplayScaleFactor();
+    const electronAPI = window as Window & {
+      electronAPI?: { getDisplayScaleFactor?: () => Promise<number> }
+    };
+    if (electronAPI.electronAPI && electronAPI.electronAPI.getDisplayScaleFactor) {
+      const scale = await electronAPI.electronAPI.getDisplayScaleFactor();
       displayScaleFactor.value = scale || 1.0;
     } else {
       // Fallback to devicePixelRatio
@@ -1153,7 +1172,9 @@ const loadDisplayScaleFactor = async () => {
 // Load configuration to get dwell_time
 const loadConfig = async () => {
   try {
-    const data = await configAPI.get();
+    const data = (await configAPI.get()) as {
+      eye_tracking?: { dwell_time?: number }
+    };
     if (data.eye_tracking?.dwell_time) {
       dwellTime.value = data.eye_tracking.dwell_time;
       console.log('Loaded dwell_time:', dwellTime.value);
@@ -1193,7 +1214,9 @@ onMounted(() => {
     updateWindowPosition();
     updateHeaderHeight();
   };
-  window.addEventListener('resize', resizeHandler);
+  if (resizeHandler) {
+    window.addEventListener('resize', resizeHandler);
+  }
   
   // Start gaze check immediately - it will handle missing refs gracefully
   // Check gaze position periodically
@@ -1228,7 +1251,11 @@ onMounted(() => {
   
   // Listen for fullscreen changes
   const handleFullscreenChange = () => {
-    if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element | null
+      msFullscreenElement?: Element | null
+    };
+    if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
       if (isFullscreen.value) {
         stopCommunication();
       }
