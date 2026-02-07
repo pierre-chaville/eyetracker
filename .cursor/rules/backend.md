@@ -11,8 +11,9 @@ alwaysApply: false
 - **ORM**: SQLModel (SQLAlchemy + Pydantic hybrid)
 - **Database**: SQLite (via aiosqlite for async)
 - **LLM**: LangChain
+- **Real-time**: WebSocket (backend→frontend push for STT events)
 - **APIs**: Speech-to-Text (STT), Text-to-Speech (TTS), LLM
-- **Python**: 3.12+
+- **Python**: 3.11+
 
 ## Project Structure
 
@@ -37,6 +38,7 @@ backend/
 │   │   ├── tts.py
 │   │   ├── stt.py
 │   │   ├── llm.py
+│   │   ├── ws_stt.py        # WebSocket endpoint for STT event stream
 │   │   └── ...
 │   ├── services/            # Business logic layer
 │   │   ├── __init__.py
@@ -44,6 +46,7 @@ backend/
 │   │   ├── tts_service.py
 │   │   ├── stt_service.py
 │   │   ├── llm_service.py
+│   │   ├── ws_manager.py    # WebSocket connection manager
 │   │   └── ...
 │   ├── chains/              # LangChain chains and prompts
 │   │   ├── __init__.py
@@ -174,6 +177,99 @@ class STTService:
         """Transcribe audio bytes to text."""
         ...
 ```
+
+### WebSocket Communication
+
+The backend uses a WebSocket to push **Speech-to-Text events** to the frontend in real time (partial transcripts, final results, status changes). Gaze/eye-tracking data does NOT go through the backend — it flows directly to the frontend via the Tobii SDK / Electron native layer.
+
+#### Connection Manager
+- Use a centralized `ConnectionManager` class to track active WebSocket connections.
+- The manager must be a singleton (or app-state bound via `app.state`) — never instantiate per-request.
+- Handle connection lifecycle: connect, disconnect, and cleanup of dead connections.
+
+```python
+# services/ws_manager.py
+class ConnectionManager:
+    """Manages active WebSocket connections for STT event streaming."""
+
+    def __init__(self):
+        self._connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket) -> None:
+        await websocket.accept()
+        self._connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket) -> None:
+        self._connections.remove(websocket)
+
+    async def broadcast(self, message: STTEvent) -> None:
+        """Broadcast an STT event to all connected clients."""
+        dead: list[WebSocket] = []
+        for ws in self._connections:
+            try:
+                await ws.send_json(message.model_dump())
+            except WebSocketDisconnect:
+                dead.append(ws)
+        for ws in dead:
+            self._connections.remove(ws)
+```
+
+#### Message Protocol
+- All WebSocket messages must use a typed envelope with `type` discriminator.
+- Define STT event schemas as Pydantic models with a `type` literal field.
+
+```python
+# schemas/ws_messages.py
+class STTEventBase(BaseModel):
+    timestamp: float = Field(default_factory=time.time)
+
+class STTPartialResult(STTEventBase):
+    type: Literal["stt_partial"] = "stt_partial"
+    text: str
+    language: str
+
+class STTFinalResult(STTEventBase):
+    type: Literal["stt_final"] = "stt_final"
+    text: str
+    language: str
+    confidence: float
+
+class STTStatusChange(STTEventBase):
+    type: Literal["stt_started", "stt_stopped", "stt_error"]
+    detail: str | None = None
+
+STTEvent = STTPartialResult | STTFinalResult | STTStatusChange
+```
+
+#### WebSocket Endpoint
+- Single WebSocket endpoint for STT events.
+- Use `try/finally` to always clean up connections on disconnect.
+- The STT service pushes events via the `ConnectionManager` — it does not depend on the WebSocket directly.
+
+```python
+# routers/ws_stt.py
+@router.websocket("/ws/stt")
+async def stt_websocket(
+    websocket: WebSocket,
+    manager: ConnectionManager = Depends(get_ws_manager),
+):
+    await manager.connect(websocket)
+    try:
+        while True:
+            # Keep connection alive, handle client pings or commands
+            data = await websocket.receive_json()
+            command = STTCommand.model_validate(data)
+            await stt_service.handle_command(command)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        manager.disconnect(websocket)
+```
+
+#### Integration with STT Service
+- The `STTService` receives a reference to `ConnectionManager` and broadcasts events as transcription progresses.
+- This keeps the WS transport decoupled — the service emits typed events, the manager handles delivery.
+- Log all STT events with timing for latency debugging.
 
 ### LangChain Specifics
 - Keep prompts in dedicated files or constants, not inline in chain logic.

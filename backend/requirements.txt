@@ -15,6 +15,5 @@ pyttsx3>=2.90
 openai>=1.0.0
 requests>=2.31.0
 pygame>=2.5.0
-pydub>=0.25.1
 google-cloud-texttospeech>=2.16.0
 

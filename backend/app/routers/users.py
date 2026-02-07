@@ -5,30 +5,30 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from app.dependencies import get_user_service
-from app.models import UserCreate, UserResponse, UserUpdate
+from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.services.users import UserService
 from app.utils.exceptions import EntityNotFoundError
 
 router = APIRouter(tags=["users"])
 
 
-@router.get("/api/users", response_model=List[UserResponse])
+@router.get("/api/users", response_model=List[UserRead])
 async def list_users(
     skip: int = 0,
     limit: int = 100,
     active_only: bool = False,
     service: UserService = Depends(get_user_service),
-) -> List[UserResponse]:
-    """List all users with optional filtering."""
+) -> List[UserRead]:
+    """List all users with optional filtering (UserRead)."""
     return service.list_users(skip=skip, limit=limit, active_only=active_only)
 
 
-@router.get("/api/users/{user_id}", response_model=UserResponse)
+@router.get("/api/users/{user_id}", response_model=UserRead)
 async def get_user(
     user_id: int,
     service: UserService = Depends(get_user_service),
-) -> UserResponse:
-    """Get a specific user by ID."""
+) -> UserRead:
+    """Get a specific user by ID (UserRead)."""
     try:
         return service.get_user(user_id)
     except EntityNotFoundError as exc:
@@ -40,24 +40,24 @@ async def get_user(
 
 @router.post(
     "/api/users",
-    response_model=UserResponse,
+    response_model=UserRead,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_user(
     user_data: UserCreate,
     service: UserService = Depends(get_user_service),
-) -> UserResponse:
-    """Create a new user."""
+) -> UserRead:
+    """Create a new user (UserRead)."""
     return service.create_user(user_data)
 
 
-@router.put("/api/users/{user_id}", response_model=UserResponse)
+@router.put("/api/users/{user_id}", response_model=UserRead)
 async def update_user(
     user_id: int,
     user_data: UserUpdate,
     service: UserService = Depends(get_user_service),
-) -> UserResponse:
-    """Update an existing user."""
+) -> UserRead:
+    """Update an existing user (UserRead)."""
     try:
         return service.update_user(user_id, user_data)
     except EntityNotFoundError as exc:

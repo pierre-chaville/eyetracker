@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from sqlmodel import SQLModel, create_engine, Session
 
+from app import models  # noqa: F401
+
 DATABASE_URL = "sqlite:///./eyetracker.db"
 
 engine = create_engine(DATABASE_URL, echo=False, connect_args={"check_same_thread": False})

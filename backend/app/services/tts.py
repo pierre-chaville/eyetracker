@@ -5,13 +5,14 @@ Supports multiple TTS providers.
 from __future__ import annotations
 
 import os
-import io
 import base64
 import threading
 import tempfile
 import hashlib
 from pathlib import Path
 from typing import Optional
+
+import pygame
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -365,73 +366,26 @@ class TTSService:
                 except Exception as e:
                     print(f"Error pausing STT: {e}")
             try:
-                try:
-                    import pygame
-
-                    pygame.mixer.init()
-                    with tempfile.NamedTemporaryFile(
-                        delete=False, suffix=f".{audio_format}"
-                    ) as tmp_file:
-                        tmp_path = tmp_file.name
-                        tmp_file.write(audio_data)
-
-                    try:
-                        pygame.mixer.music.load(tmp_path)
-                        pygame.mixer.music.play()
-                        while pygame.mixer.music.get_busy():
-                            pygame.time.wait(100)
-                        pygame.mixer.music.stop()
-                        pygame.mixer.quit()
-                    finally:
-                        if os.path.exists(tmp_path):
-                            os.unlink(tmp_path)
-
-                    print(f"Audio played successfully using pygame (format: {audio_format})")
-                    return
-                except ImportError:
-                    pass
+                pygame.mixer.init()
+                with tempfile.NamedTemporaryFile(
+                    delete=False, suffix=f".{audio_format}"
+                ) as tmp_file:
+                    tmp_path = tmp_file.name
+                    tmp_file.write(audio_data)
 
                 try:
-                    from pydub import AudioSegment
-                    from pydub.playback import play
+                    pygame.mixer.music.load(tmp_path)
+                    pygame.mixer.music.play()
+                    while pygame.mixer.music.get_busy():
+                        pygame.time.wait(100)
+                    pygame.mixer.music.stop()
+                    pygame.mixer.quit()
+                    print("Audio played successfully using pygame")
+                finally:
+                    if os.path.exists(tmp_path):
+                        os.unlink(tmp_path)
 
-                    if audio_format == "mp3":
-                        audio = AudioSegment.from_mp3(io.BytesIO(audio_data))
-                    elif audio_format == "wav":
-                        audio = AudioSegment.from_wav(io.BytesIO(audio_data))
-                    else:
-                        audio = AudioSegment.from_file(io.BytesIO(audio_data), format=audio_format)
-
-                    play(audio)
-                    print(f"Audio played successfully using pydub (format: {audio_format})")
-                    return
-                except ImportError:
-                    pass
-
-                try:
-                    import playsound
-
-                    with tempfile.NamedTemporaryFile(
-                        delete=False, suffix=f".{audio_format}"
-                    ) as tmp_file:
-                        tmp_path = tmp_file.name
-                        tmp_file.write(audio_data)
-
-                    try:
-                        playsound.playsound(tmp_path, block=True)
-                    finally:
-                        if os.path.exists(tmp_path):
-                            os.unlink(tmp_path)
-
-                    print(f"Audio played successfully using playsound (format: {audio_format})")
-                    return
-                except ImportError:
-                    pass
-
-                print(
-                    "WARNING: No audio playback library available. Install pygame, pydub, or playsound."
-                )
-
+                print(f"Audio played successfully using pygame (format: {audio_format})")
             except Exception as e:
                 print(f"Error playing audio: {e}")
                 import traceback

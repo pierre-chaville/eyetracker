@@ -7,23 +7,21 @@ from typing import List, Optional
 from sqlmodel import Session, select
 
 from app.config import load_config
-from app.models import (
-    Caregiver,
-    CommunicationSession,
-    CommunicationSessionCreate,
-    CommunicationSessionResponse,
-    CommunicationSessionUpdate,
-    SessionStep,
-    SessionStepCreate,
-    SessionStepResponse,
-    User,
-)
+from app.models import Caregiver, CommunicationSession, SessionStep, User
 from app.schemas import (
     Choice,
     ChoiceSelectionRequest,
     ChoiceSelectionResponse,
     ChoicesRequest,
     ChoicesResponse,
+)
+from app.schemas.session import (
+    ChoiceData,
+    CommunicationSessionCreate,
+    CommunicationSessionRead,
+    CommunicationSessionUpdate,
+    SessionStepCreate,
+    SessionStepRead,
 )
 from app.utils.logging import get_logger
 from app.utils.tts import resolve_audio_format, resolve_tts_provider
@@ -36,16 +34,14 @@ from app.services.tts import get_tts_service
 logger = get_logger()
 
 
-def step_to_response(step: SessionStep) -> SessionStepResponse:
-    from app.models import ChoiceData
-
+def step_to_response(step: SessionStep) -> SessionStepRead:
     choices = None
     if step.choices_json:
         choices = [
             ChoiceData(text=c.get("text", ""), probability=c.get("probability", 0.0))
             for c in step.choices_json
         ]
-    return SessionStepResponse(
+    return SessionStepRead(
         id=step.id,
         session_id=step.session_id,
         step_number=step.step_number,
@@ -60,14 +56,14 @@ def step_to_response(step: SessionStep) -> SessionStepResponse:
 def session_to_response(
     session: CommunicationSession,
     db_session: Session,
-) -> CommunicationSessionResponse:
+) -> CommunicationSessionRead:
     steps_statement = (
         select(SessionStep)
         .where(SessionStep.session_id == session.id)
         .order_by(SessionStep.step_number)
     )
     steps = db_session.exec(steps_statement).all()
-    return CommunicationSessionResponse(
+    return CommunicationSessionRead(
         id=session.id,
         user_id=session.user_id,
         caregiver_id=session.caregiver_id,
@@ -88,7 +84,7 @@ class CommunicationSessionService:
     def create_session(
         self,
         session_data: CommunicationSessionCreate,
-    ) -> CommunicationSessionResponse:
+    ) -> CommunicationSessionRead:
         session = CommunicationSession(
             user_id=session_data.user_id,
             caregiver_id=session_data.caregiver_id,
@@ -104,7 +100,7 @@ class CommunicationSessionService:
         limit: int,
         user_id: Optional[int],
         caregiver_id: Optional[int],
-    ) -> List[CommunicationSessionResponse]:
+    ) -> List[CommunicationSessionRead]:
         statement = select(CommunicationSession)
         if user_id is not None:
             statement = statement.where(CommunicationSession.user_id == user_id)
@@ -118,7 +114,7 @@ class CommunicationSessionService:
         sessions = self._session.exec(statement).all()
         return [session_to_response(session, self._session) for session in sessions]
 
-    def get_session(self, session_id: int) -> CommunicationSessionResponse:
+    def get_session(self, session_id: int) -> CommunicationSessionRead:
         session = self._session.get(CommunicationSession, session_id)
         if not session:
             raise EntityNotFoundError("Session", session_id)
@@ -128,7 +124,7 @@ class CommunicationSessionService:
         self,
         session_id: int,
         session_data: CommunicationSessionUpdate,
-    ) -> CommunicationSessionResponse:
+    ) -> CommunicationSessionRead:
         session = self._session.get(CommunicationSession, session_id)
         if not session:
             raise EntityNotFoundError("Session", session_id)
@@ -155,7 +151,7 @@ class CommunicationSessionService:
         self,
         session_id: int,
         step_data: SessionStepCreate,
-    ) -> SessionStepResponse:
+    ) -> SessionStepRead:
         session = self._session.get(CommunicationSession, session_id)
         if not session:
             raise EntityNotFoundError("Session", session_id)

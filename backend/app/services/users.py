@@ -5,7 +5,14 @@ from typing import List, Optional
 
 from sqlmodel import Session, select
 
-from app.models import CommunicationSettings, EyeTrackingSetup, User, UserCreate, UserResponse, UserUpdate
+from app.models import User
+from app.schemas.user import (
+    CommunicationSettings,
+    EyeTrackingSetup,
+    UserCreate,
+    UserRead,
+    UserUpdate,
+)
 from app.utils.exceptions import EntityNotFoundError
 
 
@@ -43,9 +50,9 @@ def deserialize_communication(data: Optional[dict]) -> Optional[CommunicationSet
         return None
 
 
-def user_to_response(user: User) -> UserResponse:
+def user_to_response(user: User) -> UserRead:
     """Convert User model to UserResponse."""
-    return UserResponse(
+    return UserRead(
         id=user.id,
         name=user.name,
         eye_tracking_setup=deserialize_eye_tracking_setup(user.eye_tracking_setup),
@@ -67,7 +74,7 @@ class UserService:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def list_users(self, skip: int, limit: int, active_only: bool) -> List[UserResponse]:
+    def list_users(self, skip: int, limit: int, active_only: bool) -> List[UserRead]:
         statement = select(User)
         if active_only:
             statement = statement.where(User.is_active == True)
@@ -75,13 +82,13 @@ class UserService:
         users = self._session.exec(statement).all()
         return [user_to_response(user) for user in users]
 
-    def get_user(self, user_id: int) -> UserResponse:
+    def get_user(self, user_id: int) -> UserRead:
         user = self._session.get(User, user_id)
         if not user:
             raise EntityNotFoundError("User", user_id)
         return user_to_response(user)
 
-    def create_user(self, user_data: UserCreate) -> UserResponse:
+    def create_user(self, user_data: UserCreate) -> UserRead:
         eye_tracking_json = serialize_eye_tracking_setup(user_data.eye_tracking_setup)
         communication_json = serialize_communication(user_data.communication)
         user = User(
@@ -99,7 +106,7 @@ class UserService:
         self._session.refresh(user)
         return user_to_response(user)
 
-    def update_user(self, user_id: int, user_data: UserUpdate) -> UserResponse:
+    def update_user(self, user_id: int, user_data: UserUpdate) -> UserRead:
         user = self._session.get(User, user_id)
         if not user:
             raise EntityNotFoundError("User", user_id)

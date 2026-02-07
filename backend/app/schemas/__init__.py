@@ -21,6 +21,16 @@ from app.schemas.keyboard import (
     KeyboardTTSRequest,
     KeyboardTTSResponse,
 )
+from app.schemas.user import CommunicationSettings, EyeTrackingSetup, UserCreate, UserRead, UserUpdate
+from app.schemas.caregiver import CaregiverCreate, CaregiverRead, CaregiverUpdate
+from app.schemas.session import (
+    ChoiceData,
+    CommunicationSessionCreate,
+    CommunicationSessionRead,
+    CommunicationSessionUpdate,
+    SessionStepCreate,
+    SessionStepRead,
+)
 
 __all__ = [
     "Choice",
@@ -33,6 +43,8 @@ __all__ = [
     "ConfigModel",
     "ConfigResponse",
     "EyeTrackingConfig",
+    "EyeTrackingSetup",
+    "CommunicationSettings",
     "EyeTrackingStatus",
     "GazePoint",
     "HealthResponse",
@@ -42,4 +54,16 @@ __all__ = [
     "MessageResponse",
     "RootResponse",
     "SpeechToTextStatusResponse",
+    "UserCreate",
+    "UserRead",
+    "UserUpdate",
+    "CaregiverCreate",
+    "CaregiverRead",
+    "CaregiverUpdate",
+    "ChoiceData",
+    "CommunicationSessionCreate",
+    "CommunicationSessionRead",
+    "CommunicationSessionUpdate",
+    "SessionStepCreate",
+    "SessionStepRead",
 ]

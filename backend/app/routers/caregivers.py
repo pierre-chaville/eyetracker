@@ -5,29 +5,29 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
 from app.dependencies import get_caregiver_service
-from app.models import CaregiverCreate, CaregiverResponse, CaregiverUpdate
+from app.schemas.caregiver import CaregiverCreate, CaregiverRead, CaregiverUpdate
 from app.services.caregivers import CaregiverService
 from app.utils.exceptions import EntityNotFoundError
 
 router = APIRouter(tags=["caregivers"])
 
 
-@router.get("/api/caregivers", response_model=List[CaregiverResponse])
+@router.get("/api/caregivers", response_model=List[CaregiverRead])
 async def list_caregivers(
     skip: int = 0,
     limit: int = 100,
     service: CaregiverService = Depends(get_caregiver_service),
-) -> List[CaregiverResponse]:
-    """List all caregivers."""
+) -> List[CaregiverRead]:
+    """List all caregivers (CaregiverRead)."""
     return service.list_caregivers(skip=skip, limit=limit)
 
 
-@router.get("/api/caregivers/{caregiver_id}", response_model=CaregiverResponse)
+@router.get("/api/caregivers/{caregiver_id}", response_model=CaregiverRead)
 async def get_caregiver(
     caregiver_id: int,
     service: CaregiverService = Depends(get_caregiver_service),
-) -> CaregiverResponse:
-    """Get a specific caregiver by ID."""
+) -> CaregiverRead:
+    """Get a specific caregiver by ID (CaregiverRead)."""
     try:
         return service.get_caregiver(caregiver_id)
     except EntityNotFoundError as exc:
@@ -39,24 +39,24 @@ async def get_caregiver(
 
 @router.post(
     "/api/caregivers",
-    response_model=CaregiverResponse,
+    response_model=CaregiverRead,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_caregiver(
     caregiver_data: CaregiverCreate,
     service: CaregiverService = Depends(get_caregiver_service),
-) -> CaregiverResponse:
-    """Create a new caregiver."""
+) -> CaregiverRead:
+    """Create a new caregiver (CaregiverRead)."""
     return service.create_caregiver(caregiver_data)
 
 
-@router.put("/api/caregivers/{caregiver_id}", response_model=CaregiverResponse)
+@router.put("/api/caregivers/{caregiver_id}", response_model=CaregiverRead)
 async def update_caregiver(
     caregiver_id: int,
     caregiver_data: CaregiverUpdate,
     service: CaregiverService = Depends(get_caregiver_service),
-) -> CaregiverResponse:
-    """Update an existing caregiver."""
+) -> CaregiverRead:
+    """Update an existing caregiver (CaregiverRead)."""
     try:
         return service.update_caregiver(caregiver_id, caregiver_data)
     except EntityNotFoundError as exc:

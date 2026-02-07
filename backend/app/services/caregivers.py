@@ -5,13 +5,14 @@ from typing import List
 
 from sqlmodel import Session, select
 
-from app.models import Caregiver, CaregiverCreate, CaregiverResponse, CaregiverUpdate
+from app.models import Caregiver
+from app.schemas.caregiver import CaregiverCreate, CaregiverRead, CaregiverUpdate
 from app.utils.exceptions import EntityNotFoundError
 
 
-def caregiver_to_response(caregiver: Caregiver) -> CaregiverResponse:
+def caregiver_to_response(caregiver: Caregiver) -> CaregiverRead:
     """Convert Caregiver model to CaregiverResponse."""
-    return CaregiverResponse(
+    return CaregiverRead(
         id=caregiver.id,
         name=caregiver.name,
         gender=caregiver.gender,
@@ -27,18 +28,18 @@ class CaregiverService:
     def __init__(self, session: Session) -> None:
         self._session = session
 
-    def list_caregivers(self, skip: int, limit: int) -> List[CaregiverResponse]:
+    def list_caregivers(self, skip: int, limit: int) -> List[CaregiverRead]:
         statement = select(Caregiver).offset(skip).limit(limit)
         caregivers = self._session.exec(statement).all()
         return [caregiver_to_response(caregiver) for caregiver in caregivers]
 
-    def get_caregiver(self, caregiver_id: int) -> CaregiverResponse:
+    def get_caregiver(self, caregiver_id: int) -> CaregiverRead:
         caregiver = self._session.get(Caregiver, caregiver_id)
         if not caregiver:
             raise EntityNotFoundError("Caregiver", caregiver_id)
         return caregiver_to_response(caregiver)
 
-    def create_caregiver(self, caregiver_data: CaregiverCreate) -> CaregiverResponse:
+    def create_caregiver(self, caregiver_data: CaregiverCreate) -> CaregiverRead:
         caregiver = Caregiver(
             name=caregiver_data.name,
             gender=caregiver_data.gender,
@@ -53,7 +54,7 @@ class CaregiverService:
         self,
         caregiver_id: int,
         caregiver_data: CaregiverUpdate,
-    ) -> CaregiverResponse:
+    ) -> CaregiverRead:
         caregiver = self._session.get(Caregiver, caregiver_id)
         if not caregiver:
             raise EntityNotFoundError("Caregiver", caregiver_id)

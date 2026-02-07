@@ -15,13 +15,12 @@ from app.schemas import (
 )
 from app.services.communication import CommunicationService, CommunicationSessionService
 from app.utils.exceptions import EntityNotFoundError
-
-from app.models import (
+from app.schemas.session import (
     CommunicationSessionCreate,
-    CommunicationSessionResponse,
+    CommunicationSessionRead,
     CommunicationSessionUpdate,
     SessionStepCreate,
-    SessionStepResponse,
+    SessionStepRead,
 )
 
 router = APIRouter(tags=["communication"])
@@ -66,20 +65,20 @@ async def select_choice(
 
 @router.post(
     "/api/communication/sessions",
-    response_model=CommunicationSessionResponse,
+    response_model=CommunicationSessionRead,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_session(
     session_data: CommunicationSessionCreate,
     service: CommunicationSessionService = Depends(get_session_service),
-) -> CommunicationSessionResponse:
-    """Create a new communication session."""
+) -> CommunicationSessionRead:
+    """Create a new communication session (CommunicationSessionRead)."""
     return service.create_session(session_data)
 
 
 @router.get(
     "/api/communication/sessions",
-    response_model=List[CommunicationSessionResponse],
+    response_model=List[CommunicationSessionRead],
 )
 async def list_sessions(
     skip: int = 0,
@@ -87,20 +86,20 @@ async def list_sessions(
     user_id: Optional[int] = None,
     caregiver_id: Optional[int] = None,
     service: CommunicationSessionService = Depends(get_session_service),
-) -> List[CommunicationSessionResponse]:
-    """List all communication sessions with optional filtering."""
+) -> List[CommunicationSessionRead]:
+    """List all communication sessions with optional filtering (CommunicationSessionRead)."""
     return service.list_sessions(skip, limit, user_id, caregiver_id)
 
 
 @router.get(
     "/api/communication/sessions/{session_id}",
-    response_model=CommunicationSessionResponse,
+    response_model=CommunicationSessionRead,
 )
 async def get_communication_session(
     session_id: int,
     service: CommunicationSessionService = Depends(get_session_service),
-) -> CommunicationSessionResponse:
-    """Get a specific communication session by ID with all steps."""
+) -> CommunicationSessionRead:
+    """Get a specific communication session by ID with all steps (CommunicationSessionRead)."""
     try:
         return service.get_session(session_id)
     except EntityNotFoundError as exc:
@@ -112,14 +111,14 @@ async def get_communication_session(
 
 @router.put(
     "/api/communication/sessions/{session_id}",
-    response_model=CommunicationSessionResponse,
+    response_model=CommunicationSessionRead,
 )
 async def update_session(
     session_id: int,
     session_data: CommunicationSessionUpdate,
     service: CommunicationSessionService = Depends(get_session_service),
-) -> CommunicationSessionResponse:
-    """Update an existing communication session (e.g., set ended_at)."""
+) -> CommunicationSessionRead:
+    """Update an existing communication session (CommunicationSessionRead)."""
     try:
         return service.update_session(session_id, session_data)
     except EntityNotFoundError as exc:
@@ -151,15 +150,15 @@ async def delete_session(
 
 @router.post(
     "/api/communication/sessions/{session_id}/steps",
-    response_model=SessionStepResponse,
+    response_model=SessionStepRead,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_session_step(
     session_id: int,
     step_data: SessionStepCreate,
     service: CommunicationSessionService = Depends(get_session_service),
-) -> SessionStepResponse:
-    """Create a new step in a communication session."""
+) -> SessionStepRead:
+    """Create a new step in a communication session (SessionStepRead)."""
     try:
         return service.create_session_step(session_id, step_data)
     except EntityNotFoundError as exc:
