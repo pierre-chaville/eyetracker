@@ -8,6 +8,7 @@ from app.database import get_session
 from app.services.caregivers import CaregiverService
 from app.services.communication import CommunicationService, CommunicationSessionService
 from app.services.keyboard import KeyboardService
+from app.services.keyboard_layouts import KeyboardLayoutService
 from app.services.users import UserService
 
 
@@ -33,3 +34,9 @@ def get_communication_service(session: Session = Depends(get_session)) -> Commun
 
 def get_keyboard_service(session: Session = Depends(get_session)) -> KeyboardService:
     return KeyboardService(session)
+
+
+def get_keyboard_layout_service(
+    session: Session = Depends(get_session),
+) -> KeyboardLayoutService:
+    return KeyboardLayoutService(session)

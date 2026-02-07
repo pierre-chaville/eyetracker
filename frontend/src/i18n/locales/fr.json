@@ -213,6 +213,33 @@
       "speakingRate": "Vitesse de Parole",
       "speakingRateDescription": "Vitesse de la parole (0.25x = lent, 4.0x = rapide)",
       "speakingRateRangeError": "La vitesse de parole doit être entre 0.25 et 4.0"
+    },
+    "keyboards": {
+      "title": "Claviers",
+      "new": "Nouveau",
+      "list": "Dispositions",
+      "loading": "Chargement des claviers...",
+      "empty": "Aucun clavier pour le moment",
+      "edit": "Modifier la disposition",
+      "create": "Créer une disposition",
+      "name": "Nom",
+      "description": "Description",
+      "rows": "Lignes",
+      "columns": "Colonnes",
+      "predictive": "Cellules prédictives",
+      "cells": "JSON des cellules",
+      "cellsPlaceholder": "[[\"Oui\",\"Non\"],[\"Aide\",\"Merci\"]]",
+      "cellsHelp": "Fournissez un tableau 2D de chaînes correspondant aux lignes × colonnes.",
+      "invalidCells": "Le JSON des cellules doit être un tableau 2D.",
+      "saveError": "Échec de l'enregistrement de la disposition",
+      "loadError": "Échec du chargement des dispositions",
+      "deleteError": "Échec de la suppression de la disposition",
+      "created": "Disposition créée",
+      "updated": "Disposition mise à jour",
+      "deleted": "Disposition supprimée",
+      "delete": "Supprimer",
+      "update": "Mettre à jour",
+      "cancel": "Annuler"
     }
   },
   "calibration": {

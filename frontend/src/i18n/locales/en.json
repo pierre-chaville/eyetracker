@@ -213,6 +213,33 @@
       "speakingRate": "Speaking Rate",
       "speakingRateDescription": "Speed of speech (0.25x = slow, 4.0x = fast)",
       "speakingRateRangeError": "Speaking rate must be between 0.25 and 4.0"
+    },
+    "keyboards": {
+      "title": "Keyboards",
+      "new": "New",
+      "list": "Layouts",
+      "loading": "Loading keyboards...",
+      "empty": "No keyboards yet",
+      "edit": "Edit layout",
+      "create": "Create layout",
+      "name": "Name",
+      "description": "Description",
+      "rows": "Rows",
+      "columns": "Columns",
+      "predictive": "Predictive cells",
+      "cells": "Cells JSON",
+      "cellsPlaceholder": "[[\"Yes\",\"No\"],[\"Help\",\"Thanks\"]]",
+      "cellsHelp": "Provide a 2D array of strings matching rows × columns.",
+      "invalidCells": "Cells JSON must be a 2D array.",
+      "saveError": "Failed to save keyboard layout",
+      "loadError": "Failed to load keyboard layouts",
+      "deleteError": "Failed to delete keyboard layout",
+      "created": "Keyboard layout created",
+      "updated": "Keyboard layout updated",
+      "deleted": "Keyboard layout deleted",
+      "delete": "Delete",
+      "update": "Update",
+      "cancel": "Cancel"
     }
   },
   "calibration": {

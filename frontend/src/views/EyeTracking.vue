@@ -181,7 +181,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, watch, inject } from 'vue';
 import { EyeIcon } from '@heroicons/vue/24/outline';
 import { useEyeTracking } from '../composables/useEyeTracking';
@@ -410,8 +410,4 @@ onBeforeUnmount(() => {
   }
 });
 </script>
-
-<style scoped>
-/* Smooth transitions for the gaze point */
-</style>
 

@@ -21,6 +21,11 @@ from app.schemas.keyboard import (
     KeyboardTTSRequest,
     KeyboardTTSResponse,
 )
+from app.schemas.keyboard_layout import (
+    KeyboardLayoutCreate,
+    KeyboardLayoutRead,
+    KeyboardLayoutUpdate,
+)
 from app.schemas.user import CommunicationSettings, EyeTrackingSetup, UserCreate, UserRead, UserUpdate
 from app.schemas.caregiver import CaregiverCreate, CaregiverRead, CaregiverUpdate
 from app.schemas.session import (
@@ -51,6 +56,9 @@ __all__ = [
     "KeyboardPredictionsResponse",
     "KeyboardTTSRequest",
     "KeyboardTTSResponse",
+    "KeyboardLayoutCreate",
+    "KeyboardLayoutRead",
+    "KeyboardLayoutUpdate",
     "MessageResponse",
     "RootResponse",
     "SpeechToTextStatusResponse",

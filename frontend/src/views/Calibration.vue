@@ -92,18 +92,15 @@
             >
               <!-- Horizontal line (100px) -->
               <div
-                class="absolute -translate-x-1/2 -translate-y-1/2 w-[100px] h-[2px] bg-blue-500 dark:bg-blue-400"
-                style="left: 50%; top: 50%;"
+                class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[100px] h-[2px] bg-blue-500 dark:bg-blue-400"
               ></div>
               <!-- Vertical line (100px) -->
               <div
-                class="absolute -translate-x-1/2 -translate-y-1/2 w-[2px] h-[100px] bg-blue-500 dark:bg-blue-400"
-                style="left: 50%; top: 50%;"
+                class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[2px] h-[100px] bg-blue-500 dark:bg-blue-400"
               ></div>
               <!-- Center dot -->
               <div
-                class="absolute -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-blue-600 dark:bg-blue-500 border-2 border-white dark:border-gray-900"
-                style="left: 50%; top: 50%;"
+                class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-blue-600 dark:bg-blue-500 border-2 border-white dark:border-gray-900"
               ></div>
             </div>
             
@@ -187,18 +184,51 @@
   </div>
 </template>
 
-<script setup>
-import { ref, computed, onMounted, onBeforeUnmount, inject } from 'vue';
+<script setup lang="ts">
+import { ref, computed, onMounted, onBeforeUnmount, inject, type Ref } from 'vue';
 import { useEyeTracking } from '../composables/useEyeTracking';
 import { usersAPI, calibrationAPI } from '../services/api';
 import { CheckIcon } from '@heroicons/vue/24/outline';
 import { useI18n } from 'vue-i18n';
 import { geometricMedian, coordinateWiseMedian } from '../utils/statistics';
+import type { UserRead } from '../types/api';
+import type { CalibrationCoefficients } from '../types/tracking';
 
 const { t } = useI18n();
 
 // Get calibration state from App.vue to hide sidebar
-const isCalibratingApp = inject('isCalibrating', ref(false));
+const isCalibratingApp = inject<Ref<boolean>>('isCalibrating', ref(false));
+
+interface CalibrationPosition {
+  x: number
+  y: number
+  label: string
+}
+
+interface GazeSample {
+  x: number
+  y: number
+  screenX?: number
+  screenY?: number
+  timestamp: number
+}
+
+interface CalibrationPointData {
+  position: CalibrationPosition
+  targetX: number
+  targetY: number
+  samplesData: GazeSample[]
+}
+
+interface ProcessedCalibrationPoint {
+  targetX: number
+  targetY: number
+}
+
+interface ProcessedCalibrationData {
+  points: ProcessedCalibrationPoint[]
+  affine_coefficients?: CalibrationCoefficients
+}
 
 // Eye tracking - skip calibration transformation during calibration
 // Also set isFullscreen to true so coordinate conversion matches fullscreen mode
@@ -213,20 +243,20 @@ const {
 // Calibration state
 const isCalibrating = ref(false);
 const calibrationComplete = ref(false);
-const currentPosition = ref(null);
+const currentPosition = ref<number | null>(null);
 const circleSize = ref(200); // Starting size in pixels
 const circleColor = ref('#3b82f6'); // Primary blue
-const calibrationData = ref([]);
-const selectedUser = ref(null);
-const processedCalibrationData = ref(null); // Store processed calibration response
+const calibrationData = ref<CalibrationPointData[]>([]);
+const selectedUser = ref<UserRead | null>(null);
+const processedCalibrationData = ref<ProcessedCalibrationData | null>(null); // Store processed calibration response
 
 // Calibration positions (5 points: center, top-left, top-right, bottom-right, bottom-left)
-const calibrationPositions = ref([]);
+const calibrationPositions = ref<CalibrationPosition[]>([]);
 
 // Gaze collection
-const gazeSamples = ref([]);
-let gazeCollectionInterval = null;
-let circleAnimationInterval = null;
+const gazeSamples = ref<GazeSample[]>([]);
+let gazeCollectionInterval: ReturnType<typeof setInterval> | null = null;
+let circleAnimationInterval: ReturnType<typeof setInterval> | null = null;
 
 const initializePositions = () => {
   // Use window dimensions (logical pixels) which match the coordinate system of gazePoint
@@ -278,8 +308,11 @@ const startCalibration = async () => {
   
   // Enter fullscreen mode and wait for it to complete
   try {
-    const element = document.documentElement;
-    let fullscreenPromise;
+    const element = document.documentElement as HTMLElement & {
+      webkitRequestFullscreen?: () => Promise<void>
+      msRequestFullscreen?: () => Promise<void>
+    };
+    let fullscreenPromise: Promise<void> | undefined;
     
     if (element.requestFullscreen) {
       fullscreenPromise = element.requestFullscreen();
@@ -293,9 +326,17 @@ const startCalibration = async () => {
       await fullscreenPromise;
       
       // Wait for fullscreen change event and then wait for dimensions to update
-      await new Promise(resolve => {
+      await new Promise<void>((resolve) => {
         const checkFullscreen = () => {
-          const isFullscreen = !!(document.fullscreenElement || document.webkitFullscreenElement || document.msFullscreenElement);
+          const doc = document as Document & {
+            webkitFullscreenElement?: Element | null
+            msFullscreenElement?: Element | null
+          };
+          const isFullscreen = !!(
+            doc.fullscreenElement ||
+            doc.webkitFullscreenElement ||
+            doc.msFullscreenElement
+          );
           if (isFullscreen) {
             // Wait for next frame to ensure dimensions are updated
             requestAnimationFrame(() => {
@@ -317,7 +358,7 @@ const startCalibration = async () => {
   
   // Now initialize positions with correct fullscreen dimensions
   // Wait a bit more to ensure all coordinate systems are aligned
-  await new Promise(resolve => setTimeout(resolve, 100));
+  await new Promise<void>((resolve) => setTimeout(resolve, 100));
   initializePositions();
   isCalibrating.value = true;
   calibrationComplete.value = false;
@@ -364,8 +405,16 @@ const startCalibrationPoint = (positionIndex) => {
     
     if (step >= steps) {
       // Circle has finished shrinking, save calibration data
-      clearInterval(circleAnimationInterval);
-      clearInterval(gazeCollectionInterval);
+      if (circleAnimationInterval) {
+        if (circleAnimationInterval) {
+          clearInterval(circleAnimationInterval);
+        }
+      }
+      if (gazeCollectionInterval) {
+        if (gazeCollectionInterval) {
+          clearInterval(gazeCollectionInterval);
+        }
+      }
       
       // Calculate mean of all collected gaze samples for debugging
       if (gazeSamples.value.length > 0) {
@@ -443,7 +492,7 @@ const finishCalibration = async () => {
       console.log('Calibration processed and saved:', response);
       
       // Store processed data for quality check visualization
-      processedCalibrationData.value = response;
+      processedCalibrationData.value = response as unknown as ProcessedCalibrationData;
     } catch (error) {
       console.error('Error processing calibration data:', error);
       // Show error to user
@@ -473,10 +522,14 @@ const validateCalibration = () => {
   circleSize.value = 200;
   
   if (gazeCollectionInterval) {
-    clearInterval(gazeCollectionInterval);
+    if (gazeCollectionInterval) {
+      clearInterval(gazeCollectionInterval);
+    }
   }
   if (circleAnimationInterval) {
-    clearInterval(circleAnimationInterval);
+    if (circleAnimationInterval) {
+      clearInterval(circleAnimationInterval);
+    }
   }
   
   // Optionally navigate to home or show success message
@@ -485,12 +538,16 @@ const validateCalibration = () => {
 
 const exitFullscreen = () => {
   try {
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-    } else if (document.webkitExitFullscreen) {
-      document.webkitExitFullscreen();
-    } else if (document.msExitFullscreen) {
-      document.msExitFullscreen();
+    const doc = document as Document & {
+      webkitExitFullscreen?: () => Promise<void>
+      msExitFullscreen?: () => Promise<void>
+    };
+    if (doc.exitFullscreen) {
+      doc.exitFullscreen();
+    } else if (doc.webkitExitFullscreen) {
+      doc.webkitExitFullscreen();
+    } else if (doc.msExitFullscreen) {
+      doc.msExitFullscreen();
     }
   } catch (error) {
     console.warn('Could not exit fullscreen mode:', error);
@@ -517,10 +574,14 @@ const resetCalibration = () => {
   exitFullscreen();
   
   if (gazeCollectionInterval) {
-    clearInterval(gazeCollectionInterval);
+    if (gazeCollectionInterval) {
+      clearInterval(gazeCollectionInterval);
+    }
   }
   if (circleAnimationInterval) {
-    clearInterval(circleAnimationInterval);
+    if (circleAnimationInterval) {
+      clearInterval(circleAnimationInterval);
+    }
   }
 };
 
@@ -556,7 +617,7 @@ const getRobustAverageGaze = (samples) => {
 };
 
 // Fullscreen change handlers
-let fullscreenChangeHandlers = [];
+let fullscreenChangeHandlers: Array<{ event: string; handler: () => void }> = [];
 
 onMounted(() => {
   initializePositions();
@@ -564,7 +625,11 @@ onMounted(() => {
   
   const handleFullscreenChange = () => {
     // If user exits fullscreen manually (ESC key), reset calibration state
-    if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+    const doc = document as Document & {
+      webkitFullscreenElement?: Element | null
+      msFullscreenElement?: Element | null
+    };
+    if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
       if (isCalibrating.value) {
         resetCalibration();
       }

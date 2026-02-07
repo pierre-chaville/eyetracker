@@ -9,7 +9,7 @@
   </button>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
 import { SunIcon, MoonIcon } from '@heroicons/vue/24/outline';
 

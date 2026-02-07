@@ -22,7 +22,7 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, provide } from 'vue';
 import Sidebar from './components/Sidebar.vue';
 import { Bars3Icon } from '@heroicons/vue/24/outline';

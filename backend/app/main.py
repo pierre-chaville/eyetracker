@@ -13,6 +13,7 @@ from app.routers import (
     config,
     eye_tracking,
     general,
+    keyboards,
     keyboard,
     speech_to_text,
     users,
@@ -46,6 +47,7 @@ app.include_router(general.router)
 app.include_router(eye_tracking.router)
 app.include_router(communication.router)
 app.include_router(keyboard.router)
+app.include_router(keyboards.router)
 app.include_router(users.router)
 app.include_router(caregivers.router)
 app.include_router(config.router)

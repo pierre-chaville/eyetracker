@@ -304,21 +304,19 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch, inject, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
-import axios from 'axios';
 import { MicrophoneIcon } from '@heroicons/vue/24/solid';
 import { useEyeTracking } from '../composables/useEyeTracking';
 import { useCalibration } from '../composables/useCalibration';
+import { useSTTEvents } from '../composables/useSTTEvents';
 import EyeTrackingGaze from '../components/EyeTrackingGaze.vue';
 import ChoiceCell from '../components/ChoiceCell.vue';
-import { configAPI } from '../services/api';
+import { communicationAPI, configAPI, sessionsAPI, speechToTextAPI } from '../services/api';
+import type { Choice } from '../types/api';
 
 const { t } = useI18n();
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
 
 // Fullscreen state
 const isFullscreen = ref(false);
@@ -328,16 +326,29 @@ const isCommunicationFullscreenApp = inject('isCommunicationFullscreen', ref(fal
 // Speech-to-text state
 const isActive = ref(false);
 const isLoading = ref(false);
-const isSpeaking = ref(false);
-const error = ref(null);
-const successMessage = ref(null);
-const transcriptions = ref([]); // Caregiver transcriptions (displayed at bottom)
-const currentText = ref(''); // Keep for backward compatibility with API
-const textLines = ref([]); // Array of lines (max 4) for user's selected text display
-const conversationHistory = ref([]);
-let ws = null;
-let successTimeout = null;
-let fullscreenChangeHandlers = [];
+const error = ref<string | null>(null);
+const successMessage = ref<string | null>(null);
+const transcriptions = ref<{ text: string; timestamp: Date }[]>([]);
+const currentText = ref('');
+const textLines = ref<string[]>([]);
+const conversationHistory = ref<{ role: 'user' | 'caregiver'; content: string }[]>([]);
+let successTimeout: ReturnType<typeof setTimeout> | null = null;
+let fullscreenChangeHandlers: Array<{ event: string; handler: () => void }> = [];
+
+const {
+  connectionStatus: sttConnectionStatus,
+  isSpeaking,
+  error: sttError,
+  on: onSTTEvent,
+  connect: connectSTT,
+  disconnect: disconnectSTT,
+} = useSTTEvents({ autoConnect: false });
+
+watch(sttError, (value) => {
+  if (value) {
+    error.value = value;
+  }
+});
 
 // Session tracking
 const sessionId = ref(null);
@@ -362,7 +373,7 @@ const {
 });
 
 // Choices from backend
-const choices = ref([]);
+const choices = ref<Choice[]>([]);
 const highlightedCell = ref(null);
 const cellRefs = {
   cell1: ref(null),
@@ -707,15 +718,15 @@ const loadChoices = async () => {
       stepNumber.value += 1;
     }
     
-    const response = await axios.post(`${API_BASE_URL}/api/communication/choices`, {
-      conversation_history: conversationHistory.value,
-      user_id: userId,
-      caregiver_id: caregiverId,
-      current_text: currentText.value || null,
-      session_id: sessionId.value,
-      step_number: sessionId.value ? stepNumber.value : null,
+    const response = await communicationAPI.getChoices({
+      conversationHistory: conversationHistory.value,
+      userId,
+      caregiverId,
+      currentText: currentText.value || null,
+      sessionId: sessionId.value,
+      stepNumber: sessionId.value ? stepNumber.value : null,
     });
-    choices.value = response.data.choices || [];
+    choices.value = response.choices || [];
   } catch (err) {
     console.error('Error loading choices:', err);
     // Use empty choices on error
@@ -739,7 +750,7 @@ const playAudio = async (audioBase64) => {
   if (wasSTTActive) {
     console.log('Pausing STT during TTS playback');
     try {
-      await axios.post(`${API_BASE_URL}/api/speech-to-text/stop`);
+      await speechToTextAPI.stop();
       // Don't update isActive.value here - we'll restore it after playback
     } catch (err) {
       console.error('Error stopping STT for TTS playback:', err);
@@ -852,15 +863,12 @@ const playAudio = async (audioBase64) => {
 const resumeSTT = async () => {
   console.log('Resuming STT after TTS playback');
   try {
-    await axios.post(`${API_BASE_URL}/api/speech-to-text/start`);
+    await speechToTextAPI.start();
     isActive.value = true;
-    // WebSocket should still be connected, but reconnect if needed
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      connectWebSocket();
-    }
+    connectSTT();
   } catch (err) {
     console.error('Error resuming STT:', err);
-    error.value = err.response?.data?.detail || 'Failed to resume speech-to-text';
+    error.value = 'Failed to resume speech-to-text';
   }
 };
 
@@ -902,7 +910,7 @@ const selectChoice = async (choice) => {
     }
     
     // Send selection to backend
-    const response = await axios.post(`${API_BASE_URL}/api/communication/select`, {
+    const response = await communicationAPI.selectChoice({
       choice_id: choice.id,
       choice_text: choice.text,
       current_text: currentText.value,
@@ -912,7 +920,7 @@ const selectChoice = async (choice) => {
     
     // Audio is played in the backend, so we don't need to play it here
     // This prevents double playback/echo
-    console.log('Response from select_choice:', response.data);
+    console.log('Response from select_choice:', response);
     console.log('Audio is being played in the backend');
     
     // Reload choices for next context
@@ -922,100 +930,29 @@ const selectChoice = async (choice) => {
   }
 };
 
-// WebSocket connection for speech-to-text
-const connectWebSocket = () => {
-  try {
-    const wsUrl = WS_BASE_URL.replace('http://', 'ws://').replace('https://', 'wss://') + '/ws/speech-to-text';
-    console.log('Connecting to WebSocket:', wsUrl);
-    ws = new WebSocket(wsUrl);
-    
-    ws.onopen = () => {
-      console.log('Speech-to-text WebSocket connected');
-      error.value = null;
-    };
-    
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('WebSocket message received:', data);
-        
-        switch (data.type) {
-          case 'connected':
-            console.log('WebSocket connection confirmed');
-            break;
-          case 'speech_started':
-            console.log('Speech started event received');
-            isSpeaking.value = true;
-            break;
-          case 'transcription':
-            console.log('Transcription received:', data.data.text);
-            isSpeaking.value = false;
-            const transcribedText = data.data.text.trim();
-            
-            // Caregiver transcriptions are only added to transcriptions list (displayed at bottom)
-            // They are NOT added to textLines (which is for user's selected text only)
-            
-            // Add caregiver message to conversation history
-            conversationHistory.value.push({
-              role: 'caregiver',
-              content: transcribedText
-            });
-            
-            // Add to transcriptions list (displayed at bottom in small font)
-            transcriptions.value.push({
-              text: transcribedText,
-              timestamp: new Date(data.timestamp)
-            });
-            
-            // Generate choices based on the transcription (first time or after caregiver speaks)
-            loadChoices();
-            break;
-          case 'error':
-            console.error('Error event received:', data.data.error);
-            error.value = data.data.error;
-            isSpeaking.value = false;
-            break;
-          case 'pong':
-            // Keep-alive response
-            break;
-          default:
-            console.log('Unknown WebSocket message type:', data.type);
-        }
-      } catch (err) {
-        console.error('Error parsing WebSocket message:', err, event.data);
-      }
-    };
-    
-    ws.onerror = (err) => {
-      console.error('WebSocket error:', err);
-      error.value = 'WebSocket connection error';
-    };
-    
-    ws.onclose = (event) => {
-      console.log('Speech-to-text WebSocket disconnected', event.code, event.reason);
-      if (isActive.value) {
-        setTimeout(connectWebSocket, 3000);
-      }
-    };
-  } catch (err) {
-    console.error('Failed to connect WebSocket:', err);
-    error.value = 'Failed to connect to WebSocket';
-  }
-};
+onSTTEvent('transcription', (event) => {
+  const transcribedText = event.data.text.trim();
+  conversationHistory.value.push({
+    role: 'caregiver',
+    content: transcribedText,
+  });
+  transcriptions.value.push({
+    text: transcribedText,
+    timestamp: new Date(event.timestamp),
+  });
+  loadChoices();
+});
 
-const disconnectWebSocket = () => {
-  if (ws) {
-    ws.close();
-    ws = null;
-  }
-};
+onSTTEvent('error', (event) => {
+  error.value = event.data.error;
+});
 
 const loadStatus = async () => {
   try {
-    const response = await axios.get(`${API_BASE_URL}/api/speech-to-text/status`);
-    isActive.value = response.data.is_active;
+    const response = await speechToTextAPI.status();
+    isActive.value = response.is_active;
     if (isActive.value) {
-      connectWebSocket();
+      connectSTT();
     }
   } catch (err) {
     console.error('Error loading status:', err);
@@ -1076,11 +1013,11 @@ const startCommunication = async () => {
     
     // Create a new communication session
     try {
-      const sessionResponse = await axios.post(`${API_BASE_URL}/api/communication/sessions`, {
+      const sessionResponse = await sessionsAPI.create({
         user_id: userId,
         caregiver_id: caregiverId,
       });
-      sessionId.value = sessionResponse.data.id;
+      sessionId.value = (sessionResponse as { id?: number }).id ?? null;
       stepNumber.value = 0;
       console.log('Created session:', sessionId.value);
     } catch (sessionErr) {
@@ -1089,9 +1026,9 @@ const startCommunication = async () => {
     }
     
     // Start speech-to-text
-    await axios.post(`${API_BASE_URL}/api/speech-to-text/start`);
+    await speechToTextAPI.start();
     isActive.value = true;
-    connectWebSocket();
+    connectSTT();
     
     // Set fullscreen state in App.vue to hide sidebar
     isCommunicationFullscreenApp.value = true;
@@ -1108,9 +1045,9 @@ const startCommunication = async () => {
     successMessage.value = t('communicate.started');
   } catch (err) {
     console.error('Error starting communication:', err);
-    error.value = err.response?.data?.detail || t('communicate.error');
+    error.value = t('communicate.error');
     isActive.value = false;
-    disconnectWebSocket();
+    disconnectSTT();
     isCommunicationFullscreenApp.value = false;
   } finally {
     isLoading.value = false;
@@ -1128,9 +1065,9 @@ const stopCommunication = async () => {
     highlightedCell.value = null;
     
     // Stop speech-to-text
-    await axios.post(`${API_BASE_URL}/api/speech-to-text/stop`);
+    await speechToTextAPI.stop();
     isActive.value = false;
-    disconnectWebSocket();
+    disconnectSTT();
     
     // Disconnect eye tracking
     if (isEyeTrackingConnected.value && disconnectEyeTracking) {
@@ -1140,7 +1077,7 @@ const stopCommunication = async () => {
     // End the session if it exists
     if (sessionId.value) {
       try {
-        await axios.put(`${API_BASE_URL}/api/communication/sessions/${sessionId.value}`, {
+        await sessionsAPI.update(sessionId.value, {
           ended_at: new Date().toISOString(),
         });
         console.log('Ended session:', sessionId.value);
@@ -1168,7 +1105,7 @@ const stopCommunication = async () => {
     successMessage.value = t('communicate.stopped');
   } catch (err) {
     console.error('Error stopping communication:', err);
-    error.value = err.response?.data?.detail || t('communicate.error');
+    error.value = t('communicate.error');
     isCommunicationFullscreenApp.value = false;
     exitFullscreen();
   } finally {
@@ -1363,7 +1300,7 @@ onBeforeUnmount(() => {
     isCommunicationFullscreenApp.value = false;
   }
   
-  disconnectWebSocket();
+  disconnectSTT();
   if (successTimeout) {
     clearTimeout(successTimeout);
   }

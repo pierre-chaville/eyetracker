@@ -204,39 +204,33 @@
   </div>
 </template>
 
-<script setup>
+<script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, inject, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import axios from 'axios';
 import { useEyeTracking } from '../composables/useEyeTracking';
 import { useCalibration } from '../composables/useCalibration';
+import { useSTTEvents } from '../composables/useSTTEvents';
 import { MicrophoneIcon } from '@heroicons/vue/24/solid';
-import { configAPI } from '../services/api';
+import { configAPI, keyboardAPI, speechToTextAPI } from '../services/api';
 
 const { t } = useI18n();
 
 // Inject fullscreen state from App.vue
 const isCommunicationFullscreenApp = inject('isCommunicationFullscreenApp', ref(false));
 
-// API configuration
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-const WS_BASE_URL = import.meta.env.VITE_WS_BASE_URL || API_BASE_URL;
-
 // State
 const isFullscreen = ref(false);
 const isActive = ref(false);
 const isLoading = ref(false);
-const isSpeaking = ref(false);
-const error = ref(null);
+const error = ref<string | null>(null);
 const currentText = ref('');
-const predictiveWords = ref([]);
-const highlightedCellIndex = ref(null);
+const predictiveWords = ref<string[]>([]);
+const highlightedCellIndex = ref<number | null>(null);
 const lastTranscription = ref('');
-let ws = null;
 
 // Dwelling state
 const dwellTime = ref(2.0); // Default dwell time in seconds
-const dwellingCellIndex = ref(null); // Currently dwelling cell index
+const dwellingCellIndex = ref<number | null>(null); // Currently dwelling cell index
 const dwellingStartTime = ref(null); // When dwelling started
 const dwellingProgress = ref(0); // Progress from 0 to 1
 let dwellingInterval = null;
@@ -262,6 +256,20 @@ const {
   skipCalibration: false,
   calibrationCoefficients: calibrationCoefficients.value,
   isFullscreen: isFullscreen
+});
+
+const {
+  isSpeaking,
+  error: sttError,
+  on: onSTTEvent,
+  connect: connectSTT,
+  disconnect: disconnectSTT,
+} = useSTTEvents({ autoConnect: false });
+
+watch(sttError, (value) => {
+  if (value) {
+    error.value = value;
+  }
 });
 
 // Update calibration coefficients in eye tracking when they change
@@ -419,13 +427,13 @@ const loadPredictiveWords = async () => {
     const userId = localStorage.getItem('selectedUserId') ? parseInt(localStorage.getItem('selectedUserId')) : null;
     const caregiverId = localStorage.getItem('selectedCaregiverId') ? parseInt(localStorage.getItem('selectedCaregiverId')) : null;
     
-    const response = await axios.post(`${API_BASE_URL}/api/keyboard/predictions`, {
+    const response = await keyboardAPI.predictions({
       current_text: currentText.value,
       user_id: userId,
       caregiver_id: caregiverId,
     });
     
-    predictiveWords.value = response.data.words || [];
+    predictiveWords.value = (response as { words?: string[] }).words || [];
   } catch (err) {
     console.error('Error loading predictive words:', err);
     // Fallback to empty array
@@ -452,8 +460,8 @@ const selectLetter = async (letter) => {
 // Play TTS
 const playTTS = async (text) => {
   try {
-    const response = await axios.post(`${API_BASE_URL}/api/keyboard/tts`, {
-      text: text,
+    await keyboardAPI.tts({
+      text,
     });
     
     // Audio is played in the backend, so we don't need to play it here
@@ -472,7 +480,7 @@ const playAudio = async (audioBase64) => {
   
   if (wasSTTActive) {
     try {
-      await axios.post(`${API_BASE_URL}/api/speech-to-text/stop`);
+      await speechToTextAPI.stop();
     } catch (err) {
       console.error('Error stopping STT for TTS playback:', err);
     }
@@ -523,12 +531,9 @@ const playAudio = async (audioBase64) => {
 // Resume STT
 const resumeSTT = async () => {
   try {
-    await axios.post(`${API_BASE_URL}/api/speech-to-text/start`);
+    await speechToTextAPI.start();
     isActive.value = true;
-    // WebSocket should still be connected, but reconnect if needed
-    if (!ws || ws.readyState !== WebSocket.OPEN) {
-      connectWebSocket();
-    }
+    connectSTT();
   } catch (err) {
     console.error('Error resuming STT:', err);
   }
@@ -543,74 +548,16 @@ const toggleCommunication = async () => {
   }
 };
 
-// WebSocket connection for speech-to-text
-const connectWebSocket = () => {
-  try {
-    const wsUrl = WS_BASE_URL.replace('http://', 'ws://').replace('https://', 'wss://') + '/ws/speech-to-text';
-    console.log('Connecting to WebSocket:', wsUrl);
-    ws = new WebSocket(wsUrl);
-    
-    ws.onopen = () => {
-      console.log('Speech-to-text WebSocket connected');
-      error.value = null;
-    };
-    
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        console.log('WebSocket message received:', data);
-        
-        switch (data.type) {
-          case 'connected':
-            console.log('WebSocket connection confirmed');
-            break;
-          case 'speech_started':
-            console.log('Speech started event received');
-            isSpeaking.value = true;
-            break;
-          case 'transcription':
-            console.log('Transcription received:', data.data.text);
-            isSpeaking.value = false;
-            const transcribedText = data.data.text;
-            lastTranscription.value = transcribedText;
-            // Update current text with transcription
-            currentText.value = transcribedText;
-            // Reload predictive words based on new text
-            loadPredictiveWords();
-            break;
-          case 'error':
-            console.error('Error event received:', data.data.error);
-            error.value = data.data.error;
-            isSpeaking.value = false;
-            break;
-        }
-      } catch (err) {
-        console.error('Error parsing WebSocket message:', err);
-      }
-    };
-    
-    ws.onerror = (err) => {
-      console.error('WebSocket error:', err);
-      error.value = 'WebSocket connection error';
-    };
-    
-    ws.onclose = () => {
-      console.log('WebSocket disconnected');
-      isSpeaking.value = false;
-    };
-  } catch (err) {
-    console.error('Error connecting WebSocket:', err);
-    error.value = 'Failed to connect to speech-to-text service';
-  }
-};
+onSTTEvent('transcription', (event) => {
+  const transcribedText = event.data.text;
+  lastTranscription.value = transcribedText;
+  currentText.value = transcribedText;
+  loadPredictiveWords();
+});
 
-const disconnectWebSocket = () => {
-  if (ws) {
-    ws.close();
-    ws = null;
-  }
-  isSpeaking.value = false;
-};
+onSTTEvent('error', (event) => {
+  error.value = event.data.error;
+});
 
 // Start communication
 const startCommunication = async () => {
@@ -618,7 +565,7 @@ const startCommunication = async () => {
   error.value = null;
   
   try {
-    await axios.post(`${API_BASE_URL}/api/speech-to-text/start`);
+    await speechToTextAPI.start();
     isActive.value = true;
     
     // Set fullscreen state in App.vue to hide sidebar
@@ -628,13 +575,13 @@ const startCommunication = async () => {
     await enterFullscreen();
     
     // Connect WebSocket for speech-to-text events
-    connectWebSocket();
+    connectSTT();
     
     // Load initial predictive words
     await loadPredictiveWords();
   } catch (err) {
     console.error('Error starting communication:', err);
-    error.value = err.response?.data?.detail || t('keyboard.error');
+    error.value = t('keyboard.error');
     isActive.value = false;
     isCommunicationFullscreenApp.value = false;
   } finally {
@@ -650,9 +597,9 @@ const stopCommunication = async () => {
   error.value = null;
   
   try {
-    await axios.post(`${API_BASE_URL}/api/speech-to-text/stop`);
+    await speechToTextAPI.stop();
     isActive.value = false;
-    disconnectWebSocket();
+    disconnectSTT();
     
     // Reset fullscreen state in App.vue to show sidebar
     isCommunicationFullscreenApp.value = false;
@@ -661,7 +608,7 @@ const stopCommunication = async () => {
     exitFullscreen();
   } catch (err) {
     console.error('Error stopping communication:', err);
-    error.value = err.response?.data?.detail || t('keyboard.error');
+    error.value = t('keyboard.error');
   } finally {
     isLoading.value = false;
   }
@@ -797,7 +744,7 @@ let resizeHandler = null;
 
 // Connect eye tracking on mount
 onMounted(() => {
-  connectWebSocket();
+  connectSTT();
   loadConfig();
   
   // Initialize window position and header height
@@ -844,7 +791,7 @@ onBeforeUnmount(() => {
     window.removeEventListener('resize', resizeHandler);
     resizeHandler = null;
   }
-  disconnectWebSocket();
+  disconnectSTT();
   if (isFullscreen.value) {
     exitFullscreen();
     isCommunicationFullscreenApp.value = false;

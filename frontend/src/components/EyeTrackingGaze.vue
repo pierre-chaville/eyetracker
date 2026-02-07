@@ -83,39 +83,29 @@
   </div>
 </template>
 
-<script setup>
-import { computed } from 'vue';
+<script setup lang="ts">
+import { computed, withDefaults } from 'vue';
 import { useI18n } from 'vue-i18n';
+import type { GazePoint, TrackingData } from '../types/tracking';
 
-const props = defineProps({
-  gazePoint: {
-    type: Object,
-    default: null,
-  },
-  trackingData: {
-    type: Object,
-    default: null,
-  },
-  isConnected: {
-    type: Boolean,
-    default: false,
-  },
-  isFrozen: {
-    type: Boolean,
-    default: false,
-  },
-  frozenGazePoint: {
-    type: Object,
-    default: null,
-  },
-  frozenTrackingData: {
-    type: Object,
-    default: null,
-  },
-  showCoordinates: {
-    type: Boolean,
-    default: true,
-  },
+interface Props {
+  gazePoint?: GazePoint | null
+  trackingData?: TrackingData | null
+  isConnected?: boolean
+  isFrozen?: boolean
+  frozenGazePoint?: GazePoint | null
+  frozenTrackingData?: TrackingData | null
+  showCoordinates?: boolean
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  gazePoint: null,
+  trackingData: null,
+  isConnected: false,
+  isFrozen: false,
+  frozenGazePoint: null,
+  frozenTrackingData: null,
+  showCoordinates: true,
 });
 
 const { t } = useI18n();
