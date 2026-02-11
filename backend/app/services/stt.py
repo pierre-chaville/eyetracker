@@ -19,6 +19,7 @@ try:
 
     DEPENDENCIES_AVAILABLE = True
 except ImportError as e:
+    print(f"Error importing dependencies: {e}")
     DEPENDENCIES_AVAILABLE = False
     IMPORT_ERROR = str(e)
 
@@ -202,6 +203,8 @@ class SpeechToTextService:
             self.receive_thread.join(timeout=1.0)
         if self.stream_thread and self.stream_thread.is_alive():
             self.stream_thread.join(timeout=1.0)
+        
+        print("STT: Stopped successfully")
 
     def _on_message(self, result, **kwargs):
         """Handle transcription results."""

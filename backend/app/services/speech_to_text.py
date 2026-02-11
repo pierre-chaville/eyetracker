@@ -68,7 +68,7 @@ def create_speech_callbacks(
             logger.exception("Error handling transcription callback")
 
     def on_speech_error(error: str) -> None:
-        logger.warning("Speech-to-text error callback", extra={"error": error})
+        logger.warning(f"Speech-to-text error callback: {error}", extra={"error": error})
         try:
             loop = get_event_loop()
             if loop.is_running():
