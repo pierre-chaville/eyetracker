@@ -15,7 +15,7 @@ from app.services.keyboard_layouts import KeyboardLayoutService
 router = APIRouter(tags=["keyboards"])
 
 
-@router.get("/api/keyboards", response_model=List[KeyboardLayoutRead])
+@router.get("/keyboards", response_model=List[KeyboardLayoutRead])
 async def list_keyboards(
     skip: int = 0,
     limit: int = 100,
@@ -25,7 +25,7 @@ async def list_keyboards(
     return await service.list_layouts(skip=skip, limit=limit)
 
 
-@router.get("/api/keyboards/{keyboard_id}", response_model=KeyboardLayoutRead)
+@router.get("/keyboards/{keyboard_id}", response_model=KeyboardLayoutRead)
 async def get_keyboard(
     keyboard_id: int,
     service: KeyboardLayoutService = Depends(get_keyboard_layout_service),
@@ -34,7 +34,11 @@ async def get_keyboard(
     return await service.get_layout(keyboard_id)
 
 
-@router.post("/api/keyboards", response_model=KeyboardLayoutRead)
+@router.post(
+    "/keyboards",
+    response_model=KeyboardLayoutRead,
+    status_code=status.HTTP_201_CREATED,
+)
 async def create_keyboard(
     payload: KeyboardLayoutCreate,
     service: KeyboardLayoutService = Depends(get_keyboard_layout_service),
@@ -43,7 +47,7 @@ async def create_keyboard(
     return await service.create_layout(payload)
 
 
-@router.put("/api/keyboards/{keyboard_id}", response_model=KeyboardLayoutRead)
+@router.put("/keyboards/{keyboard_id}", response_model=KeyboardLayoutRead)
 async def update_keyboard(
     keyboard_id: int,
     payload: KeyboardLayoutUpdate,
@@ -54,7 +58,7 @@ async def update_keyboard(
 
 
 @router.delete(
-    "/api/keyboards/{keyboard_id}",
+    "/keyboards/{keyboard_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
 )

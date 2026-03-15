@@ -31,7 +31,7 @@ export function useSTTEvents(options: STTEventOptions = {}) {
   }
 
   const wsClient = createWSClient({
-    url: WS_BASE_URL.replace('http://', 'ws://').replace('https://', 'wss://') + '/ws/speech-to-text',
+    url: WS_BASE_URL.replace('http://', 'ws://').replace('https://', 'wss://') + '/api/v1/ws/speech-to-text',
     onMessage: (data) => {
       const event = data as STTEvent
       if (event.type === 'speech_started') {

@@ -27,7 +27,7 @@ router = APIRouter(tags=["communication"])
 
 
 @router.post(
-    "/api/communication/interpret",
+    "/communication/interpret",
     response_model=CommunicationResponse,
 )
 async def interpret_gaze(request: CommunicationRequest) -> CommunicationResponse:
@@ -39,7 +39,7 @@ async def interpret_gaze(request: CommunicationRequest) -> CommunicationResponse
     )
 
 
-@router.post("/api/communication/choices", response_model=ChoicesResponse)
+@router.post("/communication/choices", response_model=ChoicesResponse)
 async def get_choices(
     request: ChoicesRequest,
     service: CommunicationService = Depends(get_communication_service),
@@ -51,7 +51,7 @@ async def get_choices(
     return await service.generate_choices(request)
 
 
-@router.post("/api/communication/select", response_model=ChoiceSelectionResponse)
+@router.post("/communication/select", response_model=ChoiceSelectionResponse)
 async def select_choice(
     request: ChoiceSelectionRequest,
     service: CommunicationService = Depends(get_communication_service),
@@ -64,7 +64,7 @@ async def select_choice(
 
 
 @router.post(
-    "/api/communication/sessions",
+    "/communication/sessions",
     response_model=CommunicationSessionRead,
     status_code=status.HTTP_201_CREATED,
 )
@@ -77,7 +77,7 @@ async def create_session(
 
 
 @router.get(
-    "/api/communication/sessions",
+    "/communication/sessions",
     response_model=List[CommunicationSessionRead],
 )
 async def list_sessions(
@@ -92,7 +92,7 @@ async def list_sessions(
 
 
 @router.get(
-    "/api/communication/sessions/{session_id}",
+    "/communication/sessions/{session_id}",
     response_model=CommunicationSessionRead,
 )
 async def get_communication_session(
@@ -110,7 +110,7 @@ async def get_communication_session(
 
 
 @router.put(
-    "/api/communication/sessions/{session_id}",
+    "/communication/sessions/{session_id}",
     response_model=CommunicationSessionRead,
 )
 async def update_session(
@@ -129,7 +129,7 @@ async def update_session(
 
 
 @router.delete(
-    "/api/communication/sessions/{session_id}",
+    "/communication/sessions/{session_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
 )
@@ -149,7 +149,7 @@ async def delete_session(
 
 
 @router.post(
-    "/api/communication/sessions/{session_id}/steps",
+    "/communication/sessions/{session_id}/steps",
     response_model=SessionStepRead,
     status_code=status.HTTP_201_CREATED,
 )

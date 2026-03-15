@@ -14,13 +14,13 @@ from app.services.calibration import (
 router = APIRouter(tags=["calibration"])
 
 
-@router.post("/api/calibration/start", response_model=MessageResponse)
+@router.post("/calibration/start", response_model=MessageResponse)
 async def start_calibration() -> MessageResponse:
     """Start calibration process."""
     return MessageResponse(success=True, message="Calibration started")
 
 
-@router.post("/api/calibration/process", response_model=CalibrationResponse)
+@router.post("/calibration/process", response_model=CalibrationResponse)
 async def process_calibration(
     request: CalibrationRequest,
     session: AsyncSession = Depends(get_session),

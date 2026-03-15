@@ -110,7 +110,7 @@ async def websocket_speech_to_text(
         )
 
 
-@router.post("/api/speech-to-text/start", response_model=MessageResponse)
+@router.post("/speech-to-text/start", response_model=MessageResponse)
 async def start_speech_to_text(
     manager: SpeechToTextManager = Depends(get_speech_to_text_manager),
 ) -> MessageResponse:
@@ -129,7 +129,7 @@ async def start_speech_to_text(
         ) from exc
 
 
-@router.post("/api/speech-to-text/stop", response_model=MessageResponse)
+@router.post("/speech-to-text/stop", response_model=MessageResponse)
 async def stop_speech_to_text(
     manager: SpeechToTextManager = Depends(get_speech_to_text_manager),
 ) -> MessageResponse:
@@ -143,7 +143,7 @@ async def stop_speech_to_text(
         ) from exc
 
 
-@router.get("/api/speech-to-text/status", response_model=SpeechToTextStatusResponse)
+@router.get("/speech-to-text/status", response_model=SpeechToTextStatusResponse)
 async def get_speech_to_text_status(
     manager: SpeechToTextManager = Depends(get_speech_to_text_manager),
 ) -> SpeechToTextStatusResponse:

@@ -12,7 +12,7 @@ from app.utils.exceptions import EntityNotFoundError
 router = APIRouter(tags=["users"])
 
 
-@router.get("/api/users", response_model=List[UserRead])
+@router.get("/users", response_model=List[UserRead])
 async def list_users(
     skip: int = 0,
     limit: int = 100,
@@ -23,7 +23,7 @@ async def list_users(
     return await service.list_users(skip=skip, limit=limit, active_only=active_only)
 
 
-@router.get("/api/users/{user_id}", response_model=UserRead)
+@router.get("/users/{user_id}", response_model=UserRead)
 async def get_user(
     user_id: int,
     service: UserService = Depends(get_user_service),
@@ -39,7 +39,7 @@ async def get_user(
 
 
 @router.post(
-    "/api/users",
+    "/users",
     response_model=UserRead,
     status_code=status.HTTP_201_CREATED,
 )
@@ -51,7 +51,7 @@ async def create_user(
     return await service.create_user(user_data)
 
 
-@router.put("/api/users/{user_id}", response_model=UserRead)
+@router.put("/users/{user_id}", response_model=UserRead)
 async def update_user(
     user_id: int,
     user_data: UserUpdate,
@@ -68,7 +68,7 @@ async def update_user(
 
 
 @router.delete(
-    "/api/users/{user_id}",
+    "/users/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
 )

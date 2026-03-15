@@ -12,7 +12,7 @@ from app.utils.exceptions import EntityNotFoundError
 router = APIRouter(tags=["caregivers"])
 
 
-@router.get("/api/caregivers", response_model=List[CaregiverRead])
+@router.get("/caregivers", response_model=List[CaregiverRead])
 async def list_caregivers(
     skip: int = 0,
     limit: int = 100,
@@ -22,7 +22,7 @@ async def list_caregivers(
     return await service.list_caregivers(skip=skip, limit=limit)
 
 
-@router.get("/api/caregivers/{caregiver_id}", response_model=CaregiverRead)
+@router.get("/caregivers/{caregiver_id}", response_model=CaregiverRead)
 async def get_caregiver(
     caregiver_id: int,
     service: CaregiverService = Depends(get_caregiver_service),
@@ -38,7 +38,7 @@ async def get_caregiver(
 
 
 @router.post(
-    "/api/caregivers",
+    "/caregivers",
     response_model=CaregiverRead,
     status_code=status.HTTP_201_CREATED,
 )
@@ -50,7 +50,7 @@ async def create_caregiver(
     return await service.create_caregiver(caregiver_data)
 
 
-@router.put("/api/caregivers/{caregiver_id}", response_model=CaregiverRead)
+@router.put("/caregivers/{caregiver_id}", response_model=CaregiverRead)
 async def update_caregiver(
     caregiver_id: int,
     caregiver_data: CaregiverUpdate,
@@ -67,7 +67,7 @@ async def update_caregiver(
 
 
 @router.delete(
-    "/api/caregivers/{caregiver_id}",
+    "/caregivers/{caregiver_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
 )

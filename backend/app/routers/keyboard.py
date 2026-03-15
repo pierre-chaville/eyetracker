@@ -9,7 +9,7 @@ from app.services.keyboard import KeyboardService
 router = APIRouter(tags=["keyboard"])
 
 
-@router.post("/api/keyboard/predictions", response_model=KeyboardPredictionsResponse)
+@router.post("/keyboard/predictions", response_model=KeyboardPredictionsResponse)
 async def get_keyboard_predictions(
     request: ChoicesRequest,
     service: KeyboardService = Depends(get_keyboard_service),
@@ -21,7 +21,7 @@ async def get_keyboard_predictions(
     return await service.get_predictions(request)
 
 
-@router.post("/api/keyboard/tts", response_model=KeyboardTTSResponse)
+@router.post("/keyboard/tts", response_model=KeyboardTTSResponse)
 async def keyboard_tts(
     request: KeyboardTTSRequest,
     service: KeyboardService = Depends(get_keyboard_service),

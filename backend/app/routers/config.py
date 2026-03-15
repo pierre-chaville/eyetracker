@@ -10,7 +10,7 @@ from app.utils.exceptions import ConfigSaveError, ConfigValidationError
 router = APIRouter(tags=["setup"])
 
 
-@router.get("/api/config", response_model=ConfigResponse)
+@router.get("/config", response_model=ConfigResponse)
 async def get_config(
     service: ConfigService = Depends(get_config_service),
 ) -> ConfigResponse:
@@ -18,7 +18,7 @@ async def get_config(
     return service.get_config()
 
 
-@router.put("/api/config", response_model=ConfigResponse)
+@router.put("/config", response_model=ConfigResponse)
 async def update_config(
     config: ConfigModel,
     service: ConfigService = Depends(get_config_service),
