@@ -1,65 +1,68 @@
 """
-LLM module for generating communication choices using LangChain.
-Supports OpenAI and Anthropic providers with structured output.
+LLM service for generating communication choices using LangChain.
+
+Uses chains from app.chains for prompts and LCEL; this service creates the LLM,
+invokes the choices chain, and maps results to the API shape.
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import List, Optional, TypedDict
 
 from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
-from pydantic import BaseModel, Field
 
+from app.chains.choices_chain import (
+    ChoicesChainInput,
+    ChoicesOutput,
+    create_choices_chain,
+)
 from app.settings import get_settings
 from app.utils.logging import get_logger
+from app.utils.retry import async_with_retry_and_timing
 
 logger = get_logger(__name__)
 
 
-class ChoiceWithProbability(BaseModel):
-    """A choice option with probability score"""
+class ChoiceResult(TypedDict):
+    """Typed result for a single choice (avoids Dict[str, Any])."""
 
-    text: str = Field(description="The text of the choice (word or phrase)")
-    probability: float = Field(
-        description=(
-            "Probability score between 0.0 and 1.0 indicating how likely this choice is given "
-            "the context"
-        ),
-        ge=0.0,
-        le=1.0,
-    )
+    text: str
+    probability: float
 
 
-class ChoicesOutput(BaseModel):
-    """Structured output containing 2-8 choices with probabilities"""
-
-    choices: List[ChoiceWithProbability] = Field(
-        description="List of 2 to 8 choices, ordered by probability (highest first)",
-        min_length=2,
-        max_length=8,
-    )
+# Fallback choices returned when the LLM call fails.
+_FALLBACK_CHOICES: List[ChoiceResult] = [
+    {"text": "Yes", "probability": 0.5},
+    {"text": "No", "probability": 0.5},
+    {"text": "More", "probability": 0.3},
+    {"text": "Done", "probability": 0.2},
+]
 
 
 class LLMService:
-    """Service for generating communication choices using LLM"""
+    """Service for generating communication choices via the choices chain."""
 
-    def __init__(self, provider: str = "openai", model: str = "", temperature: float = 0.7):
+    def __init__(
+        self,
+        provider: str = "openai",
+        model: str = "",
+        temperature: float = 0.7,
+    ) -> None:
         """
-        Initialize LLM service.
+        Initialize the LLM service.
 
         Args:
-            provider: "openai" or "anthropic"
-            model: Model name (e.g., "gpt-4", "claude-3-opus")
-            temperature: Temperature for generation (0.0 to 2.0)
+            provider: "openai" or "anthropic".
+            model: Model name (e.g. "gpt-4", "claude-3-opus-20240229").
+            temperature: Sampling temperature (0.0 to 2.0).
         """
         self.provider = provider.lower()
         self.model = model
         self.temperature = temperature
-        self.llm = self._create_llm()
+        self._llm = self._create_llm()
 
     def _create_llm(self):
-        """Create the appropriate LLM instance based on provider"""
+        """Create the chat model instance for the configured provider."""
         settings = get_settings()
         if self.provider == "openai":
             api_key = settings.openai_api_key
@@ -67,7 +70,6 @@ class LLMService:
                 raise ValueError(
                     "OPENAI_API_KEY not set. Set it in .env or environment."
                 )
-
             model_name = self.model or "gpt-4"
             timeout = settings.llm_request_timeout_seconds
             return ChatOpenAI(
@@ -76,14 +78,12 @@ class LLMService:
                 api_key=api_key,
                 request_timeout=timeout,
             )
-
         if self.provider == "anthropic":
             api_key = settings.anthropic_api_key
             if not api_key:
                 raise ValueError(
                     "ANTHROPIC_API_KEY not set. Set it in .env or environment."
                 )
-
             model_name = self.model or "claude-3-opus-20240229"
             timeout = settings.llm_request_timeout_seconds
             return ChatAnthropic(
@@ -92,7 +92,6 @@ class LLMService:
                 api_key=api_key,
                 request_timeout=timeout,
             )
-
         raise ValueError(
             f"Unsupported provider: {self.provider}. Supported: 'openai', 'anthropic'"
         )
@@ -100,90 +99,69 @@ class LLMService:
     async def generate_choices(
         self,
         system_prompt: str,
-        conversation_history: List[Dict[str, str]],
+        conversation_history: List[dict],
         user_notes: Optional[str] = None,
         caregiver_description: Optional[str] = None,
         current_text: Optional[str] = None,
-    ) -> List[Dict[str, Any]]:
+    ) -> List[ChoiceResult]:
         """
-        Generate communication choices based on context.
+        Generate 2–8 communication choices using the choices chain.
 
         Args:
-            system_prompt: System prompt from config
-            conversation_history: List of messages in format [{"role": "user"/"assistant", "content": "..."}]
-            user_notes: Notes about the user from user profile
-            caregiver_description: Description of the caregiver
-            current_text: Current text being composed by the user
+            system_prompt: System prompt from config.
+            conversation_history: List of {"role": "...", "content": "..."}.
+            user_notes: Optional user profile notes.
+            caregiver_description: Optional caregiver description.
+            current_text: Optional current text being composed.
 
         Returns:
-            List of choices with text and probability, sorted by probability (highest first)
+            List of {"text": str, "probability": float}, sorted by probability descending.
         """
-        context_parts = []
-
+        context_parts: List[str] = []
         if user_notes:
             context_parts.append(f"User Profile:\n{user_notes}\n")
-
         if caregiver_description:
             context_parts.append(f"Caregiver Profile:\n{caregiver_description}\n")
-
         if current_text:
             context_parts.append(f"Current text being composed: {current_text}\n")
-
         context = "\n".join(context_parts)
 
-        messages = []
-        system_content = system_prompt
-        if context:
-            system_content += f"\n\nContext:\n{context}"
+        chain_input = ChoicesChainInput(
+            system_prompt=system_prompt,
+            context=context,
+            conversation_history=conversation_history,
+        )
+        structured_llm = self._llm.with_structured_output(ChoicesOutput)
+        chain = create_choices_chain(structured_llm)
 
-        messages.append(SystemMessage(content=system_content))
-
-        for msg in conversation_history:
-            role = msg.get("role", "").lower()
-            content = msg.get("content", "")
-
-            if role in ("user", "human"):
-                messages.append(HumanMessage(content=f"User: {content}"))
-            elif role == "caregiver":
-                messages.append(HumanMessage(content=f"Caregiver: {content}"))
-            elif role in ("assistant", "ai"):
-                messages.append(AIMessage(content=content))
-
-        structured_llm = self.llm.with_structured_output(ChoicesOutput)
-
-        from app.utils.retry import async_with_retry_and_timing
-
-        async def _invoke() -> Any:
-            return await structured_llm.ainvoke(messages)
+        async def _invoke():
+            return await chain.ainvoke(chain_input.model_dump())
 
         try:
-            result = await async_with_retry_and_timing(
+            result: ChoicesOutput = await async_with_retry_and_timing(
                 logger,
                 "LLM generate_choices",
                 _invoke,
                 transient_exceptions=(ConnectionError, TimeoutError, OSError),
             )
-            choices = [
-                {"text": choice.text, "probability": choice.probability}
-                for choice in result.choices
+            choices: List[ChoiceResult] = [
+                {"text": c.text, "probability": c.probability}
+                for c in result.choices
             ]
             choices.sort(key=lambda x: x["probability"], reverse=True)
             return choices
         except Exception as e:
             logger.exception("LLM generate_choices failed: %s", e)
-            return [
-                {"text": "Yes", "probability": 0.5},
-                {"text": "No", "probability": 0.5},
-                {"text": "More", "probability": 0.3},
-                {"text": "Done", "probability": 0.2},
-            ]
+            return _FALLBACK_CHOICES.copy()
 
-    def update_config(self, provider: str, model: str, temperature: float):
-        """Update LLM configuration"""
+    def update_config(
+        self, provider: str, model: str, temperature: float
+    ) -> None:
+        """Update provider, model, and temperature and recreate the LLM."""
         self.provider = provider.lower()
         self.model = model
         self.temperature = temperature
-        self.llm = self._create_llm()
+        self._llm = self._create_llm()
 
 
 _llm_service: Optional[LLMService] = None
@@ -194,11 +172,22 @@ def get_llm_service(
     model: str = "",
     temperature: float = 0.7,
 ) -> LLMService:
-    """Get or create the global LLM service instance"""
-    global _llm_service
+    """
+    Get or create the global LLM service instance.
 
+    Args:
+        provider: "openai" or "anthropic".
+        model: Model name.
+        temperature: Sampling temperature.
+
+    Returns:
+        The shared LLMService instance.
+    """
+    global _llm_service
     if _llm_service is None:
-        _llm_service = LLMService(provider=provider, model=model, temperature=temperature)
+        _llm_service = LLMService(
+            provider=provider, model=model, temperature=temperature
+        )
     else:
         if (
             _llm_service.provider != provider.lower()
@@ -206,8 +195,7 @@ def get_llm_service(
             or _llm_service.temperature != temperature
         ):
             _llm_service.update_config(provider, model, temperature)
-
     return _llm_service
 
 
-__all__ = ["get_llm_service", "LLMService"]
+__all__ = ["get_llm_service", "LLMService", "ChoiceResult"]

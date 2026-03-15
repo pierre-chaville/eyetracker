@@ -1,9 +1,16 @@
+"""
+Speech-to-text lifecycle and event broadcasting.
+
+Manages start/stop of the STT service and broadcasts events (speech_started,
+transcription, error) to WebSocket clients via SpeechEventBroadcaster.
+"""
 from __future__ import annotations
 
 import asyncio
 from typing import Callable, Optional, Protocol, Tuple
 
 from app.schemas import MessageResponse, SpeechToTextStatusResponse
+from app.types import SpeechEventType
 from app.utils.exceptions import SpeechToTextOperationError, SpeechToTextUnavailableError
 from app.utils.logging import get_logger
 
@@ -20,7 +27,9 @@ class SpeechEventBroadcaster(Protocol):
     def connections_count(self) -> int:
         """Return active connection count."""
 
-    async def broadcast(self, event_type: str, data: dict) -> None:
+    async def broadcast(
+        self, event_type: SpeechEventType | str, data: dict
+    ) -> None:
         """Broadcast speech events."""
 
 
@@ -47,10 +56,12 @@ def create_speech_callbacks(
             loop = get_event_loop()
             if loop.is_running():
                 asyncio.run_coroutine_threadsafe(
-                    broadcaster.broadcast("speech_started", {}), loop
+                    broadcaster.broadcast(SpeechEventType.SPEECH_STARTED, {}), loop
                 )
             else:
-                loop.run_until_complete(broadcaster.broadcast("speech_started", {}))
+                loop.run_until_complete(
+                    broadcaster.broadcast(SpeechEventType.SPEECH_STARTED, {})
+                )
         except Exception:
             logger.exception("Error handling speech started callback")
 
@@ -60,10 +71,17 @@ def create_speech_callbacks(
             loop = get_event_loop()
             if loop.is_running():
                 asyncio.run_coroutine_threadsafe(
-                    broadcaster.broadcast("transcription", {"text": text}), loop
+                    broadcaster.broadcast(
+                        SpeechEventType.TRANSCRIPTION, {"text": text}
+                    ),
+                    loop,
                 )
             else:
-                loop.run_until_complete(broadcaster.broadcast("transcription", {"text": text}))
+                loop.run_until_complete(
+                    broadcaster.broadcast(
+                        SpeechEventType.TRANSCRIPTION, {"text": text}
+                    )
+                )
         except Exception:
             logger.exception("Error handling transcription callback")
 
@@ -73,10 +91,13 @@ def create_speech_callbacks(
             loop = get_event_loop()
             if loop.is_running():
                 asyncio.run_coroutine_threadsafe(
-                    broadcaster.broadcast("error", {"error": error}), loop
+                    broadcaster.broadcast(SpeechEventType.ERROR, {"error": error}),
+                    loop,
                 )
             else:
-                loop.run_until_complete(broadcaster.broadcast("error", {"error": error}))
+                loop.run_until_complete(
+                    broadcaster.broadcast(SpeechEventType.ERROR, {"error": error})
+                )
         except Exception:
             logger.exception("Error handling speech-to-text error callback")
 

@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 
 from app.schemas import MessageResponse, SpeechToTextStatusResponse
 from app.services.speech_to_text import SpeechEventBroadcaster, SpeechToTextManager
+from app.types import SpeechEventType
 from app.utils.exceptions import SpeechToTextOperationError, SpeechToTextUnavailableError
 from app.utils.logging import get_logger
 
@@ -25,9 +26,9 @@ class WebSocketBroadcaster(SpeechEventBroadcaster):
     def connections_count(self) -> int:
         return len(self._connections)
 
-    async def broadcast(self, event_type: str, data: dict) -> None:
+    async def broadcast(self, event_type: SpeechEventType | str, data: dict) -> None:
         message = {
-            "type": event_type,
+            "type": str(event_type),
             "data": data,
             "timestamp": datetime.utcnow().isoformat(),
         }
@@ -86,7 +87,7 @@ async def websocket_speech_to_text(
     )
     await websocket.send_json(
         {
-            "type": "connected",
+            "type": SpeechEventType.CONNECTED,
             "data": {"message": "WebSocket connected"},
             "timestamp": datetime.utcnow().isoformat(),
         }
@@ -95,7 +96,7 @@ async def websocket_speech_to_text(
         while True:
             try:
                 data = await websocket.receive_text()
-                await websocket.send_json({"type": "pong", "data": data})
+                await websocket.send_json({"type": SpeechEventType.PONG, "data": data})
             except WebSocketDisconnect:
                 break
     except WebSocketDisconnect:

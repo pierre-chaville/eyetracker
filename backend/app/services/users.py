@@ -1,3 +1,8 @@
+"""
+User service: CRUD and serialization for users.
+
+Converts between DB models and API schemas (UserRead, UserCreate, UserUpdate).
+"""
 from __future__ import annotations
 
 from datetime import datetime
@@ -17,22 +22,52 @@ from app.schemas.user import (
 from app.utils.exceptions import EntityNotFoundError
 
 
-def serialize_eye_tracking_setup(setup: Optional[EyeTrackingSetup]) -> Optional[dict]:
-    """Serialize EyeTrackingSetup to dict for JSON storage."""
+def serialize_eye_tracking_setup(
+    setup: Optional[EyeTrackingSetup],
+) -> Optional[dict]:
+    """
+    Serialize EyeTrackingSetup to a dict for JSON storage.
+
+    Args:
+        setup: Pydantic model or None.
+
+    Returns:
+        Dict suitable for JSON, or None.
+    """
     if setup is None:
         return None
     return setup.model_dump()
 
 
-def serialize_communication(comm: Optional[CommunicationSettings]) -> Optional[dict]:
-    """Serialize CommunicationSettings to dict for JSON storage."""
+def serialize_communication(
+    comm: Optional[CommunicationSettings],
+) -> Optional[dict]:
+    """
+    Serialize CommunicationSettings to a dict for JSON storage.
+
+    Args:
+        comm: Pydantic model or None.
+
+    Returns:
+        Dict suitable for JSON, or None.
+    """
     if comm is None:
         return None
     return comm.model_dump()
 
 
-def deserialize_eye_tracking_setup(data: Optional[dict]) -> Optional[EyeTrackingSetup]:
-    """Deserialize dict to EyeTrackingSetup."""
+def deserialize_eye_tracking_setup(
+    data: Optional[dict],
+) -> Optional[EyeTrackingSetup]:
+    """
+    Deserialize a dict from JSON to EyeTrackingSetup.
+
+    Args:
+        data: Dict (e.g. from DB) or None.
+
+    Returns:
+        EyeTrackingSetup instance or None if invalid/missing.
+    """
     if data is None:
         return None
     try:
@@ -41,8 +76,18 @@ def deserialize_eye_tracking_setup(data: Optional[dict]) -> Optional[EyeTracking
         return None
 
 
-def deserialize_communication(data: Optional[dict]) -> Optional[CommunicationSettings]:
-    """Deserialize dict to CommunicationSettings."""
+def deserialize_communication(
+    data: Optional[dict],
+) -> Optional[CommunicationSettings]:
+    """
+    Deserialize a dict from JSON to CommunicationSettings.
+
+    Args:
+        data: Dict (e.g. from DB) or None.
+
+    Returns:
+        CommunicationSettings instance or None if invalid/missing.
+    """
     if data is None:
         return None
     try:
@@ -52,7 +97,15 @@ def deserialize_communication(data: Optional[dict]) -> Optional[CommunicationSet
 
 
 def user_to_response(user: User) -> UserRead:
-    """Convert User model to UserResponse."""
+    """
+    Convert a User model to the API response schema.
+
+    Args:
+        user: DB User instance.
+
+    Returns:
+        UserRead with serialized eye_tracking_setup and communication.
+    """
     return UserRead(
         id=user.id,
         name=user.name,
@@ -70,12 +123,24 @@ def user_to_response(user: User) -> UserRead:
 
 
 class UserService:
-    """Service for user operations."""
+    """
+    Service for user CRUD using an async DB session.
+
+    All methods are async and raise EntityNotFoundError when a requested
+    user does not exist.
+    """
 
     def __init__(self, session: AsyncSession) -> None:
+        """
+        Args:
+            session: AsyncSession for DB access.
+        """
         self._session = session
 
-    async def list_users(self, skip: int, limit: int, active_only: bool) -> List[UserRead]:
+    async def list_users(
+        self, skip: int, limit: int, active_only: bool
+    ) -> List[UserRead]:
+        """List users with optional pagination and active filter."""
         statement = select(User)
         if active_only:
             statement = statement.where(User.is_active == True)
