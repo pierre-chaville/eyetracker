@@ -69,10 +69,12 @@ class LLMService:
                 )
 
             model_name = self.model or "gpt-4"
+            timeout = settings.llm_request_timeout_seconds
             return ChatOpenAI(
                 model=model_name,
                 temperature=self.temperature,
                 api_key=api_key,
+                request_timeout=timeout,
             )
 
         if self.provider == "anthropic":
@@ -83,10 +85,12 @@ class LLMService:
                 )
 
             model_name = self.model or "claude-3-opus-20240229"
+            timeout = settings.llm_request_timeout_seconds
             return ChatAnthropic(
                 model=model_name,
                 temperature=self.temperature,
                 api_key=api_key,
+                request_timeout=timeout,
             )
 
         raise ValueError(
@@ -147,8 +151,18 @@ class LLMService:
 
         structured_llm = self.llm.with_structured_output(ChoicesOutput)
 
+        from app.utils.retry import async_with_retry_and_timing
+
+        async def _invoke() -> Any:
+            return await structured_llm.ainvoke(messages)
+
         try:
-            result = await structured_llm.ainvoke(messages)
+            result = await async_with_retry_and_timing(
+                logger,
+                "LLM generate_choices",
+                _invoke,
+                transient_exceptions=(ConnectionError, TimeoutError, OSError),
+            )
             choices = [
                 {"text": choice.text, "probability": choice.probability}
                 for choice in result.choices

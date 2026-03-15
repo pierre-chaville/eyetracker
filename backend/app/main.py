@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.database import create_db_and_tables
+from app.http_client import set_httpx_client
 from app.routers import (
     calibration,
     caregivers,
@@ -25,12 +27,18 @@ from app.services.speech_to_text import get_current_speech_to_text_service
 async def lifespan(app: FastAPI):
     """Application lifespan for startup and shutdown tasks."""
     await create_db_and_tables()
-    try:
-        yield
-    finally:
-        speech_service = get_current_speech_to_text_service()
-        if speech_service:
-            speech_service.stop()
+    from app.settings import get_settings
+
+    timeout = get_settings().http_timeout_seconds
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        set_httpx_client(client)
+        try:
+            yield
+        finally:
+            set_httpx_client(None)
+    speech_service = get_current_speech_to_text_service()
+    if speech_service:
+        speech_service.stop()
 
 
 app = FastAPI(title="Eye Tracker API", version="1.0.0", lifespan=lifespan)

@@ -137,27 +137,39 @@ class SpeechToTextService:
             if self.stream is None:
                 raise Exception("Could not open any audio input device")
 
-            self.dg_connection = self.deepgram.listen.v1.connect(
-                model=model,
-                language=language,
-                punctuate="true",
-                encoding="linear16",
-                channels="1",
-                sample_rate=str(self.RATE),
-                interim_results="true",
-                endpointing="2000",
-                vad_events="true",
-            )
+            from app.utils.retry import sync_with_retry_and_timing
 
-            self.dg_connection_context = self.dg_connection.__enter__()
+            def _connect_deepgram() -> None:
+                self.dg_connection = self.deepgram.listen.v1.connect(
+                    model=model,
+                    language=language,
+                    punctuate="true",
+                    encoding="linear16",
+                    channels="1",
+                    sample_rate=str(self.RATE),
+                    interim_results="true",
+                    endpointing="2000",
+                    vad_events="true",
+                )
+                self.dg_connection_context = self.dg_connection.__enter__()
+                self.dg_connection_context.on(
+                    listen_v1.ListenV1Results, self._on_message
+                )
+                self.dg_connection_context.on(
+                    listen_v1.ListenV1Metadata, self._on_metadata
+                )
+                self.dg_connection_context.on(
+                    listen_v1.ListenV1SpeechStarted, self._on_speech_started
+                )
+                self.dg_connection_context.on(
+                    listen_v1.ListenV1UtteranceEnd, self._on_utterance_end
+                )
 
-            self.dg_connection_context.on(listen_v1.ListenV1Results, self._on_message)
-            self.dg_connection_context.on(listen_v1.ListenV1Metadata, self._on_metadata)
-            self.dg_connection_context.on(
-                listen_v1.ListenV1SpeechStarted, self._on_speech_started
-            )
-            self.dg_connection_context.on(
-                listen_v1.ListenV1UtteranceEnd, self._on_utterance_end
+            sync_with_retry_and_timing(
+                logger,
+                "Deepgram STT connect",
+                (ConnectionError, TimeoutError, OSError),
+                _connect_deepgram,
             )
 
             self.running = True

@@ -179,30 +179,43 @@ class TTSService:
             return None
 
     def _generate_with_openai(self, text: str, language: str = "en") -> Optional[bytes]:
-        """Generate speech using OpenAI TTS API"""
+        """Generate speech using OpenAI TTS API (retry, timeout)."""
         try:
             from openai import OpenAI
 
             from app.settings import get_settings
+            from app.utils.retry import sync_with_retry_and_timing
 
-            api_key = get_settings().openai_api_key
+            settings = get_settings()
+            api_key = settings.openai_api_key
             if not api_key:
                 raise ValueError(
                     "OPENAI_API_KEY not set. Set it in .env or environment."
                 )
 
-            client = OpenAI(api_key=api_key)
-            voice = "nova"
-            response = client.audio.speech.create(
-                model="tts-1",
-                voice=voice,
-                input=text,
-                response_format="wav",
-            )
-            return response.content
+            def _do_call() -> bytes:
+                client = OpenAI(
+                    api_key=api_key,
+                    timeout=settings.http_timeout_seconds,
+                )
+                response = client.audio.speech.create(
+                    model="tts-1",
+                    voice="nova",
+                    input=text,
+                    response_format="wav",
+                )
+                return response.content
 
+            return sync_with_retry_and_timing(
+                logger,
+                "OpenAI TTS",
+                (ConnectionError, TimeoutError, OSError),
+                _do_call,
+            )
         except ImportError:
-            raise ValueError("openai package is not installed. Install it with: pip install openai")
+            raise ValueError(
+                "openai package is not installed. Install it with: pip install openai"
+            )
         except Exception as e:
             logger.exception("Error generating speech with OpenAI: %s", e)
             return None
@@ -210,10 +223,11 @@ class TTSService:
     async def _generate_with_elevenlabs(
         self, text: str, language: str = "en"
     ) -> Optional[bytes]:
-        """Generate speech using ElevenLabs API (httpx async)."""
+        """Generate speech using ElevenLabs API (httpx async, retry, timeout)."""
         import httpx
 
         from app.settings import get_settings
+        from app.utils.retry import async_with_retry_and_timing
 
         settings = get_settings()
         api_key = settings.eleven_labs_api_key
@@ -241,23 +255,42 @@ class TTSService:
         }
         timeout = settings.http_timeout_seconds
 
-        try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
+        def _should_retry(e: BaseException) -> bool:
+            if isinstance(e, httpx.RequestError):
+                return True
+            if isinstance(e, httpx.HTTPStatusError):
+                return e.response.status_code >= 500
+            return False
+
+        from app.http_client import get_httpx_client
+
+        shared_client = get_httpx_client()
+
+        async def _do_request() -> bytes:
+            if shared_client is not None:
+                response = await shared_client.post(
                     url, json=data, headers=headers, timeout=timeout
                 )
-            logger.debug(
-                "ElevenLabs TTS response: status=%s, size=%s",
-                response.status_code,
-                len(response.content) if response.content else 0,
-            )
+            else:
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    response = await client.post(
+                        url, json=data, headers=headers, timeout=timeout
+                    )
             response.raise_for_status()
             return response.content
+
+        try:
+            return await async_with_retry_and_timing(
+                logger,
+                "ElevenLabs TTS",
+                _do_request,
+                retry_if=_should_retry,
+            )
         except httpx.HTTPStatusError as e:
             logger.warning(
                 "ElevenLabs TTS HTTP error: %s %s",
                 e.response.status_code,
-                e.response.text[:200] if e.response.text else "",
+                (e.response.text or "")[:200],
             )
             return None
         except httpx.RequestError as e:
@@ -275,11 +308,12 @@ class TTSService:
         pitch: Optional[float] = None,
         speaking_rate: Optional[float] = None,
     ) -> Optional[bytes]:
-        """Generate speech using Google Cloud Text-to-Speech API with service account"""
+        """Generate speech using Google Cloud Text-to-Speech API (retry, timeout)."""
         try:
             from google.cloud import texttospeech
 
             from app.settings import get_settings
+            from app.utils.retry import sync_with_retry_and_timing
 
             settings = get_settings()
             credentials_path = settings.google_application_credentials
@@ -304,8 +338,6 @@ class TTSService:
                 extra={"text_length": len(text), "language": language},
             )
 
-            client = texttospeech.TextToSpeechClient()
-
             language_code_map = {
                 "en": "en-US",
                 "fr": "fr-FR",
@@ -314,8 +346,8 @@ class TTSService:
                 "it": "it-IT",
             }
             google_language = language_code_map.get(language, "en-US")
-
-            if not voice_name:
+            resolved_voice = voice_name
+            if not resolved_voice:
                 voice_name_map = {
                     "en-US": "en-US-Standard-B",
                     "fr-FR": "fr-FR-Standard-B",
@@ -323,35 +355,37 @@ class TTSService:
                     "de-DE": "de-DE-Standard-B",
                     "it-IT": "it-IT-Standard-B",
                 }
-                voice_name = voice_name_map.get(google_language, "en-US-Standard-B")
+                resolved_voice = voice_name_map.get(google_language, "en-US-Standard-B")
 
+            final_pitch = max(-20.0, min(20.0, pitch if pitch is not None else 0.0))
+            final_sr = max(0.25, min(4.0, speaking_rate if speaking_rate is not None else 1.0))
 
-            synthesis_input = texttospeech.SynthesisInput(text=text)
-            voice = texttospeech.VoiceSelectionParams(
-                language_code=google_language,
-                name=voice_name,
+            def _do_call() -> bytes:
+                client = texttospeech.TextToSpeechClient()
+                synthesis_input = texttospeech.SynthesisInput(text=text)
+                voice_params = texttospeech.VoiceSelectionParams(
+                    language_code=google_language,
+                    name=resolved_voice,
+                )
+                audio_config = texttospeech.AudioConfig(
+                    audio_encoding=texttospeech.AudioEncoding.MP3,
+                    speaking_rate=final_sr,
+                    pitch=final_pitch,
+                    volume_gain_db=0.0,
+                )
+                response = client.synthesize_speech(
+                    input=synthesis_input,
+                    voice=voice_params,
+                    audio_config=audio_config,
+                )
+                return response.audio_content
+
+            audio_data = sync_with_retry_and_timing(
+                logger,
+                "Google TTS",
+                (ConnectionError, TimeoutError, OSError),
+                _do_call,
             )
-
-            final_pitch = pitch if pitch is not None else 0.0
-            final_speaking_rate = speaking_rate if speaking_rate is not None else 1.0
-
-            final_pitch = max(-20.0, min(20.0, final_pitch))
-            final_speaking_rate = max(0.25, min(4.0, final_speaking_rate))
-
-
-            audio_config = texttospeech.AudioConfig(
-                audio_encoding=texttospeech.AudioEncoding.MP3,
-                speaking_rate=final_speaking_rate,
-                pitch=final_pitch,
-                volume_gain_db=0.0,
-            )
-
-            response = client.synthesize_speech(
-                input=synthesis_input,
-                voice=voice,
-                audio_config=audio_config,
-            )
-            audio_data = response.audio_content
             logger.debug("Google TTS: received %s bytes", len(audio_data))
             return audio_data
 

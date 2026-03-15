@@ -30,8 +30,12 @@ class Settings(BaseSettings):
     google_application_credentials: Optional[str] = None
     config_file: Optional[Path] = None  # overrides default config.json path if set
 
-    # Optional: timeouts and feature flags
+    # Timeouts and retry for external APIs
     http_timeout_seconds: float = 30.0
+    llm_request_timeout_seconds: float = 60.0
+    retry_max_attempts: int = 3
+    retry_wait_min_seconds: float = 1.0
+    retry_wait_max_seconds: float = 10.0
 
 
 _settings: Optional[Settings] = None
