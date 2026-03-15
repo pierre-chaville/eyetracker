@@ -24,7 +24,7 @@ from app.services.speech_to_text import get_current_speech_to_text_service
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan for startup and shutdown tasks."""
-    create_db_and_tables()
+    await create_db_and_tables()
     try:
         yield
     finally:

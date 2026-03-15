@@ -4,7 +4,8 @@ import base64
 from datetime import datetime
 from typing import List, Optional
 
-from sqlmodel import Session, select
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import load_config
 from app.models import Caregiver, CommunicationSession, SessionStep, User
@@ -53,16 +54,17 @@ def step_to_response(step: SessionStep) -> SessionStepRead:
     )
 
 
-def session_to_response(
+async def session_to_response(
     session: CommunicationSession,
-    db_session: Session,
+    db_session: AsyncSession,
 ) -> CommunicationSessionRead:
     steps_statement = (
         select(SessionStep)
         .where(SessionStep.session_id == session.id)
         .order_by(SessionStep.step_number)
     )
-    steps = db_session.exec(steps_statement).all()
+    result = await db_session.execute(steps_statement)
+    steps = list(result.scalars().all())
     return CommunicationSessionRead(
         id=session.id,
         user_id=session.user_id,
@@ -78,10 +80,10 @@ def session_to_response(
 class CommunicationSessionService:
     """Service for communication session operations."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    def create_session(
+    async def create_session(
         self,
         session_data: CommunicationSessionCreate,
     ) -> CommunicationSessionRead:
@@ -90,11 +92,11 @@ class CommunicationSessionService:
             caregiver_id=session_data.caregiver_id,
         )
         self._session.add(session)
-        self._session.commit()
-        self._session.refresh(session)
-        return session_to_response(session, self._session)
+        await self._session.commit()
+        await self._session.refresh(session)
+        return await session_to_response(session, self._session)
 
-    def list_sessions(
+    async def list_sessions(
         self,
         skip: int,
         limit: int,
@@ -111,48 +113,50 @@ class CommunicationSessionService:
             .offset(skip)
             .limit(limit)
         )
-        sessions = self._session.exec(statement).all()
-        return [session_to_response(session, self._session) for session in sessions]
+        result = await self._session.execute(statement)
+        sessions = list(result.scalars().all())
+        return [await session_to_response(session, self._session) for session in sessions]
 
-    def get_session(self, session_id: int) -> CommunicationSessionRead:
-        session = self._session.get(CommunicationSession, session_id)
+    async def get_session(self, session_id: int) -> CommunicationSessionRead:
+        session = await self._session.get(CommunicationSession, session_id)
         if not session:
             raise EntityNotFoundError("Session", session_id)
-        return session_to_response(session, self._session)
+        return await session_to_response(session, self._session)
 
-    def update_session(
+    async def update_session(
         self,
         session_id: int,
         session_data: CommunicationSessionUpdate,
     ) -> CommunicationSessionRead:
-        session = self._session.get(CommunicationSession, session_id)
+        session = await self._session.get(CommunicationSession, session_id)
         if not session:
             raise EntityNotFoundError("Session", session_id)
         if session_data.ended_at is not None:
             session.ended_at = session_data.ended_at
         session.updated_at = datetime.utcnow()
         self._session.add(session)
-        self._session.commit()
-        self._session.refresh(session)
-        return session_to_response(session, self._session)
+        await self._session.commit()
+        await self._session.refresh(session)
+        return await session_to_response(session, self._session)
 
-    def delete_session(self, session_id: int) -> None:
-        session = self._session.get(CommunicationSession, session_id)
+    async def delete_session(self, session_id: int) -> None:
+        session = await self._session.get(CommunicationSession, session_id)
         if not session:
             raise EntityNotFoundError("Session", session_id)
         steps_statement = select(SessionStep).where(SessionStep.session_id == session_id)
-        steps = self._session.exec(steps_statement).all()
+        result = await self._session.execute(steps_statement)
+        steps = list(result.scalars().all())
         for step in steps:
             self._session.delete(step)
         self._session.delete(session)
-        self._session.commit()
+        await self._session.commit()
 
-    def create_session_step(
+    async def create_session_step(
         self,
         session_id: int,
         step_data: SessionStepCreate,
     ) -> SessionStepRead:
-        session = self._session.get(CommunicationSession, session_id)
+        session = await self._session.get(CommunicationSession, session_id)
         if not session:
             raise EntityNotFoundError("Session", session_id)
         choices_json = None
@@ -170,18 +174,18 @@ class CommunicationSessionService:
             selected_choice_text=step_data.selected_choice_text,
         )
         self._session.add(step)
-        self._session.commit()
-        self._session.refresh(step)
+        await self._session.commit()
+        await self._session.refresh(step)
         session.updated_at = datetime.utcnow()
         self._session.add(session)
-        self._session.commit()
+        await self._session.commit()
         return step_to_response(step)
 
 
 class CommunicationService:
     """Service for communication-related features (choices and selection)."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
     async def generate_choices(self, request: ChoicesRequest) -> ChoicesResponse:
@@ -190,11 +194,11 @@ class CommunicationService:
             user_notes = None
             caregiver_description = None
             if request.user_id:
-                user = self._session.get(User, request.user_id)
+                user = await self._session.get(User, request.user_id)
                 if user:
                     user_notes = user.notes
             if request.caregiver_id:
-                caregiver = self._session.get(Caregiver, request.caregiver_id)
+                caregiver = await self._session.get(Caregiver, request.caregiver_id)
                 if caregiver:
                     caregiver_description = caregiver.description
             llm_service = get_llm_service(
@@ -243,11 +247,13 @@ class CommunicationService:
                         selected_choice_text=None,
                     )
                     self._session.add(step)
-                    comm_session = self._session.get(CommunicationSession, request.session_id)
+                    comm_session = await self._session.get(
+                        CommunicationSession, request.session_id
+                    )
                     if comm_session:
                         comm_session.updated_at = datetime.utcnow()
                         self._session.add(comm_session)
-                    self._session.commit()
+                    await self._session.commit()
                 except Exception:
                     logger.exception("Error saving session step")
             return ChoicesResponse(choices=choices)
@@ -306,22 +312,23 @@ class CommunicationService:
                     logger.warning("TTS generation returned no audio data")
             if request.session_id and request.step_number is not None and request.choice_text:
                 try:
-                    from sqlmodel import select as sql_select
-
-                    step_statement = sql_select(SessionStep).where(
+                    step_statement = select(SessionStep).where(
                         SessionStep.session_id == request.session_id,
                         SessionStep.step_number == request.step_number,
                     )
-                    step = self._session.exec(step_statement).first()
+                    result = await self._session.execute(step_statement)
+                    step = result.scalars().first()
                     if step:
                         step.selected_choice_text = request.choice_text
                         step.timestamp = datetime.utcnow()
                         self._session.add(step)
-                        comm_session = self._session.get(CommunicationSession, request.session_id)
+                        comm_session = await self._session.get(
+                            CommunicationSession, request.session_id
+                        )
                         if comm_session:
                             comm_session.updated_at = datetime.utcnow()
                             self._session.add(comm_session)
-                        self._session.commit()
+                        await self._session.commit()
                 except Exception:
                     logger.exception("Error updating session step with selected choice")
             return ChoiceSelectionResponse(

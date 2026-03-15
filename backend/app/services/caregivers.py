@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List
 
-from sqlmodel import Session, select
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Caregiver
 from app.schemas.caregiver import CaregiverCreate, CaregiverRead, CaregiverUpdate
@@ -25,37 +26,38 @@ def caregiver_to_response(caregiver: Caregiver) -> CaregiverRead:
 class CaregiverService:
     """Service for caregiver operations."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    def list_caregivers(self, skip: int, limit: int) -> List[CaregiverRead]:
+    async def list_caregivers(self, skip: int, limit: int) -> List[CaregiverRead]:
         statement = select(Caregiver).offset(skip).limit(limit)
-        caregivers = self._session.exec(statement).all()
+        result = await self._session.execute(statement)
+        caregivers = list(result.scalars().all())
         return [caregiver_to_response(caregiver) for caregiver in caregivers]
 
-    def get_caregiver(self, caregiver_id: int) -> CaregiverRead:
-        caregiver = self._session.get(Caregiver, caregiver_id)
+    async def get_caregiver(self, caregiver_id: int) -> CaregiverRead:
+        caregiver = await self._session.get(Caregiver, caregiver_id)
         if not caregiver:
             raise EntityNotFoundError("Caregiver", caregiver_id)
         return caregiver_to_response(caregiver)
 
-    def create_caregiver(self, caregiver_data: CaregiverCreate) -> CaregiverRead:
+    async def create_caregiver(self, caregiver_data: CaregiverCreate) -> CaregiverRead:
         caregiver = Caregiver(
             name=caregiver_data.name,
             gender=caregiver_data.gender,
             description=caregiver_data.description,
         )
         self._session.add(caregiver)
-        self._session.commit()
-        self._session.refresh(caregiver)
+        await self._session.commit()
+        await self._session.refresh(caregiver)
         return caregiver_to_response(caregiver)
 
-    def update_caregiver(
+    async def update_caregiver(
         self,
         caregiver_id: int,
         caregiver_data: CaregiverUpdate,
     ) -> CaregiverRead:
-        caregiver = self._session.get(Caregiver, caregiver_id)
+        caregiver = await self._session.get(Caregiver, caregiver_id)
         if not caregiver:
             raise EntityNotFoundError("Caregiver", caregiver_id)
         if caregiver_data.name is not None:
@@ -66,13 +68,13 @@ class CaregiverService:
             caregiver.description = caregiver_data.description
         caregiver.updated_at = datetime.utcnow()
         self._session.add(caregiver)
-        self._session.commit()
-        self._session.refresh(caregiver)
+        await self._session.commit()
+        await self._session.refresh(caregiver)
         return caregiver_to_response(caregiver)
 
-    def delete_caregiver(self, caregiver_id: int) -> None:
-        caregiver = self._session.get(Caregiver, caregiver_id)
+    async def delete_caregiver(self, caregiver_id: int) -> None:
+        caregiver = await self._session.get(Caregiver, caregiver_id)
         if not caregiver:
             raise EntityNotFoundError("Caregiver", caregiver_id)
         self._session.delete(caregiver)
-        self._session.commit()
+        await self._session.commit()

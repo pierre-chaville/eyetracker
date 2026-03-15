@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List, Optional
 
-from sqlmodel import Session, select
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import User
 from app.schemas.user import (
@@ -71,24 +72,25 @@ def user_to_response(user: User) -> UserRead:
 class UserService:
     """Service for user operations."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    def list_users(self, skip: int, limit: int, active_only: bool) -> List[UserRead]:
+    async def list_users(self, skip: int, limit: int, active_only: bool) -> List[UserRead]:
         statement = select(User)
         if active_only:
             statement = statement.where(User.is_active == True)
         statement = statement.offset(skip).limit(limit)
-        users = self._session.exec(statement).all()
+        result = await self._session.execute(statement)
+        users = list(result.scalars().all())
         return [user_to_response(user) for user in users]
 
-    def get_user(self, user_id: int) -> UserRead:
-        user = self._session.get(User, user_id)
+    async def get_user(self, user_id: int) -> UserRead:
+        user = await self._session.get(User, user_id)
         if not user:
             raise EntityNotFoundError("User", user_id)
         return user_to_response(user)
 
-    def create_user(self, user_data: UserCreate) -> UserRead:
+    async def create_user(self, user_data: UserCreate) -> UserRead:
         eye_tracking_json = serialize_eye_tracking_setup(user_data.eye_tracking_setup)
         communication_json = serialize_communication(user_data.communication)
         user = User(
@@ -102,12 +104,12 @@ class UserService:
             voice=user_data.voice,
         )
         self._session.add(user)
-        self._session.commit()
-        self._session.refresh(user)
+        await self._session.commit()
+        await self._session.refresh(user)
         return user_to_response(user)
 
-    def update_user(self, user_id: int, user_data: UserUpdate) -> UserRead:
-        user = self._session.get(User, user_id)
+    async def update_user(self, user_id: int, user_data: UserUpdate) -> UserRead:
+        user = await self._session.get(User, user_id)
         if not user:
             raise EntityNotFoundError("User", user_id)
         if user_data.name is not None:
@@ -130,13 +132,13 @@ class UserService:
             user.voice = user_data.voice
         user.updated_at = datetime.utcnow()
         self._session.add(user)
-        self._session.commit()
-        self._session.refresh(user)
+        await self._session.commit()
+        await self._session.refresh(user)
         return user_to_response(user)
 
-    def delete_user(self, user_id: int) -> None:
-        user = self._session.get(User, user_id)
+    async def delete_user(self, user_id: int) -> None:
+        user = await self._session.get(User, user_id)
         if not user:
             raise EntityNotFoundError("User", user_id)
         self._session.delete(user)
-        self._session.commit()
+        await self._session.commit()

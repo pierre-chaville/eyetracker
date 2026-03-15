@@ -44,7 +44,7 @@ function startPythonBackend() {
   const pythonPath = path.join(__dirname, '../backend/venv/Scripts/python.exe');
   const scriptPath = path.join(__dirname, '../backend/main.py');
   
-  pythonProcess = spawn(pythonPath, ['-m', 'uvicorn', 'main:app', '--host', '127.0.0.1', '--port', '8000']);
+  pythonProcess = spawn(pythonPath, ['-m', 'uvicorn', 'main:app', '--host', '127.0.0.1', '--port', '8080']);
   
   pythonProcess.stdout.on('data', (data) => {
     console.log(`Python: ${data}`);

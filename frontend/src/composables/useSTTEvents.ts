@@ -4,7 +4,7 @@ import type { STTEvent } from '../types/ws'
 import type { WSConnectionStatus } from '../services/ws'
 import { createWSClient } from '../services/ws'
 
-const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8000'
+const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080'
 
 interface STTEventOptions {
   autoConnect?: boolean

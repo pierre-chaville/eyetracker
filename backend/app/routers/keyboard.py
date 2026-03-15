@@ -27,4 +27,4 @@ async def keyboard_tts(
     service: KeyboardService = Depends(get_keyboard_service),
 ) -> KeyboardTTSResponse:
     """Generate TTS for keyboard input (word or letter)."""
-    return service.generate_tts(request)
+    return await service.generate_tts(request)

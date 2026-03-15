@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 import re
 
-from sqlmodel import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import load_config
 from app.models import Caregiver, User
@@ -26,7 +26,7 @@ logger = get_logger()
 class KeyboardService:
     """Service for keyboard predictions and TTS."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
     async def get_predictions(self, request: ChoicesRequest) -> KeyboardPredictionsResponse:
@@ -35,11 +35,11 @@ class KeyboardService:
             user_notes = None
             caregiver_description = None
             if request.user_id:
-                user = self._session.get(User, request.user_id)
+                user = await self._session.get(User, request.user_id)
                 if user:
                     user_notes = user.notes
             if request.caregiver_id:
-                caregiver = self._session.get(Caregiver, request.caregiver_id)
+                caregiver = await self._session.get(Caregiver, request.caregiver_id)
                 if caregiver:
                     caregiver_description = caregiver.description
             llm_service = get_llm_service()
@@ -71,7 +71,7 @@ class KeyboardService:
             logger.exception("Error generating keyboard predictions")
             return KeyboardPredictionsResponse(words=[])
 
-    def generate_tts(self, request: KeyboardTTSRequest) -> KeyboardTTSResponse:
+    async def generate_tts(self, request: KeyboardTTSRequest) -> KeyboardTTSResponse:
         try:
             text = request.text or ""
             if not text:

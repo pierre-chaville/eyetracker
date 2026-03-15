@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from fastapi import Depends
-from sqlmodel import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import ConfigService
 from app.database import get_session
@@ -16,27 +16,31 @@ def get_config_service() -> ConfigService:
     return ConfigService()
 
 
-def get_user_service(session: Session = Depends(get_session)) -> UserService:
+def get_user_service(session: AsyncSession = Depends(get_session)) -> UserService:
     return UserService(session)
 
 
-def get_caregiver_service(session: Session = Depends(get_session)) -> CaregiverService:
+def get_caregiver_service(session: AsyncSession = Depends(get_session)) -> CaregiverService:
     return CaregiverService(session)
 
 
-def get_session_service(session: Session = Depends(get_session)) -> CommunicationSessionService:
+def get_session_service(
+    session: AsyncSession = Depends(get_session),
+) -> CommunicationSessionService:
     return CommunicationSessionService(session)
 
 
-def get_communication_service(session: Session = Depends(get_session)) -> CommunicationService:
+def get_communication_service(
+    session: AsyncSession = Depends(get_session),
+) -> CommunicationService:
     return CommunicationService(session)
 
 
-def get_keyboard_service(session: Session = Depends(get_session)) -> KeyboardService:
+def get_keyboard_service(session: AsyncSession = Depends(get_session)) -> KeyboardService:
     return KeyboardService(session)
 
 
 def get_keyboard_layout_service(
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
 ) -> KeyboardLayoutService:
     return KeyboardLayoutService(session)

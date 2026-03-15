@@ -16,41 +16,41 @@ router = APIRouter(tags=["keyboards"])
 
 
 @router.get("/api/keyboards", response_model=List[KeyboardLayoutRead])
-def list_keyboards(
+async def list_keyboards(
     skip: int = 0,
     limit: int = 100,
     service: KeyboardLayoutService = Depends(get_keyboard_layout_service),
 ) -> List[KeyboardLayoutRead]:
     """List keyboard layouts (KeyboardLayoutRead)."""
-    return service.list_layouts(skip=skip, limit=limit)
+    return await service.list_layouts(skip=skip, limit=limit)
 
 
 @router.get("/api/keyboards/{keyboard_id}", response_model=KeyboardLayoutRead)
-def get_keyboard(
+async def get_keyboard(
     keyboard_id: int,
     service: KeyboardLayoutService = Depends(get_keyboard_layout_service),
 ) -> KeyboardLayoutRead:
     """Get a keyboard layout (KeyboardLayoutRead)."""
-    return service.get_layout(keyboard_id)
+    return await service.get_layout(keyboard_id)
 
 
 @router.post("/api/keyboards", response_model=KeyboardLayoutRead)
-def create_keyboard(
+async def create_keyboard(
     payload: KeyboardLayoutCreate,
     service: KeyboardLayoutService = Depends(get_keyboard_layout_service),
 ) -> KeyboardLayoutRead:
     """Create a keyboard layout (KeyboardLayoutRead)."""
-    return service.create_layout(payload)
+    return await service.create_layout(payload)
 
 
 @router.put("/api/keyboards/{keyboard_id}", response_model=KeyboardLayoutRead)
-def update_keyboard(
+async def update_keyboard(
     keyboard_id: int,
     payload: KeyboardLayoutUpdate,
     service: KeyboardLayoutService = Depends(get_keyboard_layout_service),
 ) -> KeyboardLayoutRead:
     """Update a keyboard layout (KeyboardLayoutRead)."""
-    return service.update_layout(keyboard_id, payload)
+    return await service.update_layout(keyboard_id, payload)
 
 
 @router.delete(
@@ -58,10 +58,10 @@ def update_keyboard(
     status_code=status.HTTP_204_NO_CONTENT,
     response_class=Response,
 )
-def delete_keyboard(
+async def delete_keyboard(
     keyboard_id: int,
     service: KeyboardLayoutService = Depends(get_keyboard_layout_service),
 ) -> Response:
     """Delete a keyboard layout."""
-    service.delete_layout(keyboard_id)
+    await service.delete_layout(keyboard_id)
     return Response(status_code=status.HTTP_204_NO_CONTENT)

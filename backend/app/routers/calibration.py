@@ -1,11 +1,10 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends
-from sqlmodel import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_session
 from app.schemas import MessageResponse
-
 from app.services.calibration import (
     CalibrationRequest,
     CalibrationResponse,
@@ -24,7 +23,7 @@ async def start_calibration() -> MessageResponse:
 @router.post("/api/calibration/process", response_model=CalibrationResponse)
 async def process_calibration(
     request: CalibrationRequest,
-    session: Session = Depends(get_session),
+    session: AsyncSession = Depends(get_session),
 ) -> CalibrationResponse:
     """Process calibration data and calculate averages for each position."""
-    return process_calibration_data(request, session)
+    return await process_calibration_data(request, session)

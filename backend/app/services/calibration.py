@@ -15,7 +15,7 @@ from typing import Optional, List, Tuple
 import numpy as np
 from fastapi import HTTPException, status
 from pydantic import BaseModel
-from sqlmodel import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import User
 
@@ -175,9 +175,11 @@ def calculate_affine_coefficients(
         return None
 
 
-def process_calibration_data(request: CalibrationRequest, session: Session) -> CalibrationResponse:
+async def process_calibration_data(
+    request: CalibrationRequest, session: AsyncSession
+) -> CalibrationResponse:
     """Process calibration data and calculate averages and affine coefficients."""
-    user = session.get(User, request.user_id)
+    user = await session.get(User, request.user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -237,8 +239,8 @@ def process_calibration_data(request: CalibrationRequest, session: Session) -> C
     user.calibration = calibration_json
     user.updated_at = datetime.utcnow()
     session.add(user)
-    session.commit()
-    session.refresh(user)
+    await session.commit()
+    await session.refresh(user)
 
     return CalibrationResponse(
         user_id=request.user_id,

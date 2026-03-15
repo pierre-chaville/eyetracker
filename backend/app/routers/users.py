@@ -20,7 +20,7 @@ async def list_users(
     service: UserService = Depends(get_user_service),
 ) -> List[UserRead]:
     """List all users with optional filtering (UserRead)."""
-    return service.list_users(skip=skip, limit=limit, active_only=active_only)
+    return await service.list_users(skip=skip, limit=limit, active_only=active_only)
 
 
 @router.get("/api/users/{user_id}", response_model=UserRead)
@@ -30,7 +30,7 @@ async def get_user(
 ) -> UserRead:
     """Get a specific user by ID (UserRead)."""
     try:
-        return service.get_user(user_id)
+        return await service.get_user(user_id)
     except EntityNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -48,7 +48,7 @@ async def create_user(
     service: UserService = Depends(get_user_service),
 ) -> UserRead:
     """Create a new user (UserRead)."""
-    return service.create_user(user_data)
+    return await service.create_user(user_data)
 
 
 @router.put("/api/users/{user_id}", response_model=UserRead)
@@ -59,7 +59,7 @@ async def update_user(
 ) -> UserRead:
     """Update an existing user (UserRead)."""
     try:
-        return service.update_user(user_id, user_data)
+        return await service.update_user(user_id, user_data)
     except EntityNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -78,7 +78,7 @@ async def delete_user(
 ) -> Response:
     """Delete a user."""
     try:
-        service.delete_user(user_id)
+        await service.delete_user(user_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except EntityNotFoundError as exc:
         raise HTTPException(

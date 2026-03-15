@@ -3,7 +3,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import List
 
-from sqlmodel import Session, select
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import KeyboardLayout
 from app.schemas.keyboard_layout import (
@@ -31,21 +32,22 @@ def layout_to_response(layout: KeyboardLayout) -> KeyboardLayoutRead:
 class KeyboardLayoutService:
     """Service for keyboard layout operations."""
 
-    def __init__(self, session: Session) -> None:
+    def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    def list_layouts(self, skip: int, limit: int) -> List[KeyboardLayoutRead]:
+    async def list_layouts(self, skip: int, limit: int) -> List[KeyboardLayoutRead]:
         statement = select(KeyboardLayout).offset(skip).limit(limit)
-        layouts = self._session.exec(statement).all()
+        result = await self._session.execute(statement)
+        layouts = list(result.scalars().all())
         return [layout_to_response(layout) for layout in layouts]
 
-    def get_layout(self, layout_id: int) -> KeyboardLayoutRead:
-        layout = self._session.get(KeyboardLayout, layout_id)
+    async def get_layout(self, layout_id: int) -> KeyboardLayoutRead:
+        layout = await self._session.get(KeyboardLayout, layout_id)
         if not layout:
             raise EntityNotFoundError("KeyboardLayout", layout_id)
         return layout_to_response(layout)
 
-    def create_layout(self, payload: KeyboardLayoutCreate) -> KeyboardLayoutRead:
+    async def create_layout(self, payload: KeyboardLayoutCreate) -> KeyboardLayoutRead:
         layout = KeyboardLayout(
             name=payload.name,
             description=payload.description,
@@ -55,12 +57,12 @@ class KeyboardLayoutService:
             cells=payload.cells,
         )
         self._session.add(layout)
-        self._session.commit()
-        self._session.refresh(layout)
+        await self._session.commit()
+        await self._session.refresh(layout)
         return layout_to_response(layout)
 
-    def update_layout(self, layout_id: int, payload: KeyboardLayoutUpdate) -> KeyboardLayoutRead:
-        layout = self._session.get(KeyboardLayout, layout_id)
+    async def update_layout(self, layout_id: int, payload: KeyboardLayoutUpdate) -> KeyboardLayoutRead:
+        layout = await self._session.get(KeyboardLayout, layout_id)
         if not layout:
             raise EntityNotFoundError("KeyboardLayout", layout_id)
         if payload.name is not None:
@@ -77,13 +79,13 @@ class KeyboardLayoutService:
             layout.cells = payload.cells
         layout.updated_at = datetime.utcnow()
         self._session.add(layout)
-        self._session.commit()
-        self._session.refresh(layout)
+        await self._session.commit()
+        await self._session.refresh(layout)
         return layout_to_response(layout)
 
-    def delete_layout(self, layout_id: int) -> None:
-        layout = self._session.get(KeyboardLayout, layout_id)
+    async def delete_layout(self, layout_id: int) -> None:
+        layout = await self._session.get(KeyboardLayout, layout_id)
         if not layout:
             raise EntityNotFoundError("KeyboardLayout", layout_id)
         self._session.delete(layout)
-        self._session.commit()
+        await self._session.commit()

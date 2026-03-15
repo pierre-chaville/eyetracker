@@ -59,7 +59,7 @@ npm run dev
 
 This will:
 1. Start the Vue.js dev server (http://localhost:5173)
-2. Start the FastAPI backend (http://localhost:8000)
+2. Start the FastAPI backend (http://localhost:8080)
 3. Launch the Electron app
 
 ### Individual Commands

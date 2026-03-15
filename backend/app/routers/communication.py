@@ -73,7 +73,7 @@ async def create_session(
     service: CommunicationSessionService = Depends(get_session_service),
 ) -> CommunicationSessionRead:
     """Create a new communication session (CommunicationSessionRead)."""
-    return service.create_session(session_data)
+    return await service.create_session(session_data)
 
 
 @router.get(
@@ -88,7 +88,7 @@ async def list_sessions(
     service: CommunicationSessionService = Depends(get_session_service),
 ) -> List[CommunicationSessionRead]:
     """List all communication sessions with optional filtering (CommunicationSessionRead)."""
-    return service.list_sessions(skip, limit, user_id, caregiver_id)
+    return await service.list_sessions(skip, limit, user_id, caregiver_id)
 
 
 @router.get(
@@ -101,7 +101,7 @@ async def get_communication_session(
 ) -> CommunicationSessionRead:
     """Get a specific communication session by ID with all steps (CommunicationSessionRead)."""
     try:
-        return service.get_session(session_id)
+        return await service.get_session(session_id)
     except EntityNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -120,7 +120,7 @@ async def update_session(
 ) -> CommunicationSessionRead:
     """Update an existing communication session (CommunicationSessionRead)."""
     try:
-        return service.update_session(session_id, session_data)
+        return await service.update_session(session_id, session_data)
     except EntityNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -139,7 +139,7 @@ async def delete_session(
 ) -> Response:
     """Delete a communication session and all its steps."""
     try:
-        service.delete_session(session_id)
+        await service.delete_session(session_id)
         return Response(status_code=status.HTTP_204_NO_CONTENT)
     except EntityNotFoundError as exc:
         raise HTTPException(
@@ -160,7 +160,7 @@ async def create_session_step(
 ) -> SessionStepRead:
     """Create a new step in a communication session (SessionStepRead)."""
     try:
-        return service.create_session_step(session_id, step_data)
+        return await service.create_session_step(session_id, step_data)
     except EntityNotFoundError as exc:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
