@@ -4,13 +4,13 @@ Handles microphone audio capture and transcription with WebSocket event callback
 """
 from __future__ import annotations
 
-import os
 import threading
 import time
 from typing import Optional, Callable
-from dotenv import load_dotenv
 
-load_dotenv()
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 try:
     from deepgram import DeepgramClient
@@ -19,7 +19,7 @@ try:
 
     DEPENDENCIES_AVAILABLE = True
 except ImportError as e:
-    print(f"Error importing dependencies: {e}")
+    logger.warning("Error importing STT dependencies: %s", e, exc_info=True)
     DEPENDENCIES_AVAILABLE = False
     IMPORT_ERROR = str(e)
 
@@ -44,9 +44,14 @@ class SpeechToTextService:
         if not DEPENDENCIES_AVAILABLE:
             raise ImportError(f"Required dependencies not available: {IMPORT_ERROR}")
 
-        self.api_key = os.getenv("DEEPGRAM_API_KEY")
+        from app.settings import get_settings
+
+        settings = get_settings()
+        self.api_key = settings.deepgram_api_key
         if not self.api_key:
-            raise ValueError("DEEPGRAM_API_KEY not found in environment variables")
+            raise ValueError(
+                "DEEPGRAM_API_KEY not found. Set it in .env or environment."
+            )
 
         self.on_speech_started = on_speech_started
         self.on_transcription = on_transcription
@@ -113,14 +118,20 @@ class SpeechToTextService:
                             )
                             self.RATE = sample_rate
                             break
-                        except Exception:
+                        except Exception as e:
+                            logger.debug(
+                                "Audio device open failed for rate %s: %s",
+                                sample_rate,
+                                e,
+                            )
                             if sample_rate == 48000:
                                 raise
                             continue
 
                     if self.stream:
                         break
-                except Exception:
+                except Exception as e:
+                    logger.debug("Audio device open failed for device: %s", e)
                     continue
 
             if self.stream is None:
@@ -178,33 +189,33 @@ class SpeechToTextService:
             try:
                 self.stream.stop_stream()
                 self.stream.close()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Error closing STT stream: %s", e)
 
         if hasattr(self, "dg_connection_context") and self.dg_connection_context:
             try:
                 self.dg_connection_context.finish()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Error finishing Deepgram context: %s", e)
 
         if hasattr(self, "dg_connection") and self.dg_connection:
             try:
                 self.dg_connection.__exit__(None, None, None)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Error closing Deepgram connection: %s", e)
 
         if self.audio:
             try:
                 self.audio.terminate()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Error terminating PyAudio: %s", e)
 
         if self.receive_thread and self.receive_thread.is_alive():
             self.receive_thread.join(timeout=1.0)
         if self.stream_thread and self.stream_thread.is_alive():
             self.stream_thread.join(timeout=1.0)
-        
-        print("STT: Stopped successfully")
+
+        logger.info("STT stopped successfully")
 
     def _on_message(self, result, **kwargs):
         """Handle transcription results."""
@@ -212,7 +223,7 @@ class SpeechToTextService:
             if result.is_final:
                 sentence = result.channel.alternatives[0].transcript
                 if len(sentence) > 0 and self.on_transcription:
-                    print(f"--> Transcription: {sentence}")
+                    logger.info("Transcription: %s", sentence, extra={"text": sentence})
                     self.on_transcription(sentence)
         except Exception as e:
             if self.on_error:
@@ -225,7 +236,7 @@ class SpeechToTextService:
     def _on_speech_started(self, speech_started, **kwargs):
         """Handle speech started event."""
         if self.on_speech_started:
-            print("--> Speech started")
+            logger.info("Speech started")
             self.on_speech_started()
 
     def _on_utterance_end(self, utterance_end, **kwargs):
@@ -284,13 +295,13 @@ class SpeechToTextService:
         """Pause sending audio frames to Deepgram during TTS playback."""
         with self._tts_lock:
             self.tts_playing = True
-        print("STT: Paused audio frame transmission for TTS playback")
+        logger.debug("STT paused audio frame transmission for TTS playback")
 
     def resume_after_tts(self):
         """Resume sending audio frames to Deepgram after TTS playback."""
         with self._tts_lock:
             self.tts_playing = False
-        print("STT: Resumed audio frame transmission after TTS playback")
+        logger.debug("STT resumed audio frame transmission after TTS playback")
 
 
 __all__ = ["SpeechToTextService"]

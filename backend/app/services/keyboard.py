@@ -79,7 +79,7 @@ class KeyboardService:
             tts_config = load_config()
             tts_provider = resolve_tts_provider(tts_config)
             tts_service = get_tts_service(provider=tts_provider)
-            audio_data = tts_service.generate_speech(
+            audio_data = await tts_service.generate_speech(
                 text=text,
                 language=tts_config.tts_language or "fr",
                 voice_name=tts_config.tts_voice_name if tts_config.tts_voice_name else None,

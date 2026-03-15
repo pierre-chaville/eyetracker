@@ -4,19 +4,28 @@ import json
 from pathlib import Path
 
 from app.schemas.config import ConfigModel, ConfigResponse
+from app.settings import get_settings
 from app.utils.exceptions import ConfigSaveError, ConfigValidationError
 from app.utils.logging import get_logger
 
 logger = get_logger()
 BASE_DIR = Path(__file__).resolve().parents[1]
-CONFIG_FILE = BASE_DIR / "config.json"
+
+
+def _config_file_path() -> Path:
+    """Config file path from settings or default."""
+    settings = get_settings()
+    if settings.config_file is not None:
+        return settings.config_file
+    return BASE_DIR / "config.json"
 
 
 def load_config() -> ConfigModel:
     """Load configuration from config.json file."""
-    if CONFIG_FILE.exists():
+    config_file = _config_file_path()
+    if config_file.exists():
         try:
-            with CONFIG_FILE.open("r", encoding="utf-8") as file:
+            with config_file.open("r", encoding="utf-8") as file:
                 data = json.load(file)
                 if "prompt" in data and "communicate_prompt" not in data:
                     data["communicate_prompt"] = data["prompt"]
@@ -45,8 +54,9 @@ def load_config() -> ConfigModel:
 
 def save_config(config: ConfigModel) -> None:
     """Save configuration to config.json file."""
+    config_file = _config_file_path()
     try:
-        with CONFIG_FILE.open("w", encoding="utf-8") as file:
+        with config_file.open("w", encoding="utf-8") as file:
             json.dump(config.model_dump(), file, indent=2, ensure_ascii=False)
     except Exception as exc:
         logger.exception("Failed to persist configuration")

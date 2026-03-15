@@ -281,7 +281,7 @@ class CommunicationService:
                     "Generating TTS for selected choice",
                     extra={"provider": tts_provider},
                 )
-                audio_data = tts_service.generate_speech(
+                audio_data = await tts_service.generate_speech(
                     text=request.choice_text,
                     language=tts_config.tts_language or "en",
                     voice_name=tts_config.tts_voice_name if tts_config.tts_voice_name else None,
@@ -346,7 +346,7 @@ class CommunicationService:
                     tts_provider = resolve_tts_provider(config)
                     tts_service = get_tts_service(provider=tts_provider)
                     tts_config = load_config()
-                    audio_data = tts_service.generate_speech(
+                    audio_data = await tts_service.generate_speech(
                         text=request.choice_text,
                         language=tts_config.tts_language or "en",
                         voice_name=tts_config.tts_voice_name if tts_config.tts_voice_name else None,

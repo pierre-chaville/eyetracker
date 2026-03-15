@@ -18,6 +18,9 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import User
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class CalibrationPointData(BaseModel):
@@ -110,7 +113,11 @@ def calculate_geometric_median(samples: List[dict]) -> Tuple[float, float]:
             float(np.median([s["y"] for s in valid_samples])),
         )
     except Exception as e:
-        print(f"Error calculating geometric median, using coordinate-wise median: {e}")
+        logger.warning(
+            "Error calculating geometric median, using coordinate-wise median: %s",
+            e,
+            exc_info=True,
+        )
         return (
             float(np.median([s["x"] for s in valid_samples])),
             float(np.median([s["y"] for s in valid_samples])),
@@ -161,17 +168,14 @@ def calculate_affine_coefficients(
 
         affine_coefficients = AffineCoefficients(a0=a0, a1=a1, a2=a2, b0=b0, b1=b1, b2=b2)
 
-        print("Affine coefficients calculated:")
-        print(f"  X = {a0:.2f} + {a1:.4f}*x + {a2:.4f}*y")
-        print(f"  Y = {b0:.2f} + {b1:.4f}*x + {b2:.4f}*y")
-
+        logger.debug(
+            "Affine coefficients: X = %.2f + %.4f*x + %.4f*y, Y = %.2f + %.4f*x + %.4f*y",
+            a0, a1, a2, b0, b1, b2,
+        )
         return affine_coefficients
 
     except Exception as e:
-        print(f"Error calculating affine coefficients: {e}")
-        import traceback
-
-        traceback.print_exc()
+        logger.exception("Error calculating affine coefficients: %s", e)
         return None
 
 

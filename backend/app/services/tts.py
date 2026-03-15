@@ -4,8 +4,9 @@ Supports multiple TTS providers.
 """
 from __future__ import annotations
 
-import os
+import asyncio
 import base64
+import os
 import threading
 import tempfile
 import hashlib
@@ -13,9 +14,10 @@ from pathlib import Path
 from typing import Optional
 
 import pygame
-from dotenv import load_dotenv
 
-load_dotenv()
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class TTSService:
@@ -30,7 +32,7 @@ class TTSService:
                 or "google" (requires API key)
             cache_enabled: Whether to enable filesystem caching for TTS audio
         """
-        print(f"--> Initializing TTS service with provider: {provider}")
+        logger.info("Initializing TTS service", extra={"provider": provider})
         self.provider = provider.lower()
         self._engine = None
         self.cache_enabled = cache_enabled
@@ -39,7 +41,7 @@ class TTSService:
             backend_dir = Path(__file__).resolve().parents[2]
             self.cache_dir = backend_dir / "tts_cache"
             self.cache_dir.mkdir(exist_ok=True)
-            print(f"TTS Cache directory: {self.cache_dir}")
+            logger.debug("TTS cache directory: %s", self.cache_dir)
         else:
             self.cache_dir = None
 
@@ -86,10 +88,10 @@ class TTSService:
             if cache_path and cache_path.exists():
                 with open(cache_path, "rb") as file:
                     audio_data = file.read()
-                print(f"TTS Cache: Loaded from cache ({len(audio_data)} bytes)")
+                logger.debug("TTS cache hit: %s bytes", len(audio_data))
                 return audio_data
         except Exception as e:
-            print(f"TTS Cache: Error loading from cache: {e}")
+            logger.warning("TTS cache load failed: %s", e, exc_info=True)
         return None
 
     def _save_to_cache(self, cache_path: Optional[Path], audio_data: bytes) -> None:
@@ -98,11 +100,11 @@ class TTSService:
             if cache_path and self.cache_enabled:
                 with open(cache_path, "wb") as file:
                     file.write(audio_data)
-                print(f"TTS Cache: Saved to cache ({len(audio_data)} bytes)")
+                logger.debug("TTS cache saved: %s bytes", len(audio_data))
         except Exception as e:
-            print(f"TTS Cache: Error saving to cache: {e}")
+            logger.warning("TTS cache save failed: %s", e, exc_info=True)
 
-    def generate_speech(
+    async def generate_speech(
         self,
         text: str,
         language: str = "fr",
@@ -125,13 +127,24 @@ class TTSService:
 
         audio_data = None
         if self.provider == "pyttsx3":
-            audio_data = self._generate_with_pyttsx3(text)
+            audio_data = await asyncio.to_thread(
+                self._generate_with_pyttsx3, text
+            )
         elif self.provider == "openai":
-            audio_data = self._generate_with_openai(text, language)
+            audio_data = await asyncio.to_thread(
+                self._generate_with_openai, text, language
+            )
         elif self.provider == "elevenlabs":
-            audio_data = self._generate_with_elevenlabs(text, language)
+            audio_data = await self._generate_with_elevenlabs(text, language)
         elif self.provider == "google":
-            audio_data = self._generate_with_google(text, language, voice_name, pitch, speaking_rate)
+            audio_data = await asyncio.to_thread(
+                self._generate_with_google,
+                text,
+                language,
+                voice_name,
+                pitch,
+                speaking_rate,
+            )
         else:
             raise ValueError(f"Unsupported TTS provider: {self.provider}")
 
@@ -162,7 +175,7 @@ class TTSService:
                     os.unlink(tmp_path)
 
         except Exception as e:
-            print(f"Error generating speech with pyttsx3: {e}")
+            logger.exception("Error generating speech with pyttsx3: %s", e)
             return None
 
     def _generate_with_openai(self, text: str, language: str = "en") -> Optional[bytes]:
@@ -170,9 +183,13 @@ class TTSService:
         try:
             from openai import OpenAI
 
-            api_key = os.getenv("OPENAI_API_KEY")
+            from app.settings import get_settings
+
+            api_key = get_settings().openai_api_key
             if not api_key:
-                raise ValueError("OPENAI_API_KEY environment variable is required")
+                raise ValueError(
+                    "OPENAI_API_KEY not set. Set it in .env or environment."
+                )
 
             client = OpenAI(api_key=api_key)
             voice = "nova"
@@ -187,61 +204,67 @@ class TTSService:
         except ImportError:
             raise ValueError("openai package is not installed. Install it with: pip install openai")
         except Exception as e:
-            print(f"Error generating speech with OpenAI: {e}")
+            logger.exception("Error generating speech with OpenAI: %s", e)
             return None
 
-    def _generate_with_elevenlabs(self, text: str, language: str = "en") -> Optional[bytes]:
-        """Generate speech using ElevenLabs API"""
+    async def _generate_with_elevenlabs(
+        self, text: str, language: str = "en"
+    ) -> Optional[bytes]:
+        """Generate speech using ElevenLabs API (httpx async)."""
+        import httpx
+
+        from app.settings import get_settings
+
+        settings = get_settings()
+        api_key = settings.eleven_labs_api_key
+        voice_id = settings.eleven_labs_voice_id
+
+        if not api_key:
+            raise ValueError(
+                "ELEVEN_LABS_API_KEY not set. Set it in .env or environment."
+            )
+        if not voice_id:
+            raise ValueError(
+                "ELEVEN_LABS_VOICE_ID not set. Set it in .env or environment."
+            )
+
+        url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
+        headers = {
+            "Accept": "audio/mpeg",
+            "Content-Type": "application/json",
+            "xi-api-key": api_key,
+        }
+        data = {
+            "text": text,
+            "model_id": "eleven_multilingual_v2",
+            "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
+        }
+        timeout = settings.http_timeout_seconds
+
         try:
-            import requests
-
-            api_key = os.getenv("ELEVEN_LABS_API_KEY")
-            voice_id = os.getenv("ELEVEN_LABS_VOICE_ID")
-
-            print(f"ElevenLabs TTS: API key present: {bool(api_key)}, Voice ID: {voice_id}")
-
-            if not api_key:
-                raise ValueError("ELEVEN_LABS_API_KEY environment variable is required")
-            if not voice_id:
-                raise ValueError("ELEVEN_LABS_VOICE_ID environment variable is required")
-
-            url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
-            print(f"ElevenLabs TTS: Calling URL: {url}")
-            print(f"ElevenLabs TTS: Text to convert: '{text}'")
-
-            headers = {
-                "Accept": "audio/mpeg",
-                "Content-Type": "application/json",
-                "xi-api-key": api_key,
-            }
-
-            data = {
-                "text": text,
-                "model_id": "eleven_multilingual_v2",
-                "voice_settings": {"stability": 0.5, "similarity_boost": 0.75},
-            }
-
-            response = requests.post(url, json=data, headers=headers, timeout=30)
-            print(f"ElevenLabs TTS: Response status code: {response.status_code}")
-
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    url, json=data, headers=headers, timeout=timeout
+                )
+            logger.debug(
+                "ElevenLabs TTS response: status=%s, size=%s",
+                response.status_code,
+                len(response.content) if response.content else 0,
+            )
             response.raise_for_status()
-            audio_data = response.content
-            print(f"ElevenLabs TTS: Received audio data, length: {len(audio_data)} bytes")
-            return audio_data
-
-        except ImportError:
-            raise ValueError("requests package is not installed. Install it with: pip install requests")
-        except requests.exceptions.RequestException as e:
-            print(f"Error generating speech with ElevenLabs (RequestException): {e}")
-            if hasattr(e, "response") and e.response is not None:
-                print(f"Response status: {e.response.status_code}")
-                print(f"Response body: {e.response.text}")
+            return response.content
+        except httpx.HTTPStatusError as e:
+            logger.warning(
+                "ElevenLabs TTS HTTP error: %s %s",
+                e.response.status_code,
+                e.response.text[:200] if e.response.text else "",
+            )
+            return None
+        except httpx.RequestError as e:
+            logger.exception("ElevenLabs TTS request failed: %s", e)
             return None
         except Exception as e:
-            print(f"Error generating speech with ElevenLabs: {e}")
-            import traceback
-
-            traceback.print_exc()
+            logger.exception("ElevenLabs TTS error: %s", e)
             return None
 
     def _generate_with_google(
@@ -256,23 +279,30 @@ class TTSService:
         try:
             from google.cloud import texttospeech
 
-            credentials_path = os.getenv("GOOGLE_APPLICATION_CREDENTIALS")
+            from app.settings import get_settings
+
+            settings = get_settings()
+            credentials_path = settings.google_application_credentials
             if not credentials_path:
                 backend_dir = Path(__file__).resolve().parents[2]
-                credentials_path = backend_dir / "google.json"
-                if credentials_path.exists():
-                    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str(credentials_path)
-                    print(f"Google TTS: Using service account from {credentials_path}")
+                default_path = backend_dir / "google.json"
+                if default_path.exists():
+                    credentials_path = str(default_path)
+                    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
+                    logger.debug("Google TTS: using default credentials path")
                 else:
                     raise ValueError(
-                        "Google Cloud service account credentials not found. "
-                        "Set GOOGLE_APPLICATION_CREDENTIALS environment variable or place "
+                        "Google Cloud credentials not found. Set "
+                        "GOOGLE_APPLICATION_CREDENTIALS in .env or place "
                         "google.json in backend/"
                     )
+            else:
+                credentials_path = str(credentials_path)
 
-            print(f"Google TTS: Using credentials from {credentials_path}")
-            print(f"Google TTS: Text to convert: '{text}'")
-            print(f"Google TTS: Language: {language}")
+            logger.debug(
+                "Google TTS request",
+                extra={"text_length": len(text), "language": language},
+            )
 
             client = texttospeech.TextToSpeechClient()
 
@@ -295,7 +325,6 @@ class TTSService:
                 }
                 voice_name = voice_name_map.get(google_language, "en-US-Standard-B")
 
-            print(f"Google TTS: Voice: {voice_name}")
 
             synthesis_input = texttospeech.SynthesisInput(text=text)
             voice = texttospeech.VoiceSelectionParams(
@@ -309,7 +338,6 @@ class TTSService:
             final_pitch = max(-20.0, min(20.0, final_pitch))
             final_speaking_rate = max(0.25, min(4.0, final_speaking_rate))
 
-            print(f"Google TTS: Pitch: {final_pitch}, Speaking Rate: {final_speaking_rate}")
 
             audio_config = texttospeech.AudioConfig(
                 audio_encoding=texttospeech.AudioEncoding.MP3,
@@ -324,7 +352,7 @@ class TTSService:
                 audio_config=audio_config,
             )
             audio_data = response.audio_content
-            print(f"Google TTS: Received audio data, length: {len(audio_data)} bytes")
+            logger.debug("Google TTS: received %s bytes", len(audio_data))
             return audio_data
 
         except ImportError:
@@ -333,17 +361,16 @@ class TTSService:
                 "Install it with: pip install google-cloud-texttospeech"
             )
         except Exception as e:
-            print(f"Error generating speech with Google Cloud TTS: {e}")
-            import traceback
-
-            traceback.print_exc()
+            logger.exception("Error generating speech with Google Cloud TTS: %s", e)
             return None
 
-    def generate_speech_base64(self, text: str, language: str = "en") -> Optional[str]:
+    async def generate_speech_base64(
+        self, text: str, language: str = "en"
+    ) -> Optional[str]:
         """
         Generate speech and return as base64-encoded string.
         """
-        audio_data = self.generate_speech(text, language)
+        audio_data = await self.generate_speech(text, language)
         if audio_data:
             return base64.b64encode(audio_data).decode("utf-8")
         return None
@@ -357,14 +384,14 @@ class TTSService:
             stt_was_active = False
             if stt_service and hasattr(stt_service, "is_active") and stt_service.is_active:
                 stt_was_active = True
-                print("Pausing STT audio frame transmission during TTS playback")
+                logger.debug("Pausing STT during TTS playback")
                 try:
                     if hasattr(stt_service, "pause_for_tts"):
                         stt_service.pause_for_tts()
                     else:
                         stt_service.stop()
                 except Exception as e:
-                    print(f"Error pausing STT: {e}")
+                    logger.warning("Error pausing STT: %s", e, exc_info=True)
             try:
                 pygame.mixer.init()
                 with tempfile.NamedTemporaryFile(
@@ -380,31 +407,26 @@ class TTSService:
                         pygame.time.wait(100)
                     pygame.mixer.music.stop()
                     pygame.mixer.quit()
-                    print("Audio played successfully using pygame")
+                    logger.debug("TTS playback finished (format: %s)", audio_format)
                 finally:
                     if os.path.exists(tmp_path):
                         os.unlink(tmp_path)
-
-                print(f"Audio played successfully using pygame (format: {audio_format})")
             except Exception as e:
-                print(f"Error playing audio: {e}")
-                import traceback
-
-                traceback.print_exc()
+                logger.exception("Error playing TTS audio: %s", e)
             finally:
                 if stt_was_active and stt_service:
-                    print("Resuming STT audio frame transmission after TTS playback")
+                    logger.debug("Resuming STT after TTS playback")
                     try:
                         if hasattr(stt_service, "resume_after_tts"):
                             stt_service.resume_after_tts()
                         else:
                             stt_service.start(language="fr", model="nova-2")
                     except Exception as e:
-                        print(f"Error resuming STT: {e}")
+                        logger.warning("Error resuming STT: %s", e, exc_info=True)
 
         thread = threading.Thread(target=_play_audio, daemon=True)
         thread.start()
-        print(f"Started audio playback in background thread (format: {audio_format})")
+        logger.debug("TTS playback started in background (format: %s)", audio_format)
 
 
 _tts_service: Optional[TTSService] = None

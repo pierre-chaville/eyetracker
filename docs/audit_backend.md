@@ -156,4 +156,10 @@ This document audits the backend codebase against the rules defined in `.cursor/
 | LangChain in chains/, LCEL, prompts | Partial | Low |
 | Type hints / docstrings / line length | Partial | Low |
 
-Recommended order of work: (1) async DB + async endpoints and services, (2) config and no-print/no-requests/no-time.sleep + exception logging, (3) httpx + retry/timeout for TTS/STT/LLM, (4) router prefix, 201 on creation, WAL, global handler, then (5) StrEnum, LangChain layout, and docstrings/typing.
+Recommended order of work: 
+
+(1) async DB + async endpoints and services, 
+(2) config and no-print/no-requests/no-time.sleep + exception logging, 
+(3) httpx + retry/timeout for TTS/STT/LLM, 
+(4) router prefix, 201 on creation, WAL, global handler, then 
+(5) StrEnum, LangChain layout, and docstrings/typing.

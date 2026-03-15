@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from typing import Set
 
@@ -113,9 +114,9 @@ async def websocket_speech_to_text(
 async def start_speech_to_text(
     manager: SpeechToTextManager = Depends(get_speech_to_text_manager),
 ) -> MessageResponse:
-    """Start speech-to-text transcription."""
+    """Start speech-to-text transcription (runs in thread to avoid blocking)."""
     try:
-        return manager.start()
+        return await asyncio.to_thread(manager.start)
     except SpeechToTextUnavailableError as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -132,9 +133,9 @@ async def start_speech_to_text(
 async def stop_speech_to_text(
     manager: SpeechToTextManager = Depends(get_speech_to_text_manager),
 ) -> MessageResponse:
-    """Stop speech-to-text transcription."""
+    """Stop speech-to-text transcription (runs in thread to avoid blocking)."""
     try:
-        return manager.stop()
+        return await asyncio.to_thread(manager.stop)
     except SpeechToTextOperationError as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

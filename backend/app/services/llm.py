@@ -4,15 +4,17 @@ Supports OpenAI and Anthropic providers with structured output.
 """
 from __future__ import annotations
 
-import os
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, Field
-from langchain_openai import ChatOpenAI
-from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
-from dotenv import load_dotenv
+from typing import Any, Dict, List, Optional
 
-load_dotenv()
+from langchain_anthropic import ChatAnthropic
+from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
+from langchain_openai import ChatOpenAI
+from pydantic import BaseModel, Field
+
+from app.settings import get_settings
+from app.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 class ChoiceWithProbability(BaseModel):
@@ -58,10 +60,13 @@ class LLMService:
 
     def _create_llm(self):
         """Create the appropriate LLM instance based on provider"""
+        settings = get_settings()
         if self.provider == "openai":
-            api_key = os.getenv("OPENAI_API_KEY")
+            api_key = settings.openai_api_key
             if not api_key:
-                raise ValueError("OPENAI_API_KEY environment variable is required")
+                raise ValueError(
+                    "OPENAI_API_KEY not set. Set it in .env or environment."
+                )
 
             model_name = self.model or "gpt-4"
             return ChatOpenAI(
@@ -71,9 +76,11 @@ class LLMService:
             )
 
         if self.provider == "anthropic":
-            api_key = os.getenv("ANTHROPIC_API_KEY")
+            api_key = settings.anthropic_api_key
             if not api_key:
-                raise ValueError("ANTHROPIC_API_KEY environment variable is required")
+                raise ValueError(
+                    "ANTHROPIC_API_KEY not set. Set it in .env or environment."
+                )
 
             model_name = self.model or "claude-3-opus-20240229"
             return ChatAnthropic(
@@ -148,7 +155,8 @@ class LLMService:
             ]
             choices.sort(key=lambda x: x["probability"], reverse=True)
             return choices
-        except Exception:
+        except Exception as e:
+            logger.exception("LLM generate_choices failed: %s", e)
             return [
                 {"text": "Yes", "probability": 0.5},
                 {"text": "No", "probability": 0.5},
