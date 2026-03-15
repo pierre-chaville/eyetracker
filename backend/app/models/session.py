@@ -8,13 +8,18 @@ from sqlmodel import Column, Field, SQLModel
 
 
 class CommunicationSession(SQLModel, table=True):
-    """Communication session model for storing conversation sessions."""
+    """Session model for communication grid or keyboard (session_type distinguishes)."""
 
     __tablename__ = "communication_sessions"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: Optional[int] = Field(default=None, foreign_key="users.id")
     caregiver_id: Optional[int] = Field(default=None, foreign_key="caregivers.id")
+    session_type: str = Field(
+        default="communication",
+        max_length=50,
+        description="'communication' or 'keyboard'",
+    )
     started_at: Optional[datetime] = Field(
         default_factory=datetime.utcnow,
         sa_column=Column(DateTime(timezone=False), server_default=func.now()),

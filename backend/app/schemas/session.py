@@ -9,6 +9,7 @@ from pydantic import BaseModel
 class CommunicationSessionCreate(BaseModel):
     user_id: Optional[int] = None
     caregiver_id: Optional[int] = None
+    session_type: Optional[str] = "communication"  # "communication" | "keyboard"
 
 
 class CommunicationSessionUpdate(BaseModel):
@@ -19,6 +20,7 @@ class CommunicationSessionRead(BaseModel):
     id: int
     user_id: Optional[int] = None
     caregiver_id: Optional[int] = None
+    session_type: str = "communication"
     started_at: datetime
     ended_at: Optional[datetime] = None
     created_at: datetime

@@ -9,6 +9,7 @@ from app.services.caregivers import CaregiverService
 from app.services.communication import CommunicationService, CommunicationSessionService
 from app.services.keyboard import KeyboardService
 from app.services.keyboard_layouts import KeyboardLayoutService
+from app.services.suggestions import SuggestionsService
 from app.services.users import UserService
 
 
@@ -30,14 +31,24 @@ def get_session_service(
     return CommunicationSessionService(session)
 
 
+def get_suggestions_service(
+    session: AsyncSession = Depends(get_session),
+) -> SuggestionsService:
+    return SuggestionsService(session)
+
+
 def get_communication_service(
     session: AsyncSession = Depends(get_session),
+    suggestions_service: SuggestionsService = Depends(get_suggestions_service),
 ) -> CommunicationService:
-    return CommunicationService(session)
+    return CommunicationService(session, suggestions_service)
 
 
-def get_keyboard_service(session: AsyncSession = Depends(get_session)) -> KeyboardService:
-    return KeyboardService(session)
+def get_keyboard_service(
+    session: AsyncSession = Depends(get_session),
+    suggestions_service: SuggestionsService = Depends(get_suggestions_service),
+) -> KeyboardService:
+    return KeyboardService(session, suggestions_service)
 
 
 def get_keyboard_layout_service(

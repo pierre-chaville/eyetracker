@@ -88,7 +88,9 @@ async def list_sessions(
     service: CommunicationSessionService = Depends(get_session_service),
 ) -> List[CommunicationSessionRead]:
     """List all communication sessions with optional filtering (CommunicationSessionRead)."""
-    return await service.list_sessions(skip, limit, user_id, caregiver_id)
+    return await service.list_sessions(
+        skip, limit, user_id, caregiver_id, session_type="communication"
+    )
 
 
 @router.get(

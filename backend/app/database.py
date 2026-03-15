@@ -34,19 +34,30 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
 
 
 def _migrate_schema(sync_conn) -> None:
-    """Sync migration: add new columns to users if missing."""
+    """Sync migration: add new columns if missing."""
     from sqlalchemy import inspect
 
     inspector = inspect(sync_conn)
-    if "users" not in inspector.get_table_names():
-        return
-    existing = [col["name"] for col in inspector.get_columns("users")]
-    if "gender" not in existing:
-        sync_conn.execute(text("ALTER TABLE users ADD COLUMN gender VARCHAR(50)"))
-    if "age" not in existing:
-        sync_conn.execute(text("ALTER TABLE users ADD COLUMN age INTEGER"))
-    if "voice" not in existing:
-        sync_conn.execute(text("ALTER TABLE users ADD COLUMN voice VARCHAR(100)"))
+    tables = inspector.get_table_names()
+
+    if "users" in tables:
+        existing = [col["name"] for col in inspector.get_columns("users")]
+        if "gender" not in existing:
+            sync_conn.execute(text("ALTER TABLE users ADD COLUMN gender VARCHAR(50)"))
+        if "age" not in existing:
+            sync_conn.execute(text("ALTER TABLE users ADD COLUMN age INTEGER"))
+        if "voice" not in existing:
+            sync_conn.execute(text("ALTER TABLE users ADD COLUMN voice VARCHAR(100)"))
+
+    if "communication_sessions" in tables:
+        existing = [col["name"] for col in inspector.get_columns("communication_sessions")]
+        if "session_type" not in existing:
+            sync_conn.execute(
+                text(
+                    "ALTER TABLE communication_sessions ADD COLUMN session_type VARCHAR(50) "
+                    "DEFAULT 'communication'"
+                )
+            )
 
 
 async def create_db_and_tables() -> None:
