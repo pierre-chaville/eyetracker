@@ -195,23 +195,6 @@
             {{ $t('setup.keyboardPromptDescription') }}
           </p>
         </div>
-
-        <!-- Keyboard Multiple Letters Prompt -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            {{ $t('setup.keyboardMultipleLettersPrompt') }}
-          </label>
-          <textarea
-            v-model="config.keyboard_multiple_letters_prompt"
-            rows="4"
-            :disabled="!isEditMode"
-            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 font-mono text-sm disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
-            :placeholder="$t('setup.keyboardMultipleLettersPromptPlaceholder')"
-          />
-          <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-            {{ $t('setup.keyboardMultipleLettersPromptDescription') }}
-          </p>
-          </div>
               </div>
             </TabPanel>
 
@@ -578,7 +561,6 @@ interface AppConfig {
   temperature: number
   communicate_prompt: string
   keyboard_prompt: string
-  keyboard_multiple_letters_prompt: string
   tts_language: string
   tts_voice_name: string
   tts_pitch: number
@@ -595,7 +577,6 @@ const config = ref<AppConfig>({
   temperature: 0.7,
   communicate_prompt: '',
   keyboard_prompt: '',
-  keyboard_multiple_letters_prompt: '',
   tts_language: 'fr',
   tts_voice_name: '',
   tts_pitch: 0.0,
@@ -643,7 +624,6 @@ const loadConfig = async () => {
       temperature: data.temperature ?? 0.7,
       communicate_prompt: data.communicate_prompt || data.prompt || '', // Backward compatibility
       keyboard_prompt: data.keyboard_prompt || '',
-      keyboard_multiple_letters_prompt: data.keyboard_multiple_letters_prompt || '',
       tts_language: data.tts_language || 'fr',
       tts_voice_name: data.tts_voice_name || '',
       tts_pitch: data.tts_pitch ?? 0.0,

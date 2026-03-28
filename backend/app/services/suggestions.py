@@ -50,10 +50,6 @@ def _normalize_keyboard_current_text(current_text: str | None) -> str:
     return " ".join(normalized)
 
 
-def _is_multiple_letters_only(normalized_words: List[str]) -> bool:
-    return len(normalized_words) > 1 and all(len(w) == 1 for w in normalized_words)
-
-
 class SuggestionsService:
     """Unified service for generating LLM suggestions (communication grid or keyboard)."""
 
@@ -95,13 +91,9 @@ class SuggestionsService:
 
             if mode == "keyboard":
                 normalized = _normalize_keyboard_current_text(current_text)
-                words = normalized.split() if normalized else []
-                is_multiple_letters = _is_multiple_letters_only(words)
-                system_prompt = (
-                    config.keyboard_multiple_letters_prompt
-                    if is_multiple_letters
-                    else config.keyboard_prompt
-                ) or "You are a helpful assistant that suggests words for text input."
+                system_prompt = config.keyboard_prompt or (
+                    "You are a helpful assistant that suggests words for text input."
+                )
             else:
                 system_prompt = config.communicate_prompt or (
                     "You are a helpful assistant for communication. "
