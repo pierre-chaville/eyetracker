@@ -18,6 +18,7 @@ from app.schemas.general import (
 )
 from app.schemas.keyboard import (
     KeyboardPredictionsResponse,
+    KeyboardStepSelectionRequest,
     KeyboardTTSRequest,
     KeyboardTTSResponse,
 )
@@ -54,6 +55,7 @@ __all__ = [
     "GazePoint",
     "HealthResponse",
     "KeyboardPredictionsResponse",
+    "KeyboardStepSelectionRequest",
     "KeyboardTTSRequest",
     "KeyboardTTSResponse",
     "KeyboardLayoutCreate",

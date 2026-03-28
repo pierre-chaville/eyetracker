@@ -320,8 +320,13 @@
   },
   "sessions": {
     "title": "Sessions de Communication",
+    "titleAll": "Sessions",
+    "filterByType": "Filtrer par Type",
     "filterByUser": "Filtrer par Utilisateur",
     "filterByCaregiver": "Filtrer par Aidant",
+    "allTypes": "Tous les Types",
+    "typeCommunication": "Communication",
+    "typeKeyboard": "Clavier",
     "allUsers": "Tous les Utilisateurs",
     "allCaregivers": "Tous les Aidants",
     "session": "Session",
@@ -333,7 +338,7 @@
     "endedAt": "Terminée le",
     "steps": "Étapes",
     "unknown": "Inconnu",
-    "noSessions": "Aucune session de communication trouvée",
+    "noSessions": "Aucune session trouvée",
     "errorLoading": "Échec du chargement des sessions"
   },
   "sessionDetail": {
@@ -372,7 +377,8 @@
     "error": "Une erreur s'est produite",
     "speaking": "Parle...",
     "noText": "Commencez à taper...",
-    "noTranscription": "Aucune transcription pour le moment"
+    "noTranscription": "Aucune transcription pour le moment",
+    "noUserText": "Rien de saisi pour le moment"
   }
 }
 

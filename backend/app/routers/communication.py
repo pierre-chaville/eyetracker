@@ -85,11 +85,12 @@ async def list_sessions(
     limit: int = 100,
     user_id: Optional[int] = None,
     caregiver_id: Optional[int] = None,
+    session_type: Optional[str] = None,
     service: CommunicationSessionService = Depends(get_session_service),
 ) -> List[CommunicationSessionRead]:
-    """List all communication sessions with optional filtering (CommunicationSessionRead)."""
+    """List sessions with optional filtering. Pass session_type=communication|keyboard to filter."""
     return await service.list_sessions(
-        skip, limit, user_id, caregiver_id, session_type="communication"
+        skip, limit, user_id, caregiver_id, session_type=session_type
     )
 
 

@@ -182,6 +182,31 @@ class CommunicationSessionService:
         await self._session.commit()
         return step_to_response(step)
 
+    async def update_step_selection(
+        self,
+        session_id: int,
+        step_number: int,
+        selected_text: str,
+    ) -> None:
+        """Set selected_choice_text on an existing step (keyboard or communication)."""
+        session = await self._session.get(CommunicationSession, session_id)
+        if not session:
+            raise EntityNotFoundError("Session", session_id)
+        step_statement = select(SessionStep).where(
+            SessionStep.session_id == session_id,
+            SessionStep.step_number == step_number,
+        )
+        result = await self._session.execute(step_statement)
+        step = result.scalars().first()
+        if not step:
+            raise EntityNotFoundError("SessionStep", step_number)
+        step.selected_choice_text = selected_text
+        step.timestamp = datetime.utcnow()
+        self._session.add(step)
+        session.updated_at = datetime.utcnow()
+        self._session.add(session)
+        await self._session.commit()
+
 
 class CommunicationService:
     """Service for communication-related features (choices and selection)."""

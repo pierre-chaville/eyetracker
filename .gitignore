@@ -41,6 +41,8 @@ out/
 htmlcov/
 
 # database
+*.db-shm
+*.db-wal
 *.db
 
 # Configuration files

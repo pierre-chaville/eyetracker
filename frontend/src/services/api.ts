@@ -230,6 +230,24 @@ export const keyboardAPI = {
     const response = await apiClient.post<Record<string, unknown>>('/keyboard/tts', payload)
     return response.data
   },
+
+  async createSession(sessionData: Record<string, unknown> = {}): Promise<{ id: number }> {
+    const response = await apiClient.post<Record<string, unknown>>('/keyboard/sessions', sessionData)
+    const id = response.data?.id
+    return { id: typeof id === 'number' ? id : Number(id) }
+  },
+
+  async updateSession(sessionId: number, sessionData: Record<string, unknown>): Promise<void> {
+    await apiClient.put(`/keyboard/sessions/${sessionId}`, sessionData)
+  },
+
+  async recordStepSelection(payload: {
+    session_id: number
+    step_number: number
+    selected_text: string
+  }): Promise<void> {
+    await apiClient.post('/keyboard/session-selection', payload)
+  },
 }
 
 export const keyboardLayoutsAPI = {

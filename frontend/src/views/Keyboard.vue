@@ -88,9 +88,46 @@
       <!-- Keyboard Grid Layout -->
       <div 
         ref="gridContainer"
-        :class="['bg-white dark:bg-gray-800', isFullscreen ? 'h-screen w-screen rounded-none overflow-hidden flex flex-col' : 'rounded-xl shadow-lg p-6']"
+        :class="['bg-white dark:bg-gray-800 relative', isFullscreen ? 'h-screen w-screen rounded-none overflow-hidden flex flex-col' : 'rounded-xl shadow-lg p-6']"
         :style="gridContainerStyle"
       >
+        <!-- Top bar (fullscreen): user composition (left) | caregiver STT + mic (right) -->
+        <div
+          v-if="isFullscreen"
+          class="w-full flex-shrink-0 flex border-b border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 min-h-[4.5rem]"
+        >
+          <div
+            class="flex-1 min-w-0 px-4 py-3 border-r border-gray-300 dark:border-gray-600 flex items-center"
+          >
+            <p
+              v-if="userKeyboardDisplay"
+              class="text-base sm:text-lg font-medium text-gray-900 dark:text-white break-words"
+            >
+              {{ userKeyboardDisplay }}
+            </p>
+            <p v-else class="text-sm text-gray-400 dark:text-gray-500 italic">
+              {{ $t('keyboard.noUserText') }}
+            </p>
+          </div>
+          <div
+            class="flex-1 min-w-0 px-4 py-3 flex items-center gap-3"
+          >
+            <MicrophoneIcon
+              v-if="isSpeaking"
+              class="w-6 h-6 text-blue-500 dark:text-blue-400 animate-pulse flex-shrink-0"
+            />
+            <p
+              v-if="lastTranscription"
+              class="text-base sm:text-lg text-gray-800 dark:text-gray-200 break-words flex-1"
+            >
+              {{ lastTranscription }}
+            </p>
+            <p v-else class="text-sm text-gray-400 dark:text-gray-500 italic flex-1">
+              {{ $t('keyboard.noTranscription') }}
+            </p>
+          </div>
+        </div>
+
         <div
           class="grid"
           :class="isFullscreen ? 'w-full p-6 flex-1 min-h-0' : 'max-w-5xl mx-auto'"
@@ -119,7 +156,7 @@
                 class="absolute bottom-0 left-0 h-3 bg-blue-500 transition-all duration-75 ease-linear"
                 :style="{ width: `${getDwellingProgress(getPredictiveCellIndex(colIndex)) * 100}%` }"
               ></div>
-              {{ predictiveWords[colIndex] || '' }}
+              {{ formatKeyDisplay(predictiveWords[colIndex] || '') }}
             </div>
           </div>
           <div
@@ -150,25 +187,15 @@
             </template>
           </div>
         </div>
-        
-        <!-- Bottom Bar: Microphone and Transcription (only in fullscreen) -->
-        <div 
-          v-if="isFullscreen"
-          class="w-full p-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-300 dark:border-gray-600 flex items-center justify-center space-x-3 flex-shrink-0"
-        >
-          <MicrophoneIcon 
-            v-if="isSpeaking" 
-            class="w-5 h-5 text-blue-500 dark:text-blue-400 animate-pulse flex-shrink-0" 
-          />
-          <div class="flex-1 text-center">
-            <p v-if="lastTranscription" class="text-sm text-gray-700 dark:text-gray-300">
-              {{ lastTranscription }}
-            </p>
-            <p v-else class="text-xs text-gray-400 dark:text-gray-500 italic">
-              {{ $t('keyboard.noTranscription') }}
-            </p>
-          </div>
-        </div>
+
+        <EyeTrackingGaze
+          v-if="gazePoint && isConnected"
+          :gaze-point="gazePoint"
+          :tracking-data="trackingData"
+          :is-connected="isConnected"
+          :is-frozen="false"
+          :show-coordinates="false"
+        />
       </div>
     </div>
   </div>
@@ -178,6 +205,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, inject, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/vue';
+import EyeTrackingGaze from '../components/EyeTrackingGaze.vue';
 import { useEyeTracking } from '../composables/useEyeTracking';
 import { useCalibration } from '../composables/useCalibration';
 import { useSTTEvents } from '../composables/useSTTEvents';
@@ -196,6 +224,11 @@ const isActive = ref(false);
 const isLoading = ref(false);
 const error = ref<string | null>(null);
 const currentText = ref('');
+/** Keyboard session (session_type=keyboard on backend), same pattern as Communicate. */
+const sessionId = ref<number | null>(null);
+const stepNumber = ref(0);
+/** Tracks whether the last user action was a key (# / letter) or a word (predictive / layout word) for bar composition rules. */
+const lastUserInputKind = ref<'key' | 'word' | null>(null);
 const predictiveWords = ref<string[]>([]);
 const highlightedCellIndex = ref<number | null>(null);
 const lastTranscription = ref('');
@@ -244,30 +277,58 @@ const getLayoutCellIndex = (row: number, col: number) =>
 const getLayoutCellValue = (row: number, col: number) =>
   layoutCellsMatrix.value[row]?.[col] ?? '';
 
-const getLayoutCellDisplay = (row: number, col: number) => {
-  const value = getLayoutCellValue(row, col);
-  if (!value) {
+/** Strip leading # for on-screen labels only (config keeps # for backend / prompts / history). */
+const stripKeyDisplayPrefix = (value: string): string => {
+  const t = value.trim();
+  return t.startsWith('#') ? t.slice(1) : t;
+};
+
+/** Display text for layout cells and predictive row (no # prefix). */
+const formatKeyDisplay = (value: string): string => {
+  const inner = stripKeyDisplayPrefix(value);
+  if (!inner) {
     return '';
   }
-  return value.length === 1 ? value.toUpperCase() : value;
+  return inner.length === 1 ? inner.toUpperCase() : inner;
 };
+
+/**
+ * Top-bar display for user composition: <C><O> → CO; # tokens lose #; spaces preserved between words.
+ */
+const formatUserKeyboardDisplay = (raw: string): string => {
+  if (!raw || !raw.trim()) {
+    return '';
+  }
+  let s = raw.replace(/<([A-Za-z])>/g, (_, ch: string) => ch.toUpperCase());
+  const tokens = s.split(/\s+/).filter(Boolean);
+  return tokens.map((t) => stripKeyDisplayPrefix(t)).join(' ');
+};
+
+const userKeyboardDisplay = computed(() => formatUserKeyboardDisplay(currentText.value));
+
+const getLayoutCellDisplay = (row: number, col: number) =>
+  formatKeyDisplay(getLayoutCellValue(row, col));
 
 const handlePredictiveClick = (col: number) => {
   const value = predictiveWords.value[col];
   if (value) {
-    selectWord(value);
+    selectWordFromPredictive(value);
   }
 };
 
 const handleLayoutClick = (row: number, col: number) => {
-  const value = getLayoutCellValue(row, col);
-  if (!value) {
+  const raw = getLayoutCellValue(row, col);
+  if (!raw?.trim()) {
     return;
   }
-  if (value.length === 1) {
-    selectLetter(value);
+  const inner = stripKeyDisplayPrefix(raw);
+  if (!inner) {
+    return;
+  }
+  if (inner.length === 1) {
+    selectLetter(inner);
   } else {
-    selectWord(value);
+    selectWordFromLayout(raw);
   }
 };
 
@@ -275,6 +336,7 @@ const handleLayoutClick = (row: number, col: number) => {
 const { calibrationCoefficients } = useCalibration();
 const {
   gazePoint,
+  trackingData,
   isConnected,
   connect,
   disconnect,
@@ -366,12 +428,12 @@ const layoutGridStyle = computed(() => ({
 
 const cellStyle = computed(() => {
   if (isFullscreen.value) {
-    // Account for bottom bar (microphone/transcription) and padding
-    const bottomBarHeight = 72; // Height of bottom bar (p-4 = 16px top + 16px bottom + ~40px content)
+    // Account for top split bar (user | caregiver) and grid padding
+    const topBarHeight = 88;
     const gridPadding = 48; // Top and bottom padding (24px * 2)
     const totalRows = layoutRows.value + (predictiveCount.value > 0 ? 1 : 0);
     const gapTotal = Math.max(totalRows - 1, 0) * 16;
-    const availableHeight = window.innerHeight - bottomBarHeight - gridPadding - gapTotal;
+    const availableHeight = window.innerHeight - topBarHeight - gridPadding - gapTotal;
     const cellHeight = Math.max(availableHeight / Math.max(totalRows, 1), 60);
     return {
       minHeight: `${cellHeight}px`,
@@ -443,23 +505,59 @@ const stopDwelling = () => {
   dwellingProgress.value = 0;
 };
 
-// Load predictive words from backend
-const loadPredictiveWords = async () => {
+const recordKeyboardStepSelection = async (selectedText: string) => {
+  if (!sessionId.value || stepNumber.value < 1 || !selectedText) {
+    return;
+  }
+  try {
+    await keyboardAPI.recordStepSelection({
+      session_id: sessionId.value,
+      step_number: stepNumber.value,
+      selected_text: selectedText,
+    });
+  } catch (err) {
+    console.error('Error recording keyboard session step selection:', err);
+  }
+};
+
+// Load predictive words from backend (increments step when session active, persists step like Communicate)
+const loadPredictiveWords = async (triggeredBy: 'user' | 'caregiver' | null = null) => {
   try {
     const userId = localStorage.getItem('selectedUserId') ? parseInt(localStorage.getItem('selectedUserId')) : null;
     const caregiverId = localStorage.getItem('selectedCaregiverId') ? parseInt(localStorage.getItem('selectedCaregiverId')) : null;
-    
+
+    if (sessionId.value) {
+      stepNumber.value += 1;
+    }
+
+    const conversationHistory: { role: string; content: string }[] = [];
+    const caregiverLine = (lastTranscription.value ?? '').trim();
+    const userText = formatUserKeyboardDisplay(currentText.value);
+
+    if (triggeredBy === 'user') {
+      if (caregiverLine) conversationHistory.push({ role: 'caregiver', content: caregiverLine });
+      if (userText) conversationHistory.push({ role: 'user', content: userText });
+    } else if (triggeredBy === 'caregiver') {
+      if (userText) conversationHistory.push({ role: 'user', content: userText });
+      if (caregiverLine) conversationHistory.push({ role: 'caregiver', content: caregiverLine });
+    } else {
+      if (caregiverLine) conversationHistory.push({ role: 'caregiver', content: caregiverLine });
+      if (userText) conversationHistory.push({ role: 'user', content: userText });
+    }
+
     const response = await keyboardAPI.predictions({
       current_text: currentText.value,
       user_id: userId,
       caregiver_id: caregiverId,
+      conversation_history: conversationHistory,
+      session_id: sessionId.value,
+      step_number: sessionId.value ? stepNumber.value : null,
     });
-    
+
     const words = (response as { words?: string[] }).words || [];
     predictiveWords.value = words.slice(0, predictiveCount.value);
   } catch (err) {
     console.error('Error loading predictive words:', err);
-    // Fallback to empty array
     predictiveWords.value = [];
   }
 };
@@ -476,27 +574,63 @@ const loadKeyboardLayouts = async () => {
   }
 };
 
-// Select a word
-const selectWord = async (word) => {
-  currentText.value = (currentText.value + ' ' + word).trim();
-  await loadPredictiveWords();
-  
-  // Generate TTS for the word
-  await playTTS(word);
+// Predictive cell: replace the whole bar with the chosen sentence; then it counts as a "word" input.
+const selectWordFromPredictive = async (word: string) => {
+  const t = word.trim();
+  await recordKeyboardStepSelection(t);
+  currentText.value = t;
+  lastUserInputKind.value = 'word';
+  await loadPredictiveWords('user');
+
+  if (!t.startsWith('#')) {
+    await playTTS(word);
+  }
 };
 
-// Select a letter
-const selectLetter = async (letter) => {
+// Layout cell: word (no #) appends with a space; #… key appends only if previous input was also a key, else replaces line.
+const selectWordFromLayout = async (raw: string) => {
+  const t = raw.trim();
+  await recordKeyboardStepSelection(t);
+  if (t.startsWith('#')) {
+    if (lastUserInputKind.value === 'key') {
+      currentText.value = (currentText.value + ' ' + t).trim();
+    } else {
+      currentText.value = t;
+    }
+    lastUserInputKind.value = 'key';
+  } else {
+    currentText.value = (currentText.value + ' ' + t).trim();
+    lastUserInputKind.value = 'word';
+  }
+  await loadPredictiveWords('user');
+
+  if (!t.startsWith('#')) {
+    await playTTS(raw);
+  }
+};
+
+// Single-letter key: concatenate to previous keys only if last input was a key; otherwise clear and show this letter only.
+const selectLetter = async (letter: string) => {
   const keyToken = `<${letter.toUpperCase()}>`;
-  currentText.value = currentText.value + keyToken;
-  await loadPredictiveWords();
+  await recordKeyboardStepSelection(`#${letter.toUpperCase()}`);
+  if (lastUserInputKind.value === 'key') {
+    currentText.value = currentText.value + keyToken;
+  } else {
+    currentText.value = keyToken;
+  }
+  lastUserInputKind.value = 'key';
+  await loadPredictiveWords('user');
 };
 
-// Play TTS
+// Play TTS (strip leading # for speech only; composed text keeps # for backend / sessions)
 const playTTS = async (text) => {
   try {
+    const toSpeak = stripKeyDisplayPrefix(text || '');
+    if (!toSpeak) {
+      return;
+    }
     await keyboardAPI.tts({
-      text,
+      text: toSpeak,
     });
     
     // Audio is played in the backend, so we don't need to play it here
@@ -586,8 +720,7 @@ const toggleCommunication = async () => {
 onSTTEvent('transcription', (event) => {
   const transcribedText = event.data.text;
   lastTranscription.value = transcribedText;
-  currentText.value = transcribedText;
-  loadPredictiveWords();
+  loadPredictiveWords('caregiver');
 });
 
 onSTTEvent('error', (event) => {
@@ -598,27 +731,43 @@ onSTTEvent('error', (event) => {
 const startCommunication = async () => {
   isLoading.value = true;
   error.value = null;
-  
+
   try {
+    const userIdValue = localStorage.getItem('selectedUserId');
+    const caregiverIdValue = localStorage.getItem('selectedCaregiverId');
+    const userId = userIdValue ? Number.parseInt(userIdValue, 10) : null;
+    const caregiverId = caregiverIdValue ? Number.parseInt(caregiverIdValue, 10) : null;
+
+    try {
+      const created = await keyboardAPI.createSession({
+        user_id: userId,
+        caregiver_id: caregiverId,
+      });
+      sessionId.value = created.id || null;
+      stepNumber.value = 0;
+    } catch (sessionErr) {
+      console.error('Error creating keyboard session:', sessionErr);
+      sessionId.value = null;
+      stepNumber.value = 0;
+    }
+
     await speechToTextAPI.start();
     isActive.value = true;
-    
-    // Set fullscreen state in App.vue to hide sidebar
+
     isCommunicationFullscreenApp.value = true;
-    
-    // Enter fullscreen mode
+
     await enterFullscreen();
-    
-    // Connect WebSocket for speech-to-text events
+
     connectSTT();
-    
-    // Load initial predictive words
+
     await loadPredictiveWords();
   } catch (err) {
     console.error('Error starting communication:', err);
     error.value = t('keyboard.error');
     isActive.value = false;
     isCommunicationFullscreenApp.value = false;
+    sessionId.value = null;
+    stepNumber.value = 0;
   } finally {
     isLoading.value = false;
   }
@@ -630,16 +779,26 @@ const stopCommunication = async () => {
   highlightedCellIndex.value = null;
   isLoading.value = true;
   error.value = null;
-  
+
   try {
     await speechToTextAPI.stop();
     isActive.value = false;
     disconnectSTT();
-    
-    // Reset fullscreen state in App.vue to show sidebar
+
+    if (sessionId.value) {
+      try {
+        await keyboardAPI.updateSession(sessionId.value, {
+          ended_at: new Date().toISOString(),
+        });
+      } catch (sessionErr) {
+        console.error('Error ending keyboard session:', sessionErr);
+      }
+      sessionId.value = null;
+      stepNumber.value = 0;
+    }
+
     isCommunicationFullscreenApp.value = false;
-    
-    // Exit fullscreen mode
+
     exitFullscreen();
   } catch (err) {
     console.error('Error stopping communication:', err);

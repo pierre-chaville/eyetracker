@@ -8,6 +8,7 @@ from app.dependencies import get_keyboard_service, get_session_service
 from app.schemas import (
     ChoicesRequest,
     KeyboardPredictionsResponse,
+    KeyboardStepSelectionRequest,
     KeyboardTTSRequest,
     KeyboardTTSResponse,
 )
@@ -45,6 +46,26 @@ async def keyboard_tts(
 ) -> KeyboardTTSResponse:
     """Generate TTS for keyboard input (word or letter)."""
     return await service.generate_tts(request)
+
+
+@router.post("/keyboard/session-selection", status_code=status.HTTP_204_NO_CONTENT, response_class=Response)
+async def record_keyboard_step_selection(
+    body: KeyboardStepSelectionRequest,
+    service: CommunicationSessionService = Depends(get_session_service),
+) -> Response:
+    """Persist the user's selection for the current keyboard session step."""
+    try:
+        await service.update_step_selection(
+            body.session_id,
+            body.step_number,
+            body.selected_text,
+        )
+    except EntityNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"{exc.entity} with id {exc.entity_id} not found",
+        ) from exc
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # Keyboard sessions (same model as communication, filtered by session_type="keyboard")

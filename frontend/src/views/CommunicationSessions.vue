@@ -4,13 +4,27 @@
       <!-- Header -->
       <div class="mb-6 flex items-center justify-between">
         <h1 class="text-3xl font-bold text-gray-900 dark:text-white">
-          {{ $t('sessions.title') }}
+          {{ $t('sessions.titleAll') }}
         </h1>
       </div>
 
       <!-- Filters -->
       <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {{ $t('sessions.filterByType') }}
+            </label>
+            <select
+              v-model="selectedSessionType"
+              @change="loadSessions"
+              class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+            >
+              <option :value="null">{{ $t('sessions.allTypes') }}</option>
+              <option value="communication">{{ $t('sessions.typeCommunication') }}</option>
+              <option value="keyboard">{{ $t('sessions.typeKeyboard') }}</option>
+            </select>
+          </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               {{ $t('sessions.filterByUser') }}
@@ -64,10 +78,20 @@
         >
           <div class="flex items-start justify-between">
             <div class="flex-1">
-              <div class="flex items-center space-x-4 mb-2">
+              <div class="flex items-center space-x-3 mb-2">
                 <h3 class="text-lg font-semibold text-gray-900 dark:text-white">
                   {{ $t('sessions.session') }} #{{ session.id }}
                 </h3>
+                <span
+                  :class="[
+                    'px-2 py-1 rounded-full text-xs font-medium',
+                    session.session_type === 'keyboard'
+                      ? 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-200'
+                      : 'bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200'
+                  ]"
+                >
+                  {{ session.session_type === 'keyboard' ? $t('sessions.typeKeyboard') : $t('sessions.typeCommunication') }}
+                </span>
                 <span
                   :class="[
                     'px-2 py-1 rounded-full text-xs font-medium',
@@ -144,6 +168,7 @@ const loading = ref(false);
 const error = ref(null);
 const selectedUserId = ref(null);
 const selectedCaregiverId = ref(null);
+const selectedSessionType = ref(null);
 
 const loadUsers = async () => {
   try {
@@ -168,6 +193,9 @@ const loadSessions = async () => {
   error.value = null;
   try {
     const params = {};
+    if (selectedSessionType.value) {
+      params.session_type = selectedSessionType.value;
+    }
     if (selectedUserId.value) {
       params.user_id = selectedUserId.value;
     }
