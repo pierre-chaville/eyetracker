@@ -45,6 +45,8 @@ def step_to_response(step: SessionStep) -> SessionStepRead:
         message_content=step.message_content,
         choices=choices,
         selected_choice_text=step.selected_choice_text,
+        activation_mode=step.activation_mode,
+        dwell_time_ms=step.dwell_time_ms,
         timestamp=step.timestamp,
     )
 
@@ -65,6 +67,11 @@ async def session_to_response(
         user_id=session.user_id,
         caregiver_id=session.caregiver_id,
         session_type=getattr(session, "session_type", "communication"),
+        prompt=session.prompt,
+        llm_model=session.llm_model,
+        temperature=session.temperature,
+        user_notes=session.user_notes,
+        keyboard_layout_name=session.keyboard_layout_name,
         started_at=session.started_at,
         ended_at=session.ended_at,
         created_at=session.created_at,
@@ -88,6 +95,11 @@ class CommunicationSessionService:
             user_id=session_data.user_id,
             caregiver_id=session_data.caregiver_id,
             session_type=session_type,
+            prompt=session_data.prompt,
+            llm_model=session_data.llm_model,
+            temperature=session_data.temperature,
+            user_notes=session_data.user_notes,
+            keyboard_layout_name=session_data.keyboard_layout_name,
         )
         self._session.add(session)
         await self._session.commit()
@@ -187,6 +199,8 @@ class CommunicationSessionService:
         session_id: int,
         step_number: int,
         selected_text: str,
+        activation_mode: Optional[str] = None,
+        dwell_time_ms: Optional[int] = None,
     ) -> None:
         """Set selected_choice_text on an existing step (keyboard or communication)."""
         session = await self._session.get(CommunicationSession, session_id)
@@ -201,6 +215,8 @@ class CommunicationSessionService:
         if not step:
             raise EntityNotFoundError("SessionStep", step_number)
         step.selected_choice_text = selected_text
+        step.activation_mode = activation_mode
+        step.dwell_time_ms = dwell_time_ms
         step.timestamp = datetime.utcnow()
         self._session.add(step)
         session.updated_at = datetime.utcnow()
@@ -251,6 +267,8 @@ class CommunicationService:
                     step = result.scalars().first()
                     if step:
                         step.selected_choice_text = request.choice_text
+                        step.activation_mode = request.activation_mode
+                        step.dwell_time_ms = request.dwell_time_ms
                         step.timestamp = datetime.utcnow()
                         self._session.add(step)
                         comm_session = await self._session.get(

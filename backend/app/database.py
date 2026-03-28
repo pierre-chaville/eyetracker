@@ -58,6 +58,24 @@ def _migrate_schema(sync_conn) -> None:
                     "DEFAULT 'communication'"
                 )
             )
+        for col_name, col_def in [
+            ("prompt", "TEXT"),
+            ("llm_model", "VARCHAR(100)"),
+            ("temperature", "REAL"),
+            ("user_notes", "TEXT"),
+            ("keyboard_layout_name", "VARCHAR(200)"),
+        ]:
+            if col_name not in existing:
+                sync_conn.execute(text(f"ALTER TABLE communication_sessions ADD COLUMN {col_name} {col_def}"))
+
+    if "session_steps" in tables:
+        existing = [col["name"] for col in inspector.get_columns("session_steps")]
+        for col_name, col_def in [
+            ("activation_mode", "VARCHAR(50)"),
+            ("dwell_time_ms", "INTEGER"),
+        ]:
+            if col_name not in existing:
+                sync_conn.execute(text(f"ALTER TABLE session_steps ADD COLUMN {col_name} {col_def}"))
 
 
 async def create_db_and_tables() -> None:

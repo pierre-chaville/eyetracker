@@ -306,7 +306,7 @@ import { useCalibration } from '../composables/useCalibration';
 import { useSTTEvents } from '../composables/useSTTEvents';
 import EyeTrackingGaze from '../components/EyeTrackingGaze.vue';
 import ChoiceCell from '../components/ChoiceCell.vue';
-import { communicationAPI, configAPI, sessionsAPI, speechToTextAPI } from '../services/api';
+import { communicationAPI, configAPI, sessionsAPI, speechToTextAPI, usersAPI } from '../services/api';
 import type { Choice } from '../types/api';
 
 const { t } = useI18n();
@@ -623,7 +623,8 @@ const startDwelling = (cellNum) => {
       console.log(`Dwelling complete on cell ${cellNum}, selecting choice`);
       const choice = getChoiceForCell(cellNum);
       if (choice) {
-        selectChoice(choice);
+        const actualDwellMs = Math.round(dwellTime.value * 1000);
+        selectChoice(choice, 'gaze_dwell', actualDwellMs);
       }
       stopDwelling();
     }
@@ -847,7 +848,7 @@ const resumeSTT = async () => {
 };
 
 // Select a choice
-const selectChoice = async (choice) => {
+const selectChoice = async (choice, activationMode: 'click' | 'gaze_dwell' = 'click', dwellTimeMs: number | null = null) => {
   if (!choice) return;
   
   try {
@@ -857,7 +858,6 @@ const selectChoice = async (choice) => {
       const isSingleWord = choiceText.split(/\s+/).length === 1;
       
       if (isSingleWord) {
-        // Add to the last line if it exists, otherwise create a new line
         if (textLines.value.length > 0) {
           const lastLine = textLines.value[textLines.value.length - 1];
           textLines.value[textLines.value.length - 1] = (lastLine + ' ' + choiceText).trim();
@@ -865,31 +865,28 @@ const selectChoice = async (choice) => {
           textLines.value.push(choiceText);
         }
       } else {
-        // Multiple words: add as a new line
         textLines.value.push(choiceText);
-        // Keep only the last 4 lines
         if (textLines.value.length > 4) {
           textLines.value = textLines.value.slice(-4);
         }
       }
       
-      // Update currentText for API compatibility (join all lines)
       currentText.value = textLines.value.join(' ');
       
-      // Add user's choice to conversation history
       conversationHistory.value.push({
         role: 'user',
         content: choice.text
       });
     }
     
-    // Send selection to backend
     const response = await communicationAPI.selectChoice({
       choice_id: choice.id,
       choice_text: choice.text,
       current_text: currentText.value,
       session_id: sessionId.value,
       step_number: sessionId.value ? stepNumber.value : null,
+      activation_mode: activationMode,
+      dwell_time_ms: dwellTimeMs,
     });
     
     // Audio is played in the backend, so we don't need to play it here
@@ -998,18 +995,37 @@ const startCommunication = async () => {
     const userId = userIdValue ? Number.parseInt(userIdValue, 10) : null;
     const caregiverId = caregiverIdValue ? Number.parseInt(caregiverIdValue, 10) : null;
     
-    // Create a new communication session
+    // Create a new communication session with context
     try {
+      let prompt: string | null = null;
+      let llmModel: string | null = null;
+      let temperature: number | null = null;
+      let userNotes: string | null = null;
+      try {
+        const cfg = await configAPI.get() as Record<string, unknown>;
+        prompt = (cfg.communicate_prompt as string) || null;
+        llmModel = (cfg.model as string) || null;
+        temperature = (cfg.temperature as number) ?? null;
+      } catch { /* config fetch optional */ }
+      if (userId) {
+        try {
+          const user = await usersAPI.get(userId) as Record<string, unknown>;
+          userNotes = (user.notes as string) || null;
+        } catch { /* user fetch optional */ }
+      }
       const sessionResponse = await sessionsAPI.create({
         user_id: userId,
         caregiver_id: caregiverId,
+        prompt,
+        llm_model: llmModel,
+        temperature,
+        user_notes: userNotes,
       });
       sessionId.value = (sessionResponse as { id?: number }).id ?? null;
       stepNumber.value = 0;
       console.log('Created session:', sessionId.value);
     } catch (sessionErr) {
       console.error('Error creating session:', sessionErr);
-      // Continue even if session creation fails
     }
     
     // Start speech-to-text

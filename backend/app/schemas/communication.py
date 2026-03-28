@@ -45,6 +45,8 @@ class ChoiceSelectionRequest(BaseModel):
     current_text: Optional[str] = None
     session_id: Optional[int] = None
     step_number: Optional[int] = None
+    activation_mode: Optional[str] = None
+    dwell_time_ms: Optional[int] = None
 
 
 class ChoiceSelectionResponse(BaseModel):

@@ -23,3 +23,5 @@ class KeyboardStepSelectionRequest(BaseModel):
     session_id: int
     step_number: int
     selected_text: str
+    activation_mode: Optional[str] = None
+    dwell_time_ms: Optional[int] = None

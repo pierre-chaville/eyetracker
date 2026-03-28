@@ -87,6 +87,48 @@
           </div>
         </div>
 
+        <!-- Session Context (expandable) -->
+        <div
+          v-if="session.prompt || session.llm_model || session.temperature != null || session.user_notes || session.keyboard_layout_name"
+          class="bg-white dark:bg-gray-800 rounded-lg shadow-md"
+        >
+          <button
+            @click="showContext = !showContext"
+            class="w-full flex items-center justify-between p-6 text-left focus:outline-none"
+          >
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+              {{ $t('sessionDetail.sessionContext') }}
+            </h2>
+            <ChevronDownIcon
+              :class="['w-5 h-5 text-gray-500 transition-transform duration-200', showContext ? 'rotate-180' : '']"
+            />
+          </button>
+          <div v-if="showContext" class="px-6 pb-6 space-y-4">
+            <div v-if="session.llm_model || session.temperature != null" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div v-if="session.llm_model">
+                <span class="text-sm text-gray-500 dark:text-gray-400">{{ $t('sessionDetail.llmModel') }}</span>
+                <p class="text-gray-900 dark:text-white font-medium">{{ session.llm_model }}</p>
+              </div>
+              <div v-if="session.temperature != null">
+                <span class="text-sm text-gray-500 dark:text-gray-400">{{ $t('sessionDetail.temperature') }}</span>
+                <p class="text-gray-900 dark:text-white font-medium">{{ session.temperature }}</p>
+              </div>
+            </div>
+            <div v-if="session.keyboard_layout_name">
+              <span class="text-sm text-gray-500 dark:text-gray-400">{{ $t('sessionDetail.keyboardLayout') }}</span>
+              <p class="text-gray-900 dark:text-white font-medium">{{ session.keyboard_layout_name }}</p>
+            </div>
+            <div v-if="session.prompt">
+              <span class="text-sm text-gray-500 dark:text-gray-400">{{ $t('sessionDetail.prompt') }}</span>
+              <p class="mt-1 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 whitespace-pre-wrap">{{ session.prompt }}</p>
+            </div>
+            <div v-if="session.user_notes">
+              <span class="text-sm text-gray-500 dark:text-gray-400">{{ $t('sessionDetail.userNotes') }}</span>
+              <p class="mt-1 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 whitespace-pre-wrap">{{ session.user_notes }}</p>
+            </div>
+          </div>
+        </div>
+
         <!-- Conversation History -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
           <div class="flex items-center justify-between mb-4">
@@ -132,9 +174,26 @@
                     {{ step.message_content }}
                   </p>
                 </div>
-                <span class="text-xs text-gray-500 dark:text-gray-400 flex-shrink-0">
-                  {{ formatDateTime(step.timestamp) }}
-                </span>
+                <div class="flex flex-col items-end flex-shrink-0 space-y-1">
+                  <span class="text-xs text-gray-500 dark:text-gray-400">
+                    {{ formatDateTime(step.timestamp) }}
+                  </span>
+                  <div v-if="step.activation_mode" class="flex items-center space-x-1">
+                    <span
+                      :class="[
+                        'px-1.5 py-0.5 rounded text-[10px] font-medium',
+                        step.activation_mode === 'gaze_dwell'
+                          ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+                          : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                      ]"
+                    >
+                      {{ step.activation_mode === 'gaze_dwell' ? $t('sessionDetail.gazeDwell') : $t('sessionDetail.click') }}
+                    </span>
+                    <span v-if="step.dwell_time_ms" class="text-[10px] text-gray-400 dark:text-gray-500">
+                      {{ (step.dwell_time_ms / 1000).toFixed(1) }}s
+                    </span>
+                  </div>
+                </div>
               </div>
 
               <!-- Choices from Previous Step (shown below message to understand context) -->
@@ -194,7 +253,7 @@
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
-import { ArrowLeftIcon } from '@heroicons/vue/24/outline';
+import { ArrowLeftIcon, ChevronDownIcon } from '@heroicons/vue/24/outline';
 import { sessionsAPI, usersAPI, caregiversAPI } from '../services/api';
 
 const router = useRouter();
@@ -208,6 +267,7 @@ const caregivers = ref([]);
 const loading = ref(false);
 const error = ref(null);
 const showChoices = ref(false);
+const showContext = ref(false);
 
 const loadUsers = async () => {
   try {

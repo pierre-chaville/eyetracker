@@ -211,7 +211,7 @@ import { useEyeTracking } from '../composables/useEyeTracking';
 import { useCalibration } from '../composables/useCalibration';
 import { useSTTEvents } from '../composables/useSTTEvents';
 import { MicrophoneIcon } from '@heroicons/vue/24/solid';
-import { configAPI, keyboardAPI, keyboardLayoutsAPI, speechToTextAPI } from '../services/api';
+import { configAPI, keyboardAPI, keyboardLayoutsAPI, speechToTextAPI, usersAPI } from '../services/api';
 import type { KeyboardLayoutRead } from '../types/api';
 
 const { t } = useI18n();
@@ -265,8 +265,10 @@ const colIndices = computed(() => Array.from({ length: layoutColumns.value }, (_
 const predictiveIndices = computed(() => Array.from({ length: predictiveCount.value }, (_, i) => i));
 
 // Dwelling state
-const dwellTime = ref(2.0); // Default dwell time in seconds
-const dwellingCellIndex = ref<number | null>(null); // Currently dwelling cell index
+const dwellTime = ref(2.0);
+const lastActivationMode = ref<'click' | 'gaze_dwell'>('click');
+const lastDwellTimeMs = ref<number | null>(null);
+const dwellingCellIndex = ref<number | null>(null);
 const dwellingStartTime = ref(null); // When dwelling started
 const dwellingProgress = ref(0); // Progress from 0 to 1
 let dwellingInterval = null;
@@ -480,8 +482,9 @@ const startDwelling = (cellIndex) => {
     const progress = Math.min(elapsed / dwellTime.value, 1.0);
     dwellingProgress.value = progress;
     
-    // If dwelling is complete, trigger selection
     if (progress >= 1.0) {
+      lastActivationMode.value = 'gaze_dwell';
+      lastDwellTimeMs.value = Math.round(dwellTime.value * 1000);
       if (cellIndex < predictiveCount.value) {
         handlePredictiveClick(cellIndex);
       } else {
@@ -490,6 +493,8 @@ const startDwelling = (cellIndex) => {
         const colIndex = layoutIndex % layoutColumns.value;
         handleLayoutClick(rowIndex, colIndex);
       }
+      lastActivationMode.value = 'click';
+      lastDwellTimeMs.value = null;
       stopDwelling();
     }
   }, 16); // ~60fps
@@ -506,7 +511,7 @@ const stopDwelling = () => {
   dwellingProgress.value = 0;
 };
 
-const recordKeyboardStepSelection = async (selectedText: string) => {
+const recordKeyboardStepSelection = async (selectedText: string, activationMode: 'click' | 'gaze_dwell' = 'click', dwellTimeMs: number | null = null) => {
   if (!sessionId.value || stepNumber.value < 1 || !selectedText) {
     return;
   }
@@ -515,6 +520,8 @@ const recordKeyboardStepSelection = async (selectedText: string) => {
       session_id: sessionId.value,
       step_number: stepNumber.value,
       selected_text: selectedText,
+      activation_mode: activationMode,
+      dwell_time_ms: dwellTimeMs,
     });
   } catch (err) {
     console.error('Error recording keyboard session step selection:', err);
@@ -578,7 +585,7 @@ const loadKeyboardLayouts = async () => {
 // Predictive cell: replace the whole bar with the chosen sentence; then it counts as a "word" input.
 const selectWordFromPredictive = async (word: string) => {
   const t = word.trim();
-  await recordKeyboardStepSelection(t);
+  await recordKeyboardStepSelection(t, lastActivationMode.value, lastDwellTimeMs.value);
   currentText.value = t;
   lastUserInputKind.value = 'word';
   await loadPredictiveWords('user');
@@ -591,7 +598,7 @@ const selectWordFromPredictive = async (word: string) => {
 // Layout cell: word (no #) appends with a space; #… key appends only if previous input was also a key, else replaces line.
 const selectWordFromLayout = async (raw: string) => {
   const t = raw.trim();
-  await recordKeyboardStepSelection(t);
+  await recordKeyboardStepSelection(t, lastActivationMode.value, lastDwellTimeMs.value);
   if (t.startsWith('#')) {
     if (lastUserInputKind.value === 'key') {
       currentText.value = (currentText.value + ' ' + t).trim();
@@ -613,7 +620,7 @@ const selectWordFromLayout = async (raw: string) => {
 // Single-letter key: concatenate to previous keys only if last input was a key; otherwise clear and show this letter only.
 const selectLetter = async (letter: string) => {
   const keyToken = `<${letter.toUpperCase()}>`;
-  await recordKeyboardStepSelection(`#${letter.toUpperCase()}`);
+  await recordKeyboardStepSelection(`#${letter.toUpperCase()}`, lastActivationMode.value, lastDwellTimeMs.value);
   if (lastUserInputKind.value === 'key') {
     currentText.value = currentText.value + keyToken;
   } else {
@@ -740,9 +747,31 @@ const startCommunication = async () => {
     const caregiverId = caregiverIdValue ? Number.parseInt(caregiverIdValue, 10) : null;
 
     try {
+      let prompt: string | null = null;
+      let llmModel: string | null = null;
+      let temperature: number | null = null;
+      let userNotes: string | null = null;
+      const layoutName = selectedLayout.value?.name || null;
+      try {
+        const cfg = await configAPI.get() as Record<string, unknown>;
+        prompt = (cfg.keyboard_prompt as string) || null;
+        llmModel = (cfg.model as string) || null;
+        temperature = (cfg.temperature as number) ?? null;
+      } catch { /* config fetch optional */ }
+      if (userId) {
+        try {
+          const user = await usersAPI.get(userId) as Record<string, unknown>;
+          userNotes = (user.notes as string) || null;
+        } catch { /* user fetch optional */ }
+      }
       const created = await keyboardAPI.createSession({
         user_id: userId,
         caregiver_id: caregiverId,
+        prompt,
+        llm_model: llmModel,
+        temperature,
+        user_notes: userNotes,
+        keyboard_layout_name: layoutName,
       });
       sessionId.value = created.id || null;
       stepNumber.value = 0;

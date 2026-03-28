@@ -20,6 +20,13 @@ class CommunicationSession(SQLModel, table=True):
         max_length=50,
         description="'communication' or 'keyboard'",
     )
+    prompt: Optional[str] = Field(default=None, description="System prompt used for this session")
+    llm_model: Optional[str] = Field(default=None, max_length=100, description="LLM model name")
+    temperature: Optional[float] = Field(default=None, description="LLM temperature")
+    user_notes: Optional[str] = Field(default=None, description="User notes/context at session start")
+    keyboard_layout_name: Optional[str] = Field(
+        default=None, max_length=200, description="Keyboard layout name (keyboard sessions only)"
+    )
     started_at: Optional[datetime] = Field(
         default_factory=datetime.utcnow,
         sa_column=Column(DateTime(timezone=False), server_default=func.now()),
@@ -65,6 +72,15 @@ class SessionStep(SQLModel, table=True):
         default=None,
         max_length=500,
         description="The choice that was selected",
+    )
+    activation_mode: Optional[str] = Field(
+        default=None,
+        max_length=50,
+        description="'click' or 'gaze_dwell'",
+    )
+    dwell_time_ms: Optional[int] = Field(
+        default=None,
+        description="Dwell duration in milliseconds (when activation_mode is gaze_dwell)",
     )
     timestamp: Optional[datetime] = Field(
         default_factory=datetime.utcnow,

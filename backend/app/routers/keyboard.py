@@ -59,6 +59,8 @@ async def record_keyboard_step_selection(
             body.session_id,
             body.step_number,
             body.selected_text,
+            activation_mode=body.activation_mode,
+            dwell_time_ms=body.dwell_time_ms,
         )
     except EntityNotFoundError as exc:
         raise HTTPException(
