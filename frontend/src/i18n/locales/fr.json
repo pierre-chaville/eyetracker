@@ -24,6 +24,7 @@
     "title": "Orizon",
     "subtitle": "Le regard devient parole.",
     "eyeTrackingStatus": "État du Suivi Oculaire",
+    "gazeData": "Coordonnées du Regard",
     "selectUser": "Sélectionner un Utilisateur",
     "selectUserLabel": "Choisir un utilisateur",
     "selectCaregiverLabel": "Choisir un aidant",

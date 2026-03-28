@@ -24,6 +24,7 @@
     "title": "Iris",
     "subtitle": "From gaze to grace.",
     "eyeTrackingStatus": "Eye Tracking Status",
+    "gazeData": "Gaze Coordinates",
     "selectUser": "Select User",
     "selectUserLabel": "Choose a user",
     "selectCaregiverLabel": "Choose a caregiver",

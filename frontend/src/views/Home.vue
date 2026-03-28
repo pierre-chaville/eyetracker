@@ -52,6 +52,26 @@
             </button>
           </div>
           
+          <!-- Gaze Data Status -->
+          <div v-if="isConnected" class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+            <div class="flex items-center space-x-3">
+              <svg :class="['w-5 h-5 transition-colors duration-300', gazeStatusColor]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z" />
+              </svg>
+              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {{ $t('home.gazeData') }}
+              </span>
+            </div>
+            <div class="flex items-center space-x-2">
+              <div :class="[
+                'w-2 h-2 rounded-full transition-colors duration-300',
+                isReceivingGaze ? 'bg-green-500 animate-pulse' : 'bg-amber-500'
+              ]"></div>
+              <span class="text-sm font-mono text-gray-600 dark:text-gray-400">{{ gazeStatusLabel }}</span>
+            </div>
+          </div>
+
           <!-- Connection Error -->
           <div v-if="error" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
             <p class="text-sm text-red-800 dark:text-red-200">{{ error }}</p>
@@ -152,16 +172,45 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useEyeTracking } from '../composables/useEyeTracking';
 import { eyeTrackingAPI, usersAPI, caregiversAPI } from '@/services/api';
 
-// Use the shared eye tracking composable
 const {
   isConnected,
+  gazePoint,
   error,
   toggleConnection,
 } = useEyeTracking();
+
+const isReceivingGaze = ref(false);
+let gazeTimeout: ReturnType<typeof setTimeout> | null = null;
+
+watch(gazePoint, (pt) => {
+  if (pt) {
+    isReceivingGaze.value = true;
+    if (gazeTimeout) clearTimeout(gazeTimeout);
+    gazeTimeout = setTimeout(() => { isReceivingGaze.value = false; }, 1000);
+  } else {
+    isReceivingGaze.value = false;
+  }
+});
+
+const gazeStatusColor = computed(() => {
+  if (!isConnected.value) return 'text-gray-400 dark:text-gray-500';
+  if (isReceivingGaze.value) return 'text-green-500';
+  return 'text-amber-500';
+});
+
+const gazeStatusLabel = computed(() => {
+  if (!isConnected.value) return '';
+  if (isReceivingGaze.value) {
+    const x = gazePoint.value?.x?.toFixed(0) ?? '–';
+    const y = gazePoint.value?.y?.toFixed(0) ?? '–';
+    return `(${x}, ${y})`;
+  }
+  return '–';
+});
 
 // Local state for backend API tracking (separate from WebSocket connection)
 const isTracking = ref(false);

@@ -94,7 +94,8 @@
         <!-- Top bar (fullscreen): user composition (left) | caregiver STT + mic (right) -->
         <div
           v-if="isFullscreen"
-          class="w-full flex-shrink-0 flex border-b border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 min-h-[4.5rem]"
+          class="w-full flex-shrink-0 flex border-b border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 min-h-[4.5rem] cursor-pointer"
+          @click="stopCommunication()"
         >
           <div
             class="flex-1 min-w-0 px-4 py-3 border-r border-gray-300 dark:border-gray-600 flex items-center"

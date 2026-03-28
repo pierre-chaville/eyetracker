@@ -147,7 +147,9 @@
           <div
             ref="cell5"
             class="border border-gray-300 dark:border-gray-600 rounded-lg flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800/50 p-4"
+            :class="{ 'cursor-pointer': isFullscreen }"
             :style="cellStyle"
+            @click="isFullscreen && stopCommunication()"
           >
             <div class="w-full h-full flex flex-col">
               <!-- Speech Started Indicator -->
