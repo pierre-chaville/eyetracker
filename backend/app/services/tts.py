@@ -6,10 +6,11 @@ from __future__ import annotations
 
 import asyncio
 import base64
-import os
-import threading
-import tempfile
 import hashlib
+import os
+import tempfile
+import threading
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -409,25 +410,32 @@ class TTSService:
             return base64.b64encode(audio_data).decode("utf-8")
         return None
 
+    _playback_lock = threading.Lock()
+
+    _MAX_PLAYBACK_SECONDS = 30
+
     def play_audio_async(self, audio_data: bytes, audio_format: str = "mp3", stt_service=None):
-        """
-        Play audio asynchronously in a separate thread.
-        """
+        """Play audio asynchronously in a separate thread."""
 
         def _play_audio():
+            if not self._playback_lock.acquire(timeout=2):
+                logger.warning("TTS playback skipped – another playback is in progress")
+                return
+
+            tmp_path: Optional[str] = None
             stt_was_active = False
-            if stt_service and hasattr(stt_service, "is_active") and stt_service.is_active:
-                stt_was_active = True
-                logger.debug("Pausing STT during TTS playback")
-                try:
-                    if hasattr(stt_service, "pause_for_tts"):
-                        stt_service.pause_for_tts()
-                    else:
-                        stt_service.stop()
-                except Exception as e:
-                    logger.warning("Error pausing STT: %s", e, exc_info=True)
             try:
-                pygame.mixer.init()
+                if stt_service and hasattr(stt_service, "is_active") and stt_service.is_active:
+                    stt_was_active = True
+                    logger.debug("Pausing STT during TTS playback")
+                    try:
+                        if hasattr(stt_service, "pause_for_tts"):
+                            stt_service.pause_for_tts()
+                        else:
+                            stt_service.stop()
+                    except Exception as e:
+                        logger.warning("Error pausing STT: %s", e, exc_info=True)
+
                 with tempfile.NamedTemporaryFile(
                     delete=False, suffix=f".{audio_format}"
                 ) as tmp_file:
@@ -435,19 +443,38 @@ class TTSService:
                     tmp_file.write(audio_data)
 
                 try:
-                    pygame.mixer.music.load(tmp_path)
-                    pygame.mixer.music.play()
-                    while pygame.mixer.music.get_busy():
-                        pygame.time.wait(100)
-                    pygame.mixer.music.stop()
                     pygame.mixer.quit()
-                    logger.debug("TTS playback finished (format: %s)", audio_format)
-                finally:
-                    if os.path.exists(tmp_path):
-                        os.unlink(tmp_path)
+                except Exception:
+                    pass
+                pygame.mixer.init()
+
+                pygame.mixer.music.load(tmp_path)
+                pygame.mixer.music.play()
+
+                deadline = time.monotonic() + self._MAX_PLAYBACK_SECONDS
+                while pygame.mixer.music.get_busy():
+                    if time.monotonic() > deadline:
+                        logger.warning("TTS playback exceeded %ss timeout, stopping", self._MAX_PLAYBACK_SECONDS)
+                        break
+                    pygame.time.wait(100)
+
+                pygame.mixer.music.stop()
+                pygame.mixer.music.unload()
+                logger.debug("TTS playback finished (format: %s)", audio_format)
             except Exception as e:
                 logger.exception("Error playing TTS audio: %s", e)
             finally:
+                try:
+                    pygame.mixer.quit()
+                except Exception:
+                    pass
+
+                if tmp_path and os.path.exists(tmp_path):
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        logger.debug("Could not delete temp file %s, will be cleaned up later", tmp_path)
+
                 if stt_was_active and stt_service:
                     logger.debug("Resuming STT after TTS playback")
                     try:
@@ -457,6 +484,8 @@ class TTSService:
                             stt_service.start(language="fr", model="nova-2")
                     except Exception as e:
                         logger.warning("Error resuming STT: %s", e, exc_info=True)
+
+                self._playback_lock.release()
 
         thread = threading.Thread(target=_play_audio, daemon=True)
         thread.start()

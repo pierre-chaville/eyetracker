@@ -65,117 +65,79 @@
           <h3 class="text-2xl font-semibold text-gray-900 dark:text-white">{{ $t('home.selectUser') }}</h3>
         </div>
         
-        <div class="space-y-4">
-          <!-- User and Caregiver Selection Row -->
-          <div class="grid grid-cols-2 gap-4">
-            <!-- User Selection -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                {{ $t('home.selectUserLabel') }}
-              </label>
-              <select
-                v-model="selectedUserId"
-                @change="onUserSelected"
-                class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+        <div class="grid grid-cols-2 gap-6">
+          <!-- User Selection + Info -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {{ $t('home.selectUserLabel') }}
+            </label>
+            <select
+              v-model="selectedUserId"
+              @change="onUserSelected"
+              class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">{{ $t('home.noUserSelected') }}</option>
+              <option
+                v-for="user in users"
+                :key="user.id"
+                :value="user.id"
               >
-                <option value="">{{ $t('home.noUserSelected') }}</option>
-                <option
-                  v-for="user in users"
-                  :key="user.id"
-                  :value="user.id"
-                >
-                  {{ user.name }} {{ user.is_active ? '' : `(${$t('users.inactive')})` }}
-                </option>
-              </select>
-            </div>
-            
-            <!-- Caregiver Selection -->
-            <div>
-              <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                {{ $t('home.selectCaregiverLabel') }}
-              </label>
-              <select
-                v-model="selectedCaregiverId"
-                @change="onCaregiverSelected"
-                class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="">{{ $t('home.noCaregiverSelected') }}</option>
-                <option
-                  v-for="caregiver in caregivers"
-                  :key="caregiver.id"
-                  :value="caregiver.id"
-                >
-                  {{ caregiver.name }}
-                </option>
-              </select>
-            </div>
-          </div>
-          
-          <!-- Selected User Info -->
-          <div v-if="selectedUser" class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-            <div>
-              <p class="font-semibold text-gray-900 dark:text-white">{{ selectedUser.name }}</p>
-              <div class="flex items-center space-x-4 mt-1">
-                <p v-if="selectedUser.gender" class="text-sm text-gray-600 dark:text-gray-400">
-                  {{ $t('users.gender') }}: {{ selectedUser.gender }}
-                </p>
-                <p v-if="selectedUser.age" class="text-sm text-gray-600 dark:text-gray-400">
-                  {{ $t('users.age') }}: {{ selectedUser.age }}
-                </p>
+                {{ user.name }} {{ user.is_active ? '' : `(${$t('users.inactive')})` }}
+              </option>
+            </select>
+            <div v-if="selectedUser" class="mt-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+              <div class="flex items-center space-x-3 text-sm text-gray-600 dark:text-gray-400">
+                <span v-if="selectedUser.gender">{{ $t('users.gender') }}: {{ $t(`users.gender${selectedUser.gender}`) }}</span>
+                <span v-if="selectedUser.age">{{ $t('users.age') }}: {{ selectedUser.age }}</span>
               </div>
             </div>
+            <div v-if="loadingUsers" class="mt-2 flex items-center space-x-2">
+              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+              <p class="text-sm text-gray-500">{{ $t('home.loadingUsers') }}</p>
+            </div>
+            <div v-if="userError" class="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <p class="text-xs text-red-800 dark:text-red-200">{{ userError }}</p>
+            </div>
           </div>
-          
-          <!-- Selected Caregiver Info -->
-          <div v-if="selectedCaregiver" class="p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
-            <div>
-              <p class="font-semibold text-gray-900 dark:text-white">{{ selectedCaregiver.name }}</p>
-              <p v-if="selectedCaregiver.gender" class="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {{ $t('caregivers.gender') }}: {{ selectedCaregiver.gender }}
+
+          <!-- Caregiver Selection + Info -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {{ $t('home.selectCaregiverLabel') }}
+            </label>
+            <select
+              v-model="selectedCaregiverId"
+              @change="onCaregiverSelected"
+              class="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+              <option value="">{{ $t('home.noCaregiverSelected') }}</option>
+              <option
+                v-for="caregiver in caregivers"
+                :key="caregiver.id"
+                :value="caregiver.id"
+              >
+                {{ caregiver.name }}
+              </option>
+            </select>
+            <div v-if="selectedCaregiver" class="mt-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+              <p v-if="selectedCaregiver.gender" class="text-sm text-gray-600 dark:text-gray-400">
+                {{ $t('caregivers.gender') }}: {{ $t(`caregivers.gender${selectedCaregiver.gender}`) }}
               </p>
               <p v-if="selectedCaregiver.description" class="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
                 {{ selectedCaregiver.description }}
               </p>
             </div>
-          </div>
-          
-          <!-- Loading State -->
-          <div v-if="loadingUsers || loadingCaregivers" class="text-center py-4">
-            <div class="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto"></div>
-            <p class="text-sm text-gray-600 dark:text-gray-400 mt-2">
-              {{ loadingUsers ? $t('home.loadingUsers') : $t('home.loadingCaregivers') }}
-            </p>
-          </div>
-          
-          <!-- Error State -->
-          <div v-if="userError || caregiverError" class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <p class="text-sm text-red-800 dark:text-red-200">{{ userError || caregiverError }}</p>
+            <div v-if="loadingCaregivers" class="mt-2 flex items-center space-x-2">
+              <div class="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-600"></div>
+              <p class="text-sm text-gray-500">{{ $t('home.loadingCaregivers') }}</p>
+            </div>
+            <div v-if="caregiverError" class="mt-2 p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <p class="text-xs text-red-800 dark:text-red-200">{{ caregiverError }}</p>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Quick Actions -->
-      <div class="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 max-w-2xl mx-auto">
-        <h3 class="text-2xl font-semibold text-gray-900 dark:text-white mb-6">{{ $t('home.quickActions.title') }}</h3>
-        <div class="grid grid-cols-2 gap-4">
-          <router-link to="/eye-tracking" class="btn-secondary py-6 text-lg font-medium flex flex-col items-center">
-            <EyeIcon class="w-8 h-8 mb-2" />
-            {{ $t('home.quickActions.viewEyeTracking') }}
-          </router-link>
-          <button class="btn-secondary py-6 text-lg font-medium">
-            <ChatBubbleLeftRightIcon class="w-8 h-8 mx-auto mb-2" />
-            {{ $t('home.quickActions.startCommunication') }}
-          </button>
-          <button class="btn-secondary py-6 text-lg font-medium">
-            <Cog6ToothIcon class="w-8 h-8 mx-auto mb-2" />
-            {{ $t('home.quickActions.calibrate') }}
-          </button>
-          <button class="btn-secondary py-6 text-lg font-medium">
-            <BookOpenIcon class="w-8 h-8 mx-auto mb-2" />
-            {{ $t('home.quickActions.practiceMode') }}
-          </button>
-        </div>
-      </div>
     </main>
 
     <!-- Footer -->
@@ -191,12 +153,6 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import {
-  EyeIcon,
-  ChatBubbleLeftRightIcon,
-  Cog6ToothIcon,
-  BookOpenIcon,
-} from '@heroicons/vue/24/outline';
 import { useEyeTracking } from '../composables/useEyeTracking';
 import { eyeTrackingAPI, usersAPI, caregiversAPI } from '@/services/api';
 
@@ -335,6 +291,11 @@ onMounted(async () => {
       selectedCaregiverId.value = caregiverId;
       await onCaregiverSelected();
     }
+  }
+
+  // Auto-connect eye tracking if not already connected
+  if (!isConnected.value) {
+    toggleConnection();
   }
 });
 </script>

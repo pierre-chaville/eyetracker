@@ -76,7 +76,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div v-if="user.gender">
               <span class="text-gray-500 dark:text-gray-400">{{ $t('users.gender') }}:</span>
-              <span class="ml-2 text-gray-900 dark:text-white">{{ user.gender }}</span>
+              <span class="ml-2 text-gray-900 dark:text-white">{{ $t(`users.gender${user.gender}`) }}</span>
             </div>
             <div v-if="user.age">
               <span class="text-gray-500 dark:text-gray-400">{{ $t('users.age') }}:</span>

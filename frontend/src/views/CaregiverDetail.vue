@@ -33,7 +33,7 @@
               {{ caregiver.name }}
             </h1>
             <p v-if="caregiver.gender" class="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              {{ $t('caregivers.gender') }}: {{ caregiver.gender }}
+              {{ $t('caregivers.gender') }}: {{ $t(`caregivers.gender${caregiver.gender}`) }}
             </p>
             <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">
               {{ $t('caregiverDetail.createdAt') }}: {{ formatDate(caregiver.created_at) }}

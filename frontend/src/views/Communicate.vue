@@ -16,15 +16,6 @@
             </p>
           </div>
           <div class="flex items-center space-x-4">
-            <div class="flex items-center space-x-2">
-              <div :class="[
-                'w-3 h-3 rounded-full',
-                isActive ? 'bg-green-500 animate-pulse' : 'bg-gray-400'
-              ]"></div>
-              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">
-                {{ isActive ? $t('communicate.active') : $t('communicate.inactive') }}
-              </span>
-            </div>
             <button
               @click="toggleSpeechToText"
               :disabled="isLoading"
@@ -363,7 +354,6 @@ const {
   calibrationCoefficients: trackingCalibrationCoefficients,
   isFullscreen: trackingIsFullscreen,
   toggleConnection: toggleEyeTrackingConnection,
-  disconnectWebSocket: disconnectEyeTracking,
   updateWindowPosition,
   updateHeaderHeight,
 } = useEyeTracking({ 
@@ -1063,11 +1053,6 @@ const stopCommunication = async () => {
     await speechToTextAPI.stop();
     isActive.value = false;
     disconnectSTT();
-    
-    // Disconnect eye tracking
-    if (isEyeTrackingConnected.value && disconnectEyeTracking) {
-      disconnectEyeTracking();
-    }
     
     // End the session if it exists
     if (sessionId.value) {
