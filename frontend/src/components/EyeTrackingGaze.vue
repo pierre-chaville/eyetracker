@@ -9,8 +9,14 @@
       }"
       class="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none transition-all duration-75 ease-linear z-50"
     >
-      <!-- Circle -->
-      <div class="w-8 h-8">
+      <!-- Circle: searching state (amber, pulsing slower) -->
+      <div v-if="isSearching" class="w-10 h-10">
+        <div
+          class="w-full h-full rounded-full border-4 border-amber-400 border-dashed bg-amber-500/30 shadow-lg shadow-amber-500/40 animate-spin-slow"
+        ></div>
+      </div>
+      <!-- Circle: normal state -->
+      <div v-else class="w-8 h-8">
         <div
           class="w-full h-full rounded-full bg-primary-500 border-4 border-primary-300 shadow-lg shadow-primary-500/50"
         ></div>
@@ -57,6 +63,7 @@ interface Props {
   trackingData?: TrackingData | null
   isConnected?: boolean
   showCoordinates?: boolean
+  isSearching?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
@@ -64,6 +71,7 @@ const props = withDefaults(defineProps<Props>(), {
   trackingData: null,
   isConnected: false,
   showCoordinates: true,
+  isSearching: false,
 });
 
 const { t } = useI18n();
@@ -71,4 +79,13 @@ const { t } = useI18n();
 const currentGazePoint = computed(() => props.gazePoint);
 const currentTrackingData = computed(() => props.trackingData);
 </script>
+
+<style scoped>
+@keyframes spin-slow {
+  to { transform: rotate(360deg); }
+}
+.animate-spin-slow {
+  animation: spin-slow 1.5s linear infinite;
+}
+</style>
 

@@ -29,6 +29,7 @@ class Choice(BaseModel):
     text: Optional[str] = None
     icon: Optional[str] = None
     probability: Optional[float] = None
+    pictogram_url: Optional[str] = None
 
 
 class ChoicesResponse(BaseModel):
@@ -66,3 +67,4 @@ class ChoicesRequest(BaseModel):
     current_text: Optional[str] = None
     session_id: Optional[int] = None
     step_number: Optional[int] = None
+    aac_mode: Optional[bool] = False

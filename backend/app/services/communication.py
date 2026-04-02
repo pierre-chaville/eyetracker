@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime
 from typing import List, Optional
 
@@ -22,6 +23,8 @@ from app.schemas.session import (
     SessionStepCreate,
     SessionStepRead,
 )
+from app.config import load_config
+from app.services import arasaac
 from app.services.speak import speak_text
 from app.services.suggestions import SuggestionsService
 from app.utils.exceptions import EntityNotFoundError
@@ -235,16 +238,44 @@ class CommunicationService:
         self._session = session
         self._suggestions_service = suggestions_service
 
+    @property
+    def _aac_locale(self) -> str:
+        """ARASAAC locale derived from the TTS language config (e.g. 'fr', 'en')."""
+        try:
+            cfg = load_config()
+            return (cfg.tts_language or "en")[:2].lower()
+        except Exception:
+            return "en"
+
     async def generate_choices(self, request: ChoicesRequest) -> ChoicesResponse:
-        items = await self._suggestions_service.generate(request, "communication")
-        choices = [
+        aac_mode = bool(request.aac_mode)
+        items = await self._suggestions_service.generate(
+            request, "communication", aac_mode=aac_mode,
+        )
+
+        if aac_mode:
+            locale = self._aac_locale
+            pictogram_tasks = [
+                arasaac.resolve_pictogram_url(
+                    item.get("arasaac_keywords") or [], locale=locale,
+                )
+                if item.get("arasaac_keywords")
+                else asyncio.sleep(0, result=None)
+                for item in items
+            ]
+            pictogram_urls = await asyncio.gather(*pictogram_tasks)
+        else:
+            pictogram_urls = [None] * len(items)
+
+        choices: list[Choice] = [
             Choice(
                 id=str(i + 1),
                 text=item["text"],
                 icon=None,
                 probability=item["probability"],
+                pictogram_url=purl,
             )
-            for i, item in enumerate(items)
+            for i, (item, purl) in enumerate(zip(items, pictogram_urls))
         ]
         return ChoicesResponse(choices=choices)
 

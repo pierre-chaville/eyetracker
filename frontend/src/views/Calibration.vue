@@ -2,7 +2,7 @@
   <div class="min-h-screen bg-gray-50 dark:bg-gray-900 relative overflow-hidden">
     <!-- Header (hidden during calibration) -->
     <header 
-      v-if="!isCalibrating && !calibrationComplete"
+      v-if="!isCalibrating"
       class="bg-white dark:bg-gray-800 shadow-lg z-10 relative border-b border-gray-200 dark:border-gray-700"
     >
       <div class="px-4 sm:px-6 lg:px-8 py-4">
@@ -16,10 +16,10 @@
     </header>
 
     <!-- Calibration Area -->
-    <div :class="['relative w-full', isCalibrating || calibrationComplete ? 'h-screen' : 'h-[calc(100vh-80px)]']">
+    <div :class="['relative w-full', isCalibrating ? 'h-screen' : 'h-[calc(100vh-80px)]']">
       <!-- Start Button (Initial State) -->
       <div
-        v-if="!isCalibrating && !calibrationComplete"
+        v-if="!isCalibrating"
         class="absolute inset-0 flex items-center justify-center"
       >
         <button
@@ -73,113 +73,6 @@
       </div>
 
 
-      <!-- Calibration Quality Check Visualization -->
-      <div
-        v-if="calibrationComplete && processedCalibrationData"
-        class="absolute inset-0 bg-gray-50 dark:bg-gray-900 overflow-auto"
-      >
-        <!-- Quality Check Visualization -->
-        <div class="relative w-full h-full">
-          <!-- Draw crosses and samples for each calibration point -->
-          <template v-for="(point, index) in processedCalibrationData.points" :key="index">
-            <!-- Target Position Cross (100px lines) -->
-            <div
-              :style="{
-                left: `${point.targetX}px`,
-                top: `${point.targetY}px`,
-              }"
-              class="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none z-20"
-            >
-              <!-- Horizontal line (100px) -->
-              <div
-                class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[100px] h-[2px] bg-blue-500 dark:bg-blue-400"
-              ></div>
-              <!-- Vertical line (100px) -->
-              <div
-                class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[2px] h-[100px] bg-blue-500 dark:bg-blue-400"
-              ></div>
-              <!-- Center dot -->
-              <div
-                class="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-blue-600 dark:bg-blue-500 border-2 border-white dark:border-gray-900"
-              ></div>
-            </div>
-            
-            <!-- Gaze Samples (small circles) -->
-            <template v-if="calibrationData[index] && calibrationData[index].samplesData">
-              <div
-                v-for="(sample, sampleIndex) in calibrationData[index].samplesData"
-                :key="`sample-${index}-${sampleIndex}`"
-                :style="{
-                  left: `${sample.x}px`,
-                  top: `${sample.y}px`,
-                }"
-                class="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10"
-              >
-                <div
-                  class="w-2 h-2 rounded-full bg-red-500 dark:bg-red-400 opacity-60"
-                ></div>
-              </div>
-            </template>
-            
-            <!-- Average Gaze Position (larger circle) - calculated from samples using geometric median -->
-            <div
-              v-if="calibrationData[index] && calibrationData[index].samplesData && calibrationData[index].samplesData.length > 0"
-              :style="{
-                left: `${getRobustAverageGaze(calibrationData[index].samplesData).x}px`,
-                top: `${getRobustAverageGaze(calibrationData[index].samplesData).y}px`,
-              }"
-              class="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none z-30"
-            >
-              <div
-                class="w-4 h-4 rounded-full bg-green-500 dark:bg-green-400 border-2 border-white dark:border-gray-900 opacity-80"
-              ></div>
-            </div>
-          </template>
-        </div>
-        
-        <!-- Action Buttons -->
-        <div class="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-4">
-          <button
-            @click="validateCalibration"
-            class="px-8 py-4 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-lg shadow-lg transition-colors"
-          >
-            {{ $t('calibration.validate') }}
-          </button>
-          <button
-            @click="resetCalibration"
-            class="px-8 py-4 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold text-lg shadow-lg transition-colors"
-          >
-            {{ $t('calibration.restart') }}
-          </button>
-        </div>
-        
-        <!-- Info Panel -->
-        <div class="absolute top-8 right-8 bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 max-w-xs border border-gray-200 dark:border-gray-700 z-20">
-          <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            {{ $t('calibration.qualityCheck') }}
-          </h3>
-          <div class="space-y-2 text-sm">
-            <div class="flex items-center space-x-2">
-              <div class="w-4 h-4 border-2 border-blue-500 dark:border-blue-400"></div>
-              <span class="text-gray-700 dark:text-gray-300">{{ $t('calibration.targetPosition') }}</span>
-            </div>
-            <div class="flex items-center space-x-2">
-              <div class="w-2 h-2 rounded-full bg-red-500 dark:bg-red-400"></div>
-              <span class="text-gray-700 dark:text-gray-300">{{ $t('calibration.gazeSamples') }}</span>
-            </div>
-            <div class="flex items-center space-x-2">
-              <div class="w-4 h-4 rounded-full bg-green-500 dark:bg-green-400"></div>
-              <span class="text-gray-700 dark:text-gray-300">{{ $t('calibration.averageGaze') }}</span>
-            </div>
-          </div>
-          <div v-if="processedCalibrationData.affine_coefficients" class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <p class="text-xs text-gray-600 dark:text-gray-400 mb-2">{{ $t('calibration.calibrationApplied') }}</p>
-            <p class="text-xs font-mono text-gray-700 dark:text-gray-300">
-              {{ $t('calibration.coefficientsSaved') }}
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -188,9 +81,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, inject, type Ref } from 'vue';
 import { useEyeTracking } from '../composables/useEyeTracking';
 import { usersAPI, calibrationAPI } from '../services/api';
-import { CheckIcon } from '@heroicons/vue/24/outline';
 import { useI18n } from 'vue-i18n';
-import { geometricMedian, coordinateWiseMedian } from '../utils/statistics';
 import type { UserRead } from '../types/api';
 import type { CalibrationCoefficients } from '../types/tracking';
 
@@ -242,7 +133,6 @@ const {
 
 // Calibration state
 const isCalibrating = ref(false);
-const calibrationComplete = ref(false);
 const currentPosition = ref<number | null>(null);
 const circleSize = ref(200); // Starting size in pixels
 const circleColor = ref('#3b82f6'); // Primary blue
@@ -361,7 +251,6 @@ const startCalibration = async () => {
   await new Promise<void>((resolve) => setTimeout(resolve, 100));
   initializePositions();
   isCalibrating.value = true;
-  calibrationComplete.value = false;
   currentPosition.value = null;
   calibrationData.value = [];
   circleSize.value = 200;
@@ -469,12 +358,9 @@ const startCalibrationPoint = (positionIndex) => {
 
 const finishCalibration = async () => {
   isCalibrating.value = false;
-  calibrationComplete.value = true;
   
-  // Send calibration data to backend for processing
   if (selectedUser.value && calibrationData.value.length > 0) {
     try {
-      // Prepare data with raw samples for backend processing
       const calibrationRequest = {
         user_id: selectedUser.value.id,
         timestamp: Date.now(),
@@ -482,23 +368,20 @@ const finishCalibration = async () => {
           position: point.position,
           targetX: point.targetX,
           targetY: point.targetY,
-          samples: point.samplesData, // Send all raw samples
+          samples: point.samplesData,
         })),
       };
       
-      // Send to backend for processing
       const response = await calibrationAPI.process(calibrationRequest);
-      
       console.log('Calibration processed and saved:', response);
-      
-      // Store processed data for quality check visualization
       processedCalibrationData.value = response as unknown as ProcessedCalibrationData;
     } catch (error) {
       console.error('Error processing calibration data:', error);
-      // Show error to user
       alert('Error saving calibration data. Please try again.');
     }
   }
+
+  validateCalibration();
 };
 
 const validateCalibration = () => {
@@ -515,7 +398,6 @@ const validateCalibration = () => {
   exitFullscreen();
   
   isCalibrating.value = false;
-  calibrationComplete.value = false;
   currentPosition.value = null;
   calibrationData.value = [];
   processedCalibrationData.value = null;
@@ -556,7 +438,6 @@ const exitFullscreen = () => {
 
 const resetCalibration = () => {
   isCalibrating.value = false;
-  calibrationComplete.value = false;
   currentPosition.value = null;
   calibrationData.value = [];
   processedCalibrationData.value = null;
@@ -601,21 +482,6 @@ const loadSelectedUser = async () => {
  * Calculate robust average gaze position using geometric median
  * Falls back to coordinate-wise median if geometric median fails
  */
-const getRobustAverageGaze = (samples) => {
-  if (!samples || samples.length === 0) {
-    return { x: 0, y: 0 };
-  }
-  
-  try {
-    // Try geometric median first (most robust to outliers)
-    return geometricMedian(samples.map(s => ({ x: s.x, y: s.y })));
-  } catch (error) {
-    console.warn('Error calculating geometric median, using coordinate-wise median:', error);
-    // Fallback to coordinate-wise median
-    return coordinateWiseMedian(samples.map(s => ({ x: s.x, y: s.y })));
-  }
-};
-
 // Fullscreen change handlers
 let fullscreenChangeHandlers: Array<{ event: string; handler: () => void }> = [];
 

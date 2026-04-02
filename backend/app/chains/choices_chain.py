@@ -6,7 +6,7 @@ Output: Structured ChoicesOutput (Pydantic) for use by the communication service
 """
 from __future__ import annotations
 
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 from langchain_core.messages import AIMessage, HumanMessage, SystemMessage
 from langchain_core.runnables import RunnableLambda
@@ -27,6 +27,10 @@ class ChoiceWithProbability(BaseModel):
         description="Probability score between 0.0 and 1.0",
         ge=0.0,
         le=1.0,
+    )
+    arasaac_keywords: Optional[List[str]] = Field(
+        default=None,
+        description="1-3 simple keywords for ARASAAC pictogram search (only when AAC pictograms are requested)",
     )
 
 

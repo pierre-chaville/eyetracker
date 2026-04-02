@@ -55,6 +55,8 @@ export const communicationAPI = {
     currentText?: string | null
     sessionId?: number | null
     stepNumber?: number | null
+    aacMode?: boolean
+    signal?: AbortSignal
   } = {}): Promise<ChoicesResponse> {
     const {
       conversationHistory = [],
@@ -63,6 +65,8 @@ export const communicationAPI = {
       currentText = null,
       sessionId = null,
       stepNumber = null,
+      aacMode = false,
+      signal,
     } = options
     const response = await apiClient.post<ChoicesResponse>('/communication/choices', {
       conversation_history: conversationHistory,
@@ -71,7 +75,8 @@ export const communicationAPI = {
       current_text: currentText,
       session_id: sessionId,
       step_number: stepNumber,
-    })
+      aac_mode: aacMode,
+    }, { signal })
     return response.data
   },
 

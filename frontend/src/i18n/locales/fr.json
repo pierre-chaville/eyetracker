@@ -274,7 +274,9 @@
     "speaking": "Parole en cours...",
     "noTranscriptions": "Aucune transcription pour le moment. Démarrez la reconnaissance vocale pour commencer à capturer l'audio.",
     "noText": "Aucun texte pour le moment",
-    "clear": "Tout effacer"
+    "clear": "Tout effacer",
+    "aacMode": "Pictogrammes AAC",
+    "searching": "Recherche..."
   },
   "caregivers": {
     "title": "Aidants",
@@ -384,7 +386,8 @@
     "speaking": "Parle...",
     "noText": "Commencez à taper...",
     "noTranscription": "Aucune transcription pour le moment",
-    "noUserText": "Rien de saisi pour le moment"
+    "noUserText": "Rien de saisi pour le moment",
+    "searching": "Recherche..."
   }
 }
 

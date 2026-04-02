@@ -6,6 +6,7 @@ invokes the choices chain, and maps results to the API shape.
 """
 from __future__ import annotations
 
+import sys
 from typing import List, Optional, TypedDict
 
 from langchain_anthropic import ChatAnthropic
@@ -23,11 +24,12 @@ from app.utils.retry import async_with_retry_and_timing
 logger = get_logger(__name__)
 
 
-class ChoiceResult(TypedDict):
+class ChoiceResult(TypedDict, total=False):
     """Typed result for a single choice (avoids Dict[str, Any])."""
 
     text: str
     probability: float
+    arasaac_keywords: Optional[List[str]]
 
 
 # Fallback choices returned when the LLM call fails.
@@ -131,6 +133,12 @@ class LLMService:
             context=context,
             conversation_history=conversation_history,
         )
+        print(system_prompt)
+        print(context)
+        print(conversation_history)
+        print(user_notes)
+        print(caregiver_description)
+        print(current_text)
         structured_llm = self._llm.with_structured_output(ChoicesOutput)
         chain = create_choices_chain(structured_llm)
 
@@ -145,7 +153,11 @@ class LLMService:
                 transient_exceptions=(ConnectionError, TimeoutError, OSError),
             )
             choices: List[ChoiceResult] = [
-                {"text": c.text, "probability": c.probability}
+                {
+                    "text": c.text,
+                    "probability": c.probability,
+                    "arasaac_keywords": c.arasaac_keywords,
+                }
                 for c in result.choices
             ]
             choices.sort(key=lambda x: x["probability"], reverse=True)

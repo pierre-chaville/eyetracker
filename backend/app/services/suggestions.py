@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from typing import List, Literal, TypedDict
+from typing import List, Literal, Optional, TypedDict
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,9 +24,10 @@ logger = get_logger(__name__)
 SuggestionsMode = Literal["communication", "keyboard"]
 
 
-class SuggestionItem(TypedDict):
+class SuggestionItem(TypedDict, total=False):
     text: str
     probability: float
+    arasaac_keywords: Optional[List[str]]
 
 
 # Fallback when LLM fails (communication-style).
@@ -60,6 +61,7 @@ class SuggestionsService:
         self,
         request: ChoicesRequest,
         mode: SuggestionsMode,
+        aac_mode: bool = False,
     ) -> List[SuggestionItem]:
         """
         Generate suggestions using the LLM.
@@ -100,6 +102,15 @@ class SuggestionsService:
                     "Suggest 2-8 short phrases the user might want to say."
                 )
 
+            if aac_mode:
+                system_prompt += (
+                    "\n\nIMPORTANT: For each choice, also provide 1-3 simple "
+                    "ARASAAC pictogram search keywords in the `arasaac_keywords` field. "
+                    "Use simple, concrete nouns or verbs that are likely to match "
+                    "pictograms in the ARASAAC database (e.g., 'eat', 'happy', 'water', "
+                    "'play'). Keep keywords in the same language as the choices."
+                )
+
             llm_service = get_llm_service(
                 provider=config.provider,
                 model=config.model,
@@ -113,7 +124,11 @@ class SuggestionsService:
                 current_text=current_text,
             )
             items: List[SuggestionItem] = [
-                {"text": c["text"], "probability": c["probability"]}
+                {
+                    "text": c["text"],
+                    "probability": c["probability"],
+                    "arasaac_keywords": c.get("arasaac_keywords"),
+                }
                 for c in llm_choices
             ]
 

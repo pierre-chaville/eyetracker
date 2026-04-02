@@ -28,6 +28,7 @@ export interface Choice {
   text?: string
   icon?: string
   probability?: number
+  pictogram_url?: string
 }
 
 export interface ChoicesResponse {

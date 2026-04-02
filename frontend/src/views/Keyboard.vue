@@ -113,19 +113,31 @@
           <div
             class="flex-1 min-w-0 px-4 py-3 flex items-center gap-3"
           >
-            <MicrophoneIcon
-              v-if="isSpeaking"
-              class="w-6 h-6 text-blue-500 dark:text-blue-400 animate-pulse flex-shrink-0"
-            />
-            <p
-              v-if="lastTranscription"
-              class="text-base sm:text-lg text-gray-800 dark:text-gray-200 break-words flex-1"
-            >
-              {{ lastTranscription }}
-            </p>
-            <p v-else class="text-sm text-gray-400 dark:text-gray-500 italic flex-1">
-              {{ $t('keyboard.noTranscription') }}
-            </p>
+            <!-- Searching indicator -->
+            <template v-if="isSearching">
+              <svg class="w-5 h-5 text-amber-500 animate-spin flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+              </svg>
+              <span class="text-sm text-amber-500 font-medium flex-1">
+                {{ $t('keyboard.searching') }}
+              </span>
+            </template>
+            <template v-else>
+              <MicrophoneIcon
+                v-if="isSpeaking"
+                class="w-6 h-6 text-blue-500 dark:text-blue-400 animate-pulse flex-shrink-0"
+              />
+              <p
+                v-if="lastTranscription"
+                class="text-base sm:text-lg text-gray-800 dark:text-gray-200 break-words flex-1"
+              >
+                {{ lastTranscription }}
+              </p>
+              <p v-else class="text-sm text-gray-400 dark:text-gray-500 italic flex-1">
+                {{ $t('keyboard.noTranscription') }}
+              </p>
+            </template>
           </div>
         </div>
 
@@ -196,6 +208,7 @@
           :is-connected="isConnected"
           :is-frozen="false"
           :show-coordinates="false"
+          :is-searching="isSearching"
         />
       </div>
     </div>
@@ -223,6 +236,7 @@ const isCommunicationFullscreenApp = inject('isCommunicationFullscreenApp', ref(
 const isFullscreen = ref(false);
 const isActive = ref(false);
 const isLoading = ref(false);
+const isSearching = ref(false);
 const error = ref<string | null>(null);
 const currentText = ref('');
 /** Keyboard session (session_type=keyboard on backend), same pattern as Communicate. */
@@ -530,6 +544,8 @@ const recordKeyboardStepSelection = async (selectedText: string, activationMode:
 
 // Load predictive words from backend (increments step when session active, persists step like Communicate)
 const loadPredictiveWords = async (triggeredBy: 'user' | 'caregiver' | null = null) => {
+  isSearching.value = true;
+  stopDwelling();
   try {
     const userId = localStorage.getItem('selectedUserId') ? parseInt(localStorage.getItem('selectedUserId')) : null;
     const caregiverId = localStorage.getItem('selectedCaregiverId') ? parseInt(localStorage.getItem('selectedCaregiverId')) : null;
@@ -567,6 +583,8 @@ const loadPredictiveWords = async (triggeredBy: 'user' | 'caregiver' | null = nu
   } catch (err) {
     console.error('Error loading predictive words:', err);
     predictiveWords.value = [];
+  } finally {
+    isSearching.value = false;
   }
 };
 
@@ -874,6 +892,12 @@ const exitFullscreen = () => {
 
 // Eye tracking detection
 const detectCellFromGaze = () => {
+  if (isSearching.value) {
+    highlightedCellIndex.value = null;
+    stopDwelling();
+    return;
+  }
+
   if (!gazePoint.value || !isConnected.value || !isFullscreen.value) {
     highlightedCellIndex.value = null;
     stopDwelling();

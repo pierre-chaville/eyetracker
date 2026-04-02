@@ -16,6 +16,28 @@
             </p>
           </div>
           <div class="flex items-center space-x-4">
+            <!-- AAC pictogram toggle -->
+            <label class="flex items-center space-x-2 cursor-pointer select-none">
+              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('communicate.aacMode') }}</span>
+              <button
+                type="button"
+                role="switch"
+                :aria-checked="aacMode"
+                @click="aacMode = !aacMode"
+                :class="[
+                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200',
+                  aacMode ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
+                ]"
+              >
+                <span
+                  :class="[
+                    'inline-block h-4 w-4 rounded-full bg-white transition-transform duration-200',
+                    aacMode ? 'translate-x-6' : 'translate-x-1'
+                  ]"
+                />
+              </button>
+            </label>
+
             <button
               @click="toggleSpeechToText"
               :disabled="isLoading"
@@ -152,8 +174,18 @@
             @click="isFullscreen && stopCommunication()"
           >
             <div class="w-full h-full flex flex-col">
+              <!-- Searching indicator -->
+              <div v-if="isSearching" class="mb-2 flex items-center justify-center space-x-2">
+                <svg class="w-5 h-5 text-amber-500 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+                </svg>
+                <span class="text-xs text-amber-500 font-medium">
+                  {{ $t('communicate.searching') }}
+                </span>
+              </div>
               <!-- Speech Started Indicator -->
-              <div v-if="isSpeaking" class="mb-2 flex items-center justify-center space-x-2">
+              <div v-else-if="isSpeaking" class="mb-2 flex items-center justify-center space-x-2">
                 <MicrophoneIcon class="w-5 h-5 text-blue-600 dark:text-blue-400 animate-pulse" />
                 <span class="text-xs text-blue-600 dark:text-blue-400 font-medium">
                   {{ $t('communicate.speaking') }}
@@ -292,6 +324,7 @@
         :is-connected="isEyeTrackingConnected"
         :is-frozen="false"
         :show-coordinates="false"
+        :is-searching="isSearching"
       />
     </div>
   </div>
@@ -300,6 +333,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, watch, inject, nextTick, type Ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import axios from 'axios';
 import { MicrophoneIcon } from '@heroicons/vue/24/solid';
 import { useEyeTracking } from '../composables/useEyeTracking';
 import { useCalibration } from '../composables/useCalibration';
@@ -342,6 +376,15 @@ watch(sttError, (value) => {
     error.value = value;
   }
 });
+
+// AAC pictogram mode
+const aacMode = ref(false);
+
+// Searching state (backend generating choices)
+const isSearching = ref(false);
+
+// AbortController for in-flight choices requests
+let choicesAbortController: AbortController | null = null;
 
 // Session tracking
 const sessionId = ref<number | null>(null);
@@ -475,8 +518,12 @@ let cellCheckCounter = 0;
 
 // Check which cell the gaze is pointing at and handle dwelling
 const checkGazePosition = () => {
-  // Only check if eye tracking is connected and we have a gaze point
-  // Don't require trackingData.valid to be true - just check if we have coordinates
+  if (isSearching.value) {
+    highlightedCell.value = null;
+    stopDwelling();
+    return;
+  }
+
   if (!gazePoint.value || !isEyeTrackingConnected.value) {
     if (highlightedCell.value !== null || dwellingCell.value !== null) {
       highlightedCell.value = null;
@@ -681,14 +728,23 @@ watch(choices, async (newChoices) => {
 
 // Load choices from backend
 const loadChoices = async () => {
+  if (!isActive.value) return;
+
+  // Cancel any previous in-flight request
+  if (choicesAbortController) {
+    choicesAbortController.abort();
+  }
+  choicesAbortController = new AbortController();
+  const { signal } = choicesAbortController;
+
+  isSearching.value = true;
+  stopDwelling();
   try {
-    // Get user and caregiver IDs from localStorage
     const userIdValue = localStorage.getItem('selectedUserId');
     const caregiverIdValue = localStorage.getItem('selectedCaregiverId');
     const userId = userIdValue ? Number.parseInt(userIdValue, 10) : null;
     const caregiverId = caregiverIdValue ? Number.parseInt(caregiverIdValue, 10) : null;
     
-    // Increment step number for this session
     if (sessionId.value) {
       stepNumber.value += 1;
     }
@@ -700,12 +756,20 @@ const loadChoices = async () => {
       currentText: currentText.value || null,
       sessionId: sessionId.value,
       stepNumber: sessionId.value ? stepNumber.value : null,
+      aacMode: aacMode.value,
+      signal,
     });
+
+    if (signal.aborted) return;
     choices.value = response.choices || [];
   } catch (err) {
+    if (axios.isCancel(err) || (err instanceof DOMException && err.name === 'AbortError')) return;
     console.error('Error loading choices:', err);
-    // Use empty choices on error
     choices.value = [];
+  } finally {
+    if (!signal.aborted) {
+      isSearching.value = false;
+    }
   }
 };
 
@@ -849,7 +913,7 @@ const resumeSTT = async () => {
 
 // Select a choice
 const selectChoice = async (choice, activationMode: 'click' | 'gaze_dwell' = 'click', dwellTimeMs: number | null = null) => {
-  if (!choice) return;
+  if (!choice || !isActive.value) return;
   
   try {
     // Add choice text to current text
@@ -890,11 +954,9 @@ const selectChoice = async (choice, activationMode: 'click' | 'gaze_dwell' = 'cl
     });
     
     // Audio is played in the backend, so we don't need to play it here
-    // This prevents double playback/echo
     console.log('Response from select_choice:', response);
-    console.log('Audio is being played in the backend');
     
-    // Reload choices for next context
+    if (!isActive.value) return;
     await loadChoices();
   } catch (err) {
     console.error('Error selecting choice:', err);
@@ -902,6 +964,7 @@ const selectChoice = async (choice, activationMode: 'click' | 'gaze_dwell' = 'cl
 };
 
 onSTTEvent('transcription', (event) => {
+  if (!isActive.value) return;
   const transcribedText = event.data.text.trim();
   conversationHistory.value.push({
     role: 'caregiver',
@@ -1062,6 +1125,13 @@ const stopCommunication = async () => {
   error.value = null;
   successMessage.value = null;
   
+  // Cancel any in-flight choices request first
+  if (choicesAbortController) {
+    choicesAbortController.abort();
+    choicesAbortController = null;
+  }
+  isSearching.value = false;
+
   try {
     // Stop dwelling if active
     stopDwelling();
@@ -1282,6 +1352,12 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
+  // Cancel any in-flight choices request
+  if (choicesAbortController) {
+    choicesAbortController.abort();
+    choicesAbortController = null;
+  }
+
   // Stop dwelling
   stopDwelling();
   

@@ -274,7 +274,9 @@
     "speaking": "Speaking...",
     "noTranscriptions": "No transcriptions yet. Start speech-to-text to begin capturing audio.",
     "noText": "No text yet",
-    "clear": "Clear All"
+    "clear": "Clear All",
+    "aacMode": "AAC Pictograms",
+    "searching": "Searching..."
   },
   "caregivers": {
     "title": "Caregivers",
@@ -384,7 +386,8 @@
     "speaking": "Speaking...",
     "noText": "Start typing...",
     "noTranscription": "No transcription yet",
-    "noUserText": "Nothing typed yet"
+    "noUserText": "Nothing typed yet",
+    "searching": "Searching..."
   }
 }
 
