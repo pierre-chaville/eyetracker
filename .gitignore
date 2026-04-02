@@ -51,3 +51,11 @@ backend/config.json
 # TTS cache
 backend/tts_cache/
 
+# c#bridge
+c#bridge/*.dll
+c#bridge/*.lib
+c#bridge/bin/
+c#bridge/obj/
+c#bridge/GazeSpeakerInterop.cs
+
+
