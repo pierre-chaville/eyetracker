@@ -1218,23 +1218,7 @@ let resizeHandler: (() => void) | null = null;
 // Load display scale factor
 const loadDisplayScaleFactor = async () => {
   try {
-    // Try to get scale factor from Electron API
-    const electronAPI = window as Window & {
-      electronAPI?: { getDisplayScaleFactor?: () => Promise<number> }
-    };
-    if (electronAPI.electronAPI && electronAPI.electronAPI.getDisplayScaleFactor) {
-      const scale = await electronAPI.electronAPI.getDisplayScaleFactor();
-      displayScaleFactor.value = scale || 1.0;
-    } else {
-      // Fallback to devicePixelRatio
-      displayScaleFactor.value = window.devicePixelRatio || 1.0;
-    }
-    
-    // If scale is 1.0, try devicePixelRatio as fallback
-    if (displayScaleFactor.value === 1.0 && window.devicePixelRatio && window.devicePixelRatio !== 1.0) {
-      displayScaleFactor.value = window.devicePixelRatio;
-    }
-    
+    displayScaleFactor.value = window.devicePixelRatio || 1.0;
     console.log('Display scale factor:', displayScaleFactor.value);
   } catch (err) {
     console.error('Error getting display scale factor:', err);

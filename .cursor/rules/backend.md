@@ -180,7 +180,7 @@ class STTService:
 
 ### WebSocket Communication
 
-The backend uses a WebSocket to push **Speech-to-Text events** to the frontend in real time (partial transcripts, final results, status changes). Gaze/eye-tracking data does NOT go through the backend — it flows directly to the frontend via the Tobii SDK / Electron native layer.
+The backend uses a WebSocket to push **Speech-to-Text events** to the frontend in real time (partial transcripts, final results, status changes). Gaze/eye-tracking data does NOT go through the backend — it flows directly to the frontend via the C# Tobii bridge WebSocket.
 
 #### Connection Manager
 - Use a centralized `ConnectionManager` class to track active WebSocket connections.

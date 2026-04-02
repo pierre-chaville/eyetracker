@@ -59,11 +59,22 @@
     </nav>
 
     <!-- Bottom Actions -->
-    <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700">
+    <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700 space-y-3">
       <div :class="['flex items-center', isExpanded ? 'justify-center space-x-2' : 'justify-center space-x-1']">
         <ThemeSwitcher />
         <LanguageSwitcher />
       </div>
+      <button
+        @click="exitApp"
+        :class="[
+          'flex items-center w-full rounded-lg transition-colors text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30',
+          isExpanded ? 'px-4 py-2 space-x-3' : 'px-3 py-2 justify-center',
+        ]"
+        :title="$t('sidebar.exit')"
+      >
+        <ArrowRightOnRectangleIcon class="w-5 h-5 flex-shrink-0" />
+        <span v-if="isExpanded" class="text-sm font-medium">{{ $t('sidebar.exit') }}</span>
+      </button>
     </div>
   </aside>
 
@@ -89,6 +100,7 @@ import {
   XMarkIcon,
   Bars3Icon,
   ChevronRightIcon,
+  ArrowRightOnRectangleIcon,
 } from '@heroicons/vue/24/outline';
 import ThemeSwitcher from './ThemeSwitcher.vue';
 import LanguageSwitcher from './LanguageSwitcher.vue';
@@ -163,6 +175,17 @@ const isActive = (path) => {
     return route.path === '/';
   }
   return route.path.startsWith(path);
+};
+
+const exitApp = () => {
+  if (confirm(t('sidebar.exitConfirm'))) {
+    window.close();
+    // Fallback: if window.close() is blocked (not opened by script),
+    // navigate to a blank page as visual feedback
+    setTimeout(() => {
+      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#1e1e2e;color:#cdd6f4;font-family:sans-serif;font-size:1.5rem">' + t('sidebar.exitMessage') + '</div>';
+    }, 300);
+  }
 };
 </script>
 

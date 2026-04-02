@@ -1,90 +1,99 @@
-# Eye Tracker - Communication Assistant for Rett Syndrome
+# Eye Tracker – Communication Assistant for Rett Syndrome
 
-An Electron-based application that uses eye tracking and AI (LLMs) to assist people with Rett syndrome in communicating through eye gaze.
+An application that uses eye tracking and AI (LLMs) to assist people with Rett syndrome in communicating through eye gaze.
 
 ## Architecture
 
-- **Frontend**: Vue.js 3 with Tailwind CSS and Headless UI
-- **Backend**: Python FastAPI
-- **Desktop Framework**: Electron
+- **Frontend**: Vue.js 3 with Tailwind CSS and Headless UI (port 5173)
+- **Backend**: Python FastAPI with uvicorn (port 8080)
+- **Bridge**: C# .NET 8 Tobii gaze WebSocket server (port 8765)
+- **Launcher**: Python Tkinter desktop GUI to manage all services
 
 ## Project Structure
 
 ```
 eyetracker/
-├── electron/          # Electron main process files
-├── frontend/          # Vue.js frontend application
 ├── backend/           # Python FastAPI backend
-└── package.json       # Root package.json for Electron
+├── bridge/            # C# Tobii eye-tracker WebSocket bridge
+├── frontend/          # Vue.js frontend application
+├── launcher/          # Desktop launcher (start/stop/update)
+├── docs/              # Documentation
+└── package.json       # Convenience npm scripts
 ```
 
-## Setup
+## Quick Start
 
-### Prerequisites
+### Using the Launcher (recommended)
 
-- Node.js (v18 or higher)
-- Python 3.9 or higher
-- npm or yarn
+Double-click `launcher/start.bat` or run:
 
-### Installation
-
-1. Install all dependencies:
 ```bash
-npm run install:all
+python launcher/launcher.py
 ```
 
-This will install:
-- Node.js dependencies (root)
-- Frontend dependencies (Vue.js, Tailwind, etc.)
-- Python dependencies (FastAPI, etc.)
+The launcher provides buttons to start/stop each service, update via git, and open the browser.
 
-2. Create a Python virtual environment (recommended):
+### Manual Setup
+
+#### Prerequisites
+
+- Python 3.9+
+- Node.js 18+
+- .NET 8 SDK (for the Tobii bridge, optional)
+
+#### Installation
+
+1. Create and activate a Python virtual environment:
 ```bash
 cd backend
 python -m venv venv
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
+venv\Scripts\activate          # Windows
 pip install -r requirements.txt
 ```
 
-## Development
+2. Install frontend dependencies:
+```bash
+cd frontend
+npm install
+```
 
-Run the application in development mode:
+3. (Optional) Build the C# bridge:
+```bash
+cd bridge
+dotnet build
+```
+
+#### Running
+
+Start each component in a separate terminal:
 
 ```bash
+# Backend
+cd backend
+python -m uvicorn main:app --reload --port 8080
+
+# Frontend
+cd frontend
 npm run dev
+
+# Bridge (needs Tobii hardware)
+cd bridge
+dotnet run
 ```
 
-This will:
-1. Start the Vue.js dev server (http://localhost:5173)
-2. Start the FastAPI backend (http://localhost:8080)
-3. Launch the Electron app
-
-### Individual Commands
-
-- Frontend only: `npm run dev:frontend`
-- Backend only: `npm run dev:backend`
-- Electron only: `npm start` (after frontend/backend are running)
-
-## Building
-
-Build the application for production:
-
-```bash
-npm run build
-```
+Then open http://localhost:5173 in your browser.
 
 ## Features
 
-- Eye tracking integration
-- AI-powered language assistance
-- Accessible UI design
-- Calibration system
-- Communication history
+- Eye tracking integration (Tobii via C# bridge)
+- AI-powered communication choices (OpenAI / Anthropic)
+- AAC pictogram support (ARASAAC)
+- Predictive keyboard with gaze input
+- Speech-to-text (Deepgram) and text-to-speech (OpenAI / ElevenLabs / Google / pyttsx3)
+- Calibration system with gaze mapping
+- Communication session history and analysis
+- Multi-language support (English / French)
 
 ## License
 
 MIT
-

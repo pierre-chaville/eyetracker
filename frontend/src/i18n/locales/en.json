@@ -18,7 +18,10 @@
     "viewEyeTracking": "View Eye Tracking",
     "users": "Users",
     "caregivers": "Caregivers",
-    "setup": "Setup"
+    "setup": "Setup",
+    "exit": "Exit",
+    "exitConfirm": "Are you sure you want to close the application?",
+    "exitMessage": "You can close this tab."
   },
   "home": {
     "title": "Iris",

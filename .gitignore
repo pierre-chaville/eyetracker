@@ -30,17 +30,15 @@ backend/google.json
 .DS_Store
 Thumbs.db
 
-# Electron
-out/
+# Logs
 *.log
 
 # Python
-*.log
 .pytest_cache/
 .coverage
 htmlcov/
 
-# database
+# Database
 *.db-shm
 *.db-wal
 *.db
@@ -51,11 +49,9 @@ backend/config.json
 # TTS cache
 backend/tts_cache/
 
-# c#bridge
-c#bridge/*.dll
-c#bridge/*.lib
-c#bridge/bin/
-c#bridge/obj/
-c#bridge/GazeSpeakerInterop.cs
-
-
+# C# bridge
+bridge/*.dll
+bridge/*.lib
+bridge/bin/
+bridge/obj/
+bridge/GazeSpeakerInterop.cs

@@ -1,10 +1,10 @@
 ---
-description: Rules for frontend code (Vue.js, Tailwind CSS, Headless UI, Electron renderer)
+description: Rules for frontend code (Vue.js, Tailwind CSS, Headless UI)
 globs: frontend/**/*.{vue,ts,js,css}
 alwaysApply: false
 ---
 
-# Frontend — Vue.js Eyetracking App (Electron Renderer)
+# Frontend — Vue.js Eyetracking App
 
 ## Stack
 - **Framework**: Vue 3 (Composition API only)
@@ -12,10 +12,9 @@ alwaysApply: false
 - **Styling**: Tailwind CSS 3
 - **UI Components**: Headless UI for Vue
 - **State Management**: Pinia
-- **Real-time**: WebSockets — eye-tracking events (~30Hz from Tobii/Electron), STT events (from FastAPI backend)
+- **Real-time**: WebSockets — eye-tracking events (~30Hz from C# Tobii bridge), STT events (from FastAPI backend)
 - **Build**: Vite
-- **Runtime**: Electron renderer process
-- **Communication**: IPC via preload bridge to Electron main process
+- **Runtime**: Browser (Chrome / Edge)
 
 ## Project Structure
 
@@ -58,7 +57,7 @@ frontend/
 │   │   ├── tracking.ts
 │   │   ├── api.ts
 │   │   ├── ws.ts                # WebSocket message types (mirrors backend schemas)
-│   │   ├── electron.d.ts        # Preload API types
+│   │   ├── tracking.ts          # Eye-tracking data types
 │   │   └── ...
 │   ├── utils/                   # Helpers, constants, enums
 │   │   ├── constants.ts
@@ -88,12 +87,12 @@ frontend/
 REST API (FastAPI)           ←→  Services  ←→  Stores  ←→  Components  ←→  User
 WS: Eye tracker (~30Hz)      →  useGaze composable       →  Components
 WS: STT events (FastAPI)     →  useSTTEvents composable   →  Components / Stores
-Electron IPC                 ←→  Composables              →  Components
+Tobii Bridge WS              →   useEyeTracking composable →  Components
 ```
 - Components never call services or WebSocket directly — go through stores or composables.
 - Stores call services for REST data fetching and mutations.
 - Two separate WebSocket connections with different sources:
-  - **Gaze WS**: eye-tracker data at ~30Hz via Tobii SDK / Electron native layer. Flows through `useGaze` composable. Not routed through the backend.
+  - **Gaze WS**: eye-tracker data at ~30Hz via C# Tobii bridge (`ws://localhost:8765`). Flows through `useEyeTracking` composable. Not routed through the backend.
   - **STT WS**: speech-to-text events pushed by the FastAPI backend (`/ws/stt`). Flows through `useSTTEvents` composable.
 - Composables use stores when they need shared state, or services for scoped data.
 
@@ -297,7 +296,7 @@ export const trackingService = {
 ### WebSocket Communication
 
 The frontend consumes two separate WebSocket streams:
-1. **Eye-tracker WS** (~30Hz) — gaze coordinates from the Tobii SDK via Electron native layer. Not routed through the FastAPI backend.
+1. **Eye-tracker WS** (~30Hz) — gaze coordinates from the C# Tobii bridge (`ws://localhost:8765`). Not routed through the FastAPI backend.
 2. **STT WS** (`/ws/stt`) — speech-to-text events pushed by the FastAPI backend (partial transcripts, final results, status changes).
 
 #### Generic WebSocket Client (`services/ws.ts`)
@@ -340,7 +339,7 @@ export function createWSClient(options: WSClientOptions) {
 ```typescript
 // types/ws.ts
 
-// --- Eye tracker messages (from Tobii/Electron WS) ---
+// --- Eye tracker messages (from Tobii bridge WS) ---
 interface GazeDataMessage {
   type: 'gaze_data'
   x: number
@@ -375,7 +374,7 @@ type STTEvent = STTPartialResult | STTFinalResult | STTStatusChange
 ```
 
 #### Gaze Composable (`composables/useGaze.ts`)
-- Receives eye-tracking data via WebSocket at ~30Hz from the Tobii SDK / Electron native layer.
+- Receives eye-tracking data via WebSocket at ~30Hz from the C# Tobii bridge.
 - At 30Hz, Vue reactivity can handle updates directly — no need for a `requestAnimationFrame` buffer. Use `shallowRef` to avoid deep reactivity overhead.
 - Apply smoothing (exponential moving average) before exposing to components.
 - Detect fixations vs. saccades and expose as reactive state.
@@ -388,7 +387,7 @@ export function useGaze() {
   const connectionStatus = ref<WSConnectionStatus>('disconnected')
 
   const wsClient = createWSClient({
-    url: GAZE_WS_URL,  // e.g., ws://localhost:PORT from Electron
+    url: GAZE_WS_URL,  // ws://localhost:8765 from Tobii bridge
     onMessage: (data) => {
       const msg = data as GazeDataMessage
       gazePoint.value = applySmoothing(msg)
@@ -483,26 +482,6 @@ export function useSTTEvents() {
 - **Single connection per source** — never open multiple WS connections to the same endpoint. Use a shared composable instance (provide/inject at app root or singleton pattern).
 - **Separate concerns** — gaze and STT are independent streams. Never mix them into a single WebSocket connection or composable.
 
-### Electron IPC Communication
-- All IPC calls go through the preload bridge — never use `ipcRenderer` directly in renderer.
-- Type the preload API in `types/electron.d.ts` and expose via `window.electronAPI`.
-- Wrap IPC calls in composables or services for clean component code.
-- Handle IPC errors gracefully — the main process may not respond.
-
-```typescript
-// types/electron.d.ts
-interface ElectronAPI {
-  getGazeData: () => Promise<GazePoint>
-  onGazeUpdate: (callback: (point: GazePoint) => void) => void
-  speak: (text: string, options?: TTSOptions) => Promise<void>
-}
-
-declare global {
-  interface Window {
-    electronAPI: ElectronAPI
-  }
-}
-```
 
 ## Accessibility — Critical for Assistive App
 
@@ -543,7 +522,7 @@ declare global {
 - Never use Options API or `defineComponent()`.
 - Never use `<style scoped>` for layout/spacing — use Tailwind classes.
 - Never use `any` — use `unknown` with type narrowing.
-- Never call `window.electronAPI` or services directly from components — go through composables or stores.
+- Never call services directly from components — go through composables or stores.
 - Never use `v-html` — XSS risk.
 - Never use `setTimeout` / `setInterval` without cleanup in `onUnmounted`.
 - Never use `@click` on `<div>` or `<span>` — use `<button>` or Headless UI components.

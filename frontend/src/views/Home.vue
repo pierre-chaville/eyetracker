@@ -297,18 +297,9 @@ const onCaregiverSelected = async () => {
 const toggleTracking = async () => {
   try {
     if (isTracking.value) {
-      // Try Electron API first, fallback to HTTP API
-      if (window.electronAPI) {
-        await window.electronAPI.stopEyeTracking();
-      } else {
-        await eyeTrackingAPI.stop();
-      }
+      await eyeTrackingAPI.stop();
     } else {
-      if (window.electronAPI) {
-        await window.electronAPI.startEyeTracking();
-      } else {
-        await eyeTrackingAPI.start();
-      }
+      await eyeTrackingAPI.start();
     }
     isTracking.value = !isTracking.value;
   } catch (error) {

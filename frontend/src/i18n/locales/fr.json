@@ -18,7 +18,10 @@
     "viewEyeTracking": "Voir le Suivi Oculaire",
     "users": "Utilisateurs",
     "caregivers": "Aidants",
-    "setup": "Configuration"
+    "setup": "Configuration",
+    "exit": "Quitter",
+    "exitConfirm": "Voulez-vous vraiment fermer l'application ?",
+    "exitMessage": "Vous pouvez fermer cet onglet."
   },
   "home": {
     "title": "Orizon",
