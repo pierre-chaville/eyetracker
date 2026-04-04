@@ -384,6 +384,7 @@ class LauncherApp:
             ("Update", YELLOW, self._update),
             ("Open Browser", BLUE, self._open_browser),
             ("Clear Log", FG_DIM, self._clear_log),
+            ("Shutdown", RED, self._shutdown),
         ]
         for text, colour, cmd in buttons:
             b = tk.Button(
@@ -559,13 +560,33 @@ class LauncherApp:
 
     # -- Misc ---------------------------------------------------------------
 
+    def _shutdown(self):
+        if not messagebox.askyesno(
+            "Shutdown",
+            "This will stop all services and shut down the computer.\nProceed?",
+        ):
+            return
+        self._system_log("Stopping all services before shutdown…")
+        self._stop_all_sync()
+        self._system_log("Shutting down the system…")
+        if sys.platform == "win32":
+            subprocess.Popen(["shutdown", "/s", "/t", "5"], creationflags=subprocess.CREATE_NO_WINDOW)
+        else:
+            subprocess.Popen(["shutdown", "-h", "now"])
+        self.root.destroy()
+
     def _open_browser(self):
         url = "http://localhost:5173"
         browser = _find_browser()
         if browser:
-            self._system_log(f"Opening {url} in app mode (fullscreen)")
+            # Use a dedicated profile so Chrome/Edge launches a fresh instance
+            # that respects --kiosk (ignored when attaching to an existing window)
+            profile_dir = PROJECT_ROOT / ".browser-profile"
+            profile_dir.mkdir(exist_ok=True)
+            self._system_log(f"Opening {url} in fullscreen app mode")
             subprocess.Popen(
-                [browser, f"--app={url}", "--start-fullscreen"],
+                [browser, f"--app={url}", "--start-fullscreen",
+                 f"--user-data-dir={profile_dir}"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )

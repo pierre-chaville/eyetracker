@@ -177,15 +177,31 @@ const isActive = (path) => {
   return route.path.startsWith(path);
 };
 
-const exitApp = () => {
-  if (confirm(t('sidebar.exitConfirm'))) {
+const exitApp = async () => {
+  if (!confirm(t('sidebar.exitConfirm'))) return;
+
+  // Exit any active Fullscreen API state first — this restores the
+  // window to its original "script-opened" state so window.close() works.
+  try {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    }
+  } catch (_) { /* ignore */ }
+
+  // Primary: works in kiosk / --app mode
+  window.close();
+
+  // Fallback after a short delay (in case window.close was blocked)
+  setTimeout(() => {
+    // Re-open current tab as self-reference, then close
+    window.open('about:blank', '_self');
     window.close();
-    // Fallback: if window.close() is blocked (not opened by script),
-    // navigate to a blank page as visual feedback
-    setTimeout(() => {
-      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#1e1e2e;color:#cdd6f4;font-family:sans-serif;font-size:1.5rem">' + t('sidebar.exitMessage') + '</div>';
-    }, 300);
-  }
+  }, 400);
+
+  // Final fallback: blank the page so the user knows the app stopped
+  setTimeout(() => {
+    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#1e1e2e;color:#cdd6f4;font-family:sans-serif;font-size:1.5rem">' + t('sidebar.exitMessage') + '</div>';
+  }, 800);
 };
 </script>
 

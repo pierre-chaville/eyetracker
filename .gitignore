@@ -55,3 +55,6 @@ bridge/*.lib
 bridge/bin/
 bridge/obj/
 bridge/GazeSpeakerInterop.cs
+
+# Browser kiosk profile
+.browser-profile/
