@@ -45,6 +45,8 @@ def load_config() -> ConfigModel:
                     )
                 if "eye_tracking" not in data:
                     data["eye_tracking"] = {"eye_used": "both", "dwell_time": 2.0}
+                if "prompt_session_analysis" not in data:
+                    data["prompt_session_analysis"] = ""
                 return ConfigModel(**data)
         except (json.JSONDecodeError, ValueError, KeyError):
             logger.exception("Error loading config")

@@ -19,6 +19,7 @@ class ConfigModel(BaseModel):
     communicate_prompt: str = ""
     keyboard_prompt: str = ""
     keyboard_multiple_letters_prompt: str = ""
+    prompt_session_analysis: str = ""
     header_height_adjustment: int = 0
     menu_width_adjustment: int = 0
     tts_language: str = "fr"
@@ -37,6 +38,7 @@ class ConfigResponse(BaseModel):
     communicate_prompt: str
     keyboard_prompt: str
     keyboard_multiple_letters_prompt: str
+    prompt_session_analysis: str
     header_height_adjustment: int
     menu_width_adjustment: int
     tts_language: str
