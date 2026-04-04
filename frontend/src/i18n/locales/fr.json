@@ -391,6 +391,127 @@
     "noTranscription": "Aucune transcription pour le moment",
     "noUserText": "Rien de saisi pour le moment",
     "searching": "Recherche..."
+  },
+  "feedback": {
+    "title": "Retour sur la session",
+    "subtitle": "Évaluation rapide par l'accompagnateur après la session.",
+    "skip": "Passer",
+    "submit": "Envoyer le retour",
+    "sections": {
+      "context": "Contexte de la session",
+      "eyeTracking": "Performance du suivi oculaire",
+      "communication": "Communication & interaction",
+      "engagement": "Engagement & plaisir",
+      "outcome": "Résultat de la session",
+      "note": "Note rapide"
+    },
+    "stateBefore": {
+      "label": "État de l'utilisateur avant la session",
+      "alert_engaged": "Alerte & engagé(e)",
+      "calm_passive": "Calme mais passif/ve",
+      "tired": "Fatigué(e) / somnolent(e)",
+      "agitated": "Agité(e) / nerveux/se",
+      "unwell": "Mal à l'aise / inconfort"
+    },
+    "moodBefore": {
+      "label": "Humeur de l'utilisateur avant la session",
+      "happy": "Content(e) / positif/ve",
+      "neutral": "Neutre",
+      "upset": "Contrarié(e) / frustré(e)",
+      "hard_to_tell": "Difficile à dire"
+    },
+    "gazeAccuracy": {
+      "label": "Précision du regard pendant la session",
+      "very_accurate": "Très précis",
+      "mostly_accurate": "Plutôt précis",
+      "inconsistent": "Inconstant",
+      "poor": "Faible"
+    },
+    "calibrationQuality": {
+      "label": "Qualité de la calibration",
+      "good": "Bonne (pas de recalibration)",
+      "acceptable": "Acceptable (recalibré une fois)",
+      "difficult": "Difficile (plusieurs recalibrations)",
+      "failed": "Échouée"
+    },
+    "headStability": {
+      "label": "Stabilité de la position de la tête",
+      "stable": "Stable tout au long",
+      "some_movement": "Quelques mouvements",
+      "frequent_repositioning": "Repositionnements fréquents",
+      "could_not_maintain": "Position non maintenue"
+    },
+    "intentionalSelections": {
+      "label": "Les sélections étaient-elles intentionnelles ?",
+      "yes_clearly": "Oui, clairement",
+      "mostly": "Surtout, quelques accidentelles",
+      "unclear": "Difficile à distinguer",
+      "mostly_accidental": "Surtout accidentelles"
+    },
+    "choicesRelevance": {
+      "label": "Les choix proposés étaient-ils pertinents ?",
+      "very_relevant": "Très pertinents",
+      "somewhat_relevant": "Partiellement pertinents",
+      "not_relevant": "Non pertinents",
+      "hard_to_assess": "Difficile à évaluer"
+    },
+    "communicationPace": {
+      "label": "Rythme de la communication",
+      "too_fast": "Trop rapide",
+      "good": "Bon rythme",
+      "too_slow": "Trop lent"
+    },
+    "engagementLevel": {
+      "label": "Niveau d'engagement de l'utilisateur",
+      "highly_engaged": "Très engagé(e)",
+      "moderately_engaged": "Modérément engagé(e)",
+      "low_engagement": "Peu engagé(e)",
+      "refused": "A refusé / abandonné"
+    },
+    "enjoyment": {
+      "label": "L'utilisateur a-t-il apprécié la session ?",
+      "clearly_enjoyed": "Clairement apprécié",
+      "neutral": "Semblait neutre",
+      "frustrated": "Semblait frustré(e)",
+      "hard_to_tell": "Difficile à dire"
+    },
+    "sessionEndReason": {
+      "label": "La session s'est terminée parce que",
+      "planned_duration": "Durée prévue atteinte",
+      "fatigue": "Signes de fatigue",
+      "agitated": "Agitation / énervement",
+      "technical_issue": "Problème technique",
+      "disengaged": "Perte d'intérêt",
+      "external_interruption": "Interruption extérieure"
+    },
+    "overallRating": {
+      "label": "Évaluation globale de la session",
+      "excellent": "Excellent",
+      "good": "Bon",
+      "fair": "Moyen",
+      "poor": "Mauvais"
+    },
+    "comparedPrevious": {
+      "label": "Par rapport aux sessions précédentes",
+      "better": "Mieux que d'habitude",
+      "same": "À peu près pareil",
+      "worse": "Moins bien que d'habitude",
+      "first_session": "Première session"
+    },
+    "keyAchievements": {
+      "label": "Réussites clés (sélectionner tout ce qui s'applique)",
+      "made_request": "A fait une demande claire",
+      "expressed_emotion": "A exprimé une émotion",
+      "responded_question": "A répondu à une question",
+      "initiated_communication": "A initié la communication",
+      "sustained_interaction": "A maintenu l'interaction",
+      "none_notable": "Aucune notable"
+    },
+    "quickNote": {
+      "placeholder": "Observation rapide de l'accompagnateur..."
+    },
+    "viewTitle": "Retour sur la session",
+    "noFeedback": "Aucun retour enregistré pour cette session."
   }
 }
 

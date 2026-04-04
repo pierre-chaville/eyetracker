@@ -34,6 +34,7 @@ from app.schemas.session import (
     CommunicationSessionCreate,
     CommunicationSessionRead,
     CommunicationSessionUpdate,
+    SessionFeedback,
     SessionStepCreate,
     SessionStepRead,
 )
@@ -74,6 +75,7 @@ __all__ = [
     "CommunicationSessionCreate",
     "CommunicationSessionRead",
     "CommunicationSessionUpdate",
+    "SessionFeedback",
     "SessionStepCreate",
     "SessionStepRead",
 ]

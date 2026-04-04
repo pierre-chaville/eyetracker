@@ -129,6 +129,51 @@
           </div>
         </div>
 
+        <!-- Session Feedback (expandable) -->
+        <div
+          v-if="session.feedback && Object.keys(session.feedback).length > 0"
+          class="bg-white dark:bg-gray-800 rounded-lg shadow-md"
+        >
+          <button
+            @click="showFeedback = !showFeedback"
+            class="w-full flex items-center justify-between p-6 text-left focus:outline-none"
+          >
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+              {{ $t('feedback.viewTitle') }}
+            </h2>
+            <ChevronDownIcon
+              :class="['w-5 h-5 text-gray-500 transition-transform duration-200', showFeedback ? 'rotate-180' : '']"
+            />
+          </button>
+          <div v-if="showFeedback" class="px-6 pb-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div v-for="(value, key) in session.feedback" :key="key" class="py-2">
+                <template v-if="key !== 'quick_note'">
+                  <span class="text-sm text-gray-500 dark:text-gray-400">{{ feedbackLabel(key as string) }}</span>
+                  <p class="text-gray-900 dark:text-white font-medium mt-0.5">
+                    <template v-if="Array.isArray(value)">
+                      <span
+                        v-for="(item, idx) in value"
+                        :key="idx"
+                        class="inline-block mr-1 mb-1 px-2 py-0.5 rounded-full text-xs font-medium bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300"
+                      >
+                        {{ feedbackValueLabel(key as string, item) }}
+                      </span>
+                    </template>
+                    <template v-else>
+                      {{ feedbackValueLabel(key as string, value as string) }}
+                    </template>
+                  </p>
+                </template>
+              </div>
+            </div>
+            <div v-if="session.feedback.quick_note" class="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+              <span class="text-sm text-gray-500 dark:text-gray-400">{{ $t('feedback.sections.note') }}</span>
+              <p class="mt-1 text-sm text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 whitespace-pre-wrap">{{ session.feedback.quick_note }}</p>
+            </div>
+          </div>
+        </div>
+
         <!-- Conversation History -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
           <div class="flex items-center justify-between mb-4">
@@ -268,6 +313,37 @@ const loading = ref(false);
 const error = ref(null);
 const showChoices = ref(false);
 const showContext = ref(false);
+const showFeedback = ref(false);
+
+const FEEDBACK_FIELD_MAP: Record<string, string> = {
+  state_before: 'feedback.stateBefore',
+  mood_before: 'feedback.moodBefore',
+  gaze_accuracy: 'feedback.gazeAccuracy',
+  calibration_quality: 'feedback.calibrationQuality',
+  head_stability: 'feedback.headStability',
+  intentional_selections: 'feedback.intentionalSelections',
+  choices_relevance: 'feedback.choicesRelevance',
+  communication_pace: 'feedback.communicationPace',
+  engagement_level: 'feedback.engagementLevel',
+  enjoyment: 'feedback.enjoyment',
+  session_end_reason: 'feedback.sessionEndReason',
+  overall_rating: 'feedback.overallRating',
+  compared_previous: 'feedback.comparedPrevious',
+  key_achievements: 'feedback.keyAchievements',
+};
+
+const feedbackLabel = (key: string): string => {
+  const prefix = FEEDBACK_FIELD_MAP[key];
+  return prefix ? t(`${prefix}.label`) : key;
+};
+
+const feedbackValueLabel = (key: string, value: string): string => {
+  const prefix = FEEDBACK_FIELD_MAP[key];
+  if (!prefix) return value;
+  const path = `${prefix}.${value}`;
+  const translated = t(path);
+  return translated !== path ? translated : value;
+};
 
 const loadUsers = async () => {
   try {

@@ -391,6 +391,127 @@
     "noTranscription": "No transcription yet",
     "noUserText": "Nothing typed yet",
     "searching": "Searching..."
+  },
+  "feedback": {
+    "title": "Session Feedback",
+    "subtitle": "Quick assessment by the caregiver after the session.",
+    "skip": "Skip",
+    "submit": "Submit Feedback",
+    "sections": {
+      "context": "Session Context",
+      "eyeTracking": "Eye-Tracking Performance",
+      "communication": "Communication & Interaction",
+      "engagement": "Engagement & Enjoyment",
+      "outcome": "Session Outcome",
+      "note": "Quick Note"
+    },
+    "stateBefore": {
+      "label": "User's state before session",
+      "alert_engaged": "Alert & engaged",
+      "calm_passive": "Calm but passive",
+      "tired": "Tired / drowsy",
+      "agitated": "Agitated / restless",
+      "unwell": "Unwell / in discomfort"
+    },
+    "moodBefore": {
+      "label": "User's mood before session",
+      "happy": "Happy / positive",
+      "neutral": "Neutral",
+      "upset": "Upset / frustrated",
+      "hard_to_tell": "Hard to tell"
+    },
+    "gazeAccuracy": {
+      "label": "Gaze accuracy during session",
+      "very_accurate": "Very accurate",
+      "mostly_accurate": "Mostly accurate",
+      "inconsistent": "Inconsistent",
+      "poor": "Poor"
+    },
+    "calibrationQuality": {
+      "label": "Calibration quality",
+      "good": "Good (no recalibration)",
+      "acceptable": "Acceptable (recalibrated once)",
+      "difficult": "Difficult (multiple recalibrations)",
+      "failed": "Failed"
+    },
+    "headStability": {
+      "label": "Head position stability",
+      "stable": "Stable throughout",
+      "some_movement": "Some movement",
+      "frequent_repositioning": "Frequent repositioning",
+      "could_not_maintain": "Could not maintain"
+    },
+    "intentionalSelections": {
+      "label": "Did the user make intentional selections?",
+      "yes_clearly": "Yes, clearly intentional",
+      "mostly": "Mostly, some accidental",
+      "unclear": "Unclear",
+      "mostly_accidental": "Mostly accidental"
+    },
+    "choicesRelevance": {
+      "label": "Were the proposed choices relevant?",
+      "very_relevant": "Very relevant",
+      "somewhat_relevant": "Somewhat relevant",
+      "not_relevant": "Not relevant",
+      "hard_to_assess": "Hard to assess"
+    },
+    "communicationPace": {
+      "label": "Communication pace",
+      "too_fast": "Too fast",
+      "good": "Good pace",
+      "too_slow": "Too slow"
+    },
+    "engagementLevel": {
+      "label": "User's engagement level",
+      "highly_engaged": "Highly engaged",
+      "moderately_engaged": "Moderately engaged",
+      "low_engagement": "Low engagement",
+      "refused": "Refused / gave up"
+    },
+    "enjoyment": {
+      "label": "Did the user seem to enjoy the session?",
+      "clearly_enjoyed": "Clearly enjoyed it",
+      "neutral": "Seemed neutral",
+      "frustrated": "Seemed frustrated",
+      "hard_to_tell": "Hard to tell"
+    },
+    "sessionEndReason": {
+      "label": "Session ended because",
+      "planned_duration": "Planned duration reached",
+      "fatigue": "Signs of fatigue",
+      "agitated": "Became agitated / upset",
+      "technical_issue": "Technical issue",
+      "disengaged": "Lost interest",
+      "external_interruption": "External interruption"
+    },
+    "overallRating": {
+      "label": "Overall session rating",
+      "excellent": "Excellent",
+      "good": "Good",
+      "fair": "Fair",
+      "poor": "Poor"
+    },
+    "comparedPrevious": {
+      "label": "Compared to previous sessions",
+      "better": "Better than usual",
+      "same": "About the same",
+      "worse": "Worse than usual",
+      "first_session": "First session"
+    },
+    "keyAchievements": {
+      "label": "Key achievements (select all that apply)",
+      "made_request": "Made a clear request",
+      "expressed_emotion": "Expressed an emotion",
+      "responded_question": "Responded to a question",
+      "initiated_communication": "Initiated communication",
+      "sustained_interaction": "Sustained interaction",
+      "none_notable": "None notable"
+    },
+    "quickNote": {
+      "placeholder": "Quick observation by the caregiver..."
+    },
+    "viewTitle": "Session Feedback",
+    "noFeedback": "No feedback recorded for this session."
   }
 }
 

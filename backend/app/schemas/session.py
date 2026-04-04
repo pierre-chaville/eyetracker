@@ -1,9 +1,29 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel
+
+
+class SessionFeedback(BaseModel):
+    """Post-session caregiver feedback."""
+
+    state_before: Optional[str] = None
+    mood_before: Optional[str] = None
+    gaze_accuracy: Optional[str] = None
+    calibration_quality: Optional[str] = None
+    head_stability: Optional[str] = None
+    intentional_selections: Optional[str] = None
+    choices_relevance: Optional[str] = None
+    communication_pace: Optional[str] = None
+    engagement_level: Optional[str] = None
+    enjoyment: Optional[str] = None
+    session_end_reason: Optional[str] = None
+    overall_rating: Optional[str] = None
+    compared_previous: Optional[str] = None
+    key_achievements: Optional[List[str]] = None
+    quick_note: Optional[str] = None
 
 
 class CommunicationSessionCreate(BaseModel):
@@ -19,6 +39,7 @@ class CommunicationSessionCreate(BaseModel):
 
 class CommunicationSessionUpdate(BaseModel):
     ended_at: Optional[datetime] = None
+    feedback: Optional[SessionFeedback] = None
 
 
 class CommunicationSessionRead(BaseModel):
@@ -31,6 +52,7 @@ class CommunicationSessionRead(BaseModel):
     temperature: Optional[float] = None
     user_notes: Optional[str] = None
     keyboard_layout_name: Optional[str] = None
+    feedback: Optional[Dict[str, Any]] = None
     started_at: datetime
     ended_at: Optional[datetime] = None
     created_at: datetime

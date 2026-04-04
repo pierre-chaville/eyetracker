@@ -75,6 +75,7 @@ async def session_to_response(
         temperature=session.temperature,
         user_notes=session.user_notes,
         keyboard_layout_name=session.keyboard_layout_name,
+        feedback=session.feedback_json,
         started_at=session.started_at,
         ended_at=session.ended_at,
         created_at=session.created_at,
@@ -149,6 +150,8 @@ class CommunicationSessionService:
             raise EntityNotFoundError("Session", session_id)
         if session_data.ended_at is not None:
             session.ended_at = session_data.ended_at
+        if session_data.feedback is not None:
+            session.feedback_json = session_data.feedback.model_dump(exclude_none=True)
         session.updated_at = datetime.utcnow()
         self._session.add(session)
         await self._session.commit()

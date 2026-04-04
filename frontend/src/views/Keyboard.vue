@@ -212,6 +212,13 @@
         />
       </div>
     </div>
+
+    <!-- Feedback Form Modal -->
+    <SessionFeedbackForm
+      v-if="showFeedbackForm"
+      @submit="submitFeedback"
+      @skip="skipFeedback"
+    />
   </div>
 </template>
 
@@ -224,6 +231,7 @@ import { useEyeTracking } from '../composables/useEyeTracking';
 import { useCalibration } from '../composables/useCalibration';
 import { useSTTEvents } from '../composables/useSTTEvents';
 import { MicrophoneIcon } from '@heroicons/vue/24/solid';
+import SessionFeedbackForm from '../components/SessionFeedbackForm.vue';
 import { configAPI, keyboardAPI, keyboardLayoutsAPI, speechToTextAPI, usersAPI } from '../services/api';
 import type { KeyboardLayoutRead } from '../types/api';
 
@@ -242,6 +250,10 @@ const currentText = ref('');
 /** Keyboard session (session_type=keyboard on backend), same pattern as Communicate. */
 const sessionId = ref<number | null>(null);
 const stepNumber = ref(0);
+
+// Feedback form
+const showFeedbackForm = ref(false);
+const pendingFeedbackSessionId = ref<number | null>(null);
 /** Tracks whether the last user action was a key (# / letter) or a word (predictive / layout word) for bar composition rules. */
 const lastUserInputKind = ref<'key' | 'word' | null>(null);
 const predictiveWords = ref<string[]>([]);
@@ -834,8 +846,9 @@ const stopCommunication = async () => {
     disconnectSTT();
 
     if (sessionId.value) {
+      const endedSessionId = sessionId.value;
       try {
-        await keyboardAPI.updateSession(sessionId.value, {
+        await keyboardAPI.updateSession(endedSessionId, {
           ended_at: new Date().toISOString(),
         });
       } catch (sessionErr) {
@@ -843,17 +856,39 @@ const stopCommunication = async () => {
       }
       sessionId.value = null;
       stepNumber.value = 0;
+
+      isCommunicationFullscreenApp.value = false;
+      exitFullscreen();
+
+      pendingFeedbackSessionId.value = endedSessionId;
+      showFeedbackForm.value = true;
+    } else {
+      isCommunicationFullscreenApp.value = false;
+      exitFullscreen();
     }
-
-    isCommunicationFullscreenApp.value = false;
-
-    exitFullscreen();
   } catch (err) {
     console.error('Error stopping communication:', err);
     error.value = t('keyboard.error');
   } finally {
     isLoading.value = false;
   }
+};
+
+const submitFeedback = async (feedback: Record<string, unknown>) => {
+  if (pendingFeedbackSessionId.value) {
+    try {
+      await keyboardAPI.updateSession(pendingFeedbackSessionId.value, { feedback });
+    } catch (err) {
+      console.error('Error saving feedback:', err);
+    }
+  }
+  showFeedbackForm.value = false;
+  pendingFeedbackSessionId.value = null;
+};
+
+const skipFeedback = () => {
+  showFeedbackForm.value = false;
+  pendingFeedbackSessionId.value = null;
 };
 
 // Fullscreen functions

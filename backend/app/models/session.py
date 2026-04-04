@@ -27,6 +27,11 @@ class CommunicationSession(SQLModel, table=True):
     keyboard_layout_name: Optional[str] = Field(
         default=None, max_length=200, description="Keyboard layout name (keyboard sessions only)"
     )
+    feedback_json: Optional[Dict[str, Any]] = Field(
+        default=None,
+        sa_column=Column(SQLJSON),
+        description="Post-session caregiver feedback (JSON)",
+    )
     started_at: Optional[datetime] = Field(
         default_factory=datetime.utcnow,
         sa_column=Column(DateTime(timezone=False), server_default=func.now()),

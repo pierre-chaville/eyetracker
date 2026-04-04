@@ -64,6 +64,7 @@ def _migrate_schema(sync_conn) -> None:
             ("temperature", "REAL"),
             ("user_notes", "TEXT"),
             ("keyboard_layout_name", "VARCHAR(200)"),
+            ("feedback_json", "TEXT"),
         ]:
             if col_name not in existing:
                 sync_conn.execute(text(f"ALTER TABLE communication_sessions ADD COLUMN {col_name} {col_def}"))

@@ -327,6 +327,13 @@
         :is-searching="isSearching"
       />
     </div>
+
+    <!-- Feedback Form Modal -->
+    <SessionFeedbackForm
+      v-if="showFeedbackForm"
+      @submit="submitFeedback"
+      @skip="skipFeedback"
+    />
   </div>
 </template>
 
@@ -340,6 +347,7 @@ import { useCalibration } from '../composables/useCalibration';
 import { useSTTEvents } from '../composables/useSTTEvents';
 import EyeTrackingGaze from '../components/EyeTrackingGaze.vue';
 import ChoiceCell from '../components/ChoiceCell.vue';
+import SessionFeedbackForm from '../components/SessionFeedbackForm.vue';
 import { communicationAPI, configAPI, sessionsAPI, speechToTextAPI, usersAPI } from '../services/api';
 import type { Choice } from '../types/api';
 
@@ -389,6 +397,10 @@ let choicesAbortController: AbortController | null = null;
 // Session tracking
 const sessionId = ref<number | null>(null);
 const stepNumber = ref(0);
+
+// Feedback form
+const showFeedbackForm = ref(false);
+const pendingFeedbackSessionId = ref<number | null>(null);
 
 // Eye tracking
 const { calibrationCoefficients } = useCalibration();
@@ -1144,33 +1156,44 @@ const stopCommunication = async () => {
     
     // End the session if it exists
     if (sessionId.value) {
+      const endedSessionId = sessionId.value;
       try {
-        await sessionsAPI.update(sessionId.value, {
+        await sessionsAPI.update(endedSessionId, {
           ended_at: new Date().toISOString(),
         });
-        console.log('Ended session:', sessionId.value);
+        console.log('Ended session:', endedSessionId);
       } catch (sessionErr) {
         console.error('Error ending session:', sessionErr);
-        // Continue even if ending session fails
       }
       sessionId.value = null;
       stepNumber.value = 0;
+
+      // Reset fullscreen/sidebar before showing feedback
+      isCommunicationFullscreenApp.value = false;
+      exitFullscreen();
+
+      // Reset display
+      textLines.value = [];
+      currentText.value = '';
+      transcriptions.value = [];
+      conversationHistory.value = [];
+      choices.value = [];
+
+      // Show feedback form
+      pendingFeedbackSessionId.value = endedSessionId;
+      showFeedbackForm.value = true;
+      successMessage.value = t('communicate.stopped');
+    } else {
+      // No session, just reset
+      textLines.value = [];
+      currentText.value = '';
+      transcriptions.value = [];
+      conversationHistory.value = [];
+      choices.value = [];
+      isCommunicationFullscreenApp.value = false;
+      exitFullscreen();
+      successMessage.value = t('communicate.stopped');
     }
-    
-    // Reset text display
-    textLines.value = [];
-    currentText.value = '';
-    transcriptions.value = [];
-    conversationHistory.value = [];
-    choices.value = [];
-    
-    // Reset fullscreen state in App.vue to show sidebar
-    isCommunicationFullscreenApp.value = false;
-    
-    // Exit fullscreen mode
-    exitFullscreen();
-    
-    successMessage.value = t('communicate.stopped');
   } catch (err) {
     console.error('Error stopping communication:', err);
     error.value = t('communicate.error');
@@ -1179,6 +1202,23 @@ const stopCommunication = async () => {
   } finally {
     isLoading.value = false;
   }
+};
+
+const submitFeedback = async (feedback: Record<string, unknown>) => {
+  if (pendingFeedbackSessionId.value) {
+    try {
+      await sessionsAPI.update(pendingFeedbackSessionId.value, { feedback });
+    } catch (err) {
+      console.error('Error saving feedback:', err);
+    }
+  }
+  showFeedbackForm.value = false;
+  pendingFeedbackSessionId.value = null;
+};
+
+const skipFeedback = () => {
+  showFeedbackForm.value = false;
+  pendingFeedbackSessionId.value = null;
 };
 
 const toggleSpeechToText = async () => {
