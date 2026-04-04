@@ -53,6 +53,7 @@ class CommunicationSessionRead(BaseModel):
     user_notes: Optional[str] = None
     keyboard_layout_name: Optional[str] = None
     feedback: Optional[Dict[str, Any]] = None
+    ai_analysis_markdown: Optional[str] = None
     started_at: datetime
     ended_at: Optional[datetime] = None
     created_at: datetime

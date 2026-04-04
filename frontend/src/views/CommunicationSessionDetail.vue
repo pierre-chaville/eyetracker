@@ -14,13 +14,26 @@
             {{ $t('sessionDetail.title') }} #{{ sessionId }}
           </h1>
         </div>
-        <button
-          v-if="session && !session.ended_at"
-          @click="endSession"
-          class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-        >
-          {{ $t('sessionDetail.endSession') }}
-        </button>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            v-if="session"
+            type="button"
+            :disabled="analyzing"
+            @click="runAiAnalysis"
+            class="px-4 py-2 bg-primary-600 hover:bg-primary-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg transition-colors touch-manipulation"
+          >
+            <span v-if="analyzing">{{ $t('sessionDetail.analyzing') }}</span>
+            <span v-else-if="session.ai_analysis_markdown">{{ $t('sessionDetail.runAiAnalysisAgain') }}</span>
+            <span v-else>{{ $t('sessionDetail.runAiAnalysis') }}</span>
+          </button>
+          <button
+            v-if="session && !session.ended_at"
+            @click="endSession"
+            class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+          >
+            {{ $t('sessionDetail.endSession') }}
+          </button>
+        </div>
       </div>
 
       <!-- Loading State -->
@@ -174,6 +187,40 @@
           </div>
         </div>
 
+        <!-- AI analysis (expandable, Markdown) -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md">
+          <button
+            type="button"
+            @click="showAiAnalysis = !showAiAnalysis"
+            class="w-full flex items-center justify-between p-6 text-left focus:outline-none"
+          >
+            <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
+              {{ $t('sessionDetail.aiAnalysis') }}
+            </h2>
+            <ChevronDownIcon
+              :class="['w-5 h-5 text-gray-500 transition-transform duration-200 shrink-0', showAiAnalysis ? 'rotate-180' : '']"
+            />
+          </button>
+          <div v-if="showAiAnalysis" class="px-6 pb-6">
+            <div
+              v-if="analysisError"
+              class="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-sm text-red-800 dark:text-red-200"
+            >
+              {{ analysisError }}
+            </div>
+            <SessionAnalysisMarkdown
+              v-if="session.ai_analysis_markdown"
+              :source="session.ai_analysis_markdown"
+            />
+            <p
+              v-else
+              class="text-sm text-gray-500 dark:text-gray-400"
+            >
+              {{ $t('sessionDetail.aiAnalysisEmpty') }}
+            </p>
+          </div>
+        </div>
+
         <!-- Conversation History -->
         <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6">
           <div class="flex items-center justify-between mb-4">
@@ -299,6 +346,7 @@ import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { ArrowLeftIcon, ChevronDownIcon } from '@heroicons/vue/24/outline';
+import SessionAnalysisMarkdown from '../components/SessionAnalysisMarkdown.vue';
 import { sessionsAPI, usersAPI, caregiversAPI } from '../services/api';
 
 const router = useRouter();
@@ -314,6 +362,9 @@ const error = ref(null);
 const showChoices = ref(false);
 const showContext = ref(false);
 const showFeedback = ref(false);
+const showAiAnalysis = ref(false);
+const analyzing = ref(false);
+const analysisError = ref<string | null>(null);
 
 const FEEDBACK_FIELD_MAP: Record<string, string> = {
   state_before: 'feedback.stateBefore',
@@ -406,6 +457,27 @@ const endSession = async () => {
   } catch (err) {
     console.error('Error ending session:', err);
     error.value = t('sessionDetail.errorEnding');
+  }
+};
+
+const runAiAnalysis = async () => {
+  analysisError.value = null;
+  analyzing.value = true;
+  try {
+    const data = await sessionsAPI.analyze(sessionId.value);
+    session.value = data;
+    showAiAnalysis.value = true;
+  } catch (err: unknown) {
+    const ax = err as { response?: { data?: { detail?: string } }; message?: string };
+    const detail = ax.response?.data?.detail;
+    analysisError.value =
+      typeof detail === 'string'
+        ? detail
+        : ax.message || t('sessionDetail.aiAnalysisError');
+    showAiAnalysis.value = true;
+    console.error('Error running session analysis:', err);
+  } finally {
+    analyzing.value = false;
   }
 };
 

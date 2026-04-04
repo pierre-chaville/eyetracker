@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from sqlalchemy import JSON as SQLJSON, DateTime, func
+from sqlalchemy import JSON as SQLJSON, DateTime, Text, func
 from sqlmodel import Column, Field, SQLModel
 
 
@@ -31,6 +31,11 @@ class CommunicationSession(SQLModel, table=True):
         default=None,
         sa_column=Column(SQLJSON),
         description="Post-session caregiver feedback (JSON)",
+    )
+    ai_analysis_markdown: Optional[str] = Field(
+        default=None,
+        sa_column=Column(Text),
+        description="LLM-generated session analysis (Markdown)",
     )
     started_at: Optional[datetime] = Field(
         default_factory=datetime.utcnow,

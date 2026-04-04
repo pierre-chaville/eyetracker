@@ -386,7 +386,13 @@
     "click": "Click",
     "gazeDwell": "Gaze Dwell",
     "errorLoading": "Failed to load session",
-    "errorEnding": "Failed to end session"
+    "errorEnding": "Failed to end session",
+    "runAiAnalysis": "Run AI analysis",
+    "runAiAnalysisAgain": "Relaunch AI analysis",
+    "analyzing": "Analyzing…",
+    "aiAnalysis": "AI analysis",
+    "aiAnalysisEmpty": "No analysis yet. Run AI analysis to generate a Markdown report from session data and feedback.",
+    "aiAnalysisError": "Analysis failed"
   },
   "keyboard": {
     "title": "Predictive Keyboard",

@@ -4,6 +4,8 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 
+from app.utils.logging import get_logger
+
 from app.dependencies import get_communication_service, get_session_service
 from app.schemas import (
     ChoiceSelectionRequest,
@@ -24,6 +26,7 @@ from app.schemas.session import (
 )
 
 router = APIRouter(tags=["communication"])
+logger = get_logger(__name__)
 
 
 @router.post(
@@ -109,6 +112,43 @@ async def get_communication_session(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"{exc.entity} with id {exc.entity_id} not found",
+        ) from exc
+
+
+@router.post(
+    "/communication/sessions/{session_id}/analyze",
+    response_model=CommunicationSessionRead,
+)
+async def analyze_session(
+    session_id: int,
+    service: CommunicationSessionService = Depends(get_session_service),
+) -> CommunicationSessionRead:
+    """
+    Run AI session analysis using Setup → session analysis prompt, context, history, and feedback.
+    Stores Markdown in ai_analysis_markdown and returns the updated session.
+    """
+    try:
+        return await service.run_ai_analysis(session_id)
+    except EntityNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"{exc.entity} with id {exc.entity_id} not found",
+        ) from exc
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except RuntimeError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(exc),
+        ) from exc
+    except Exception as exc:
+        logger.exception("Session AI analysis failed")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Session analysis failed. Check API keys and model configuration.",
         ) from exc
 
 

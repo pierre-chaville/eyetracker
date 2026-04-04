@@ -7,9 +7,10 @@ invokes the choices chain, and maps results to the API shape.
 from __future__ import annotations
 
 import sys
-from typing import List, Optional, TypedDict
+from typing import Any, List, Optional, TypedDict
 
 from langchain_anthropic import ChatAnthropic
+from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_openai import ChatOpenAI
 
 from app.chains.choices_chain import (
@@ -22,6 +23,25 @@ from app.utils.logging import get_logger
 from app.utils.retry import async_with_retry_and_timing
 
 logger = get_logger(__name__)
+
+
+def _extract_message_text(content: Any) -> str:
+    """Normalize LLM message content to a single string (OpenAI / Anthropic / LC)."""
+    if content is None:
+        return ""
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts: List[str] = []
+        for part in content:
+            if isinstance(part, str):
+                parts.append(part)
+            elif isinstance(part, dict) and part.get("text"):
+                parts.append(str(part["text"]))
+            elif hasattr(part, "text"):
+                parts.append(str(getattr(part, "text", "") or ""))
+        return "".join(parts).strip()
+    return str(content).strip()
 
 
 class ChoiceResult(TypedDict, total=False):
@@ -165,6 +185,34 @@ class LLMService:
         except Exception as e:
             logger.exception("LLM generate_choices failed: %s", e)
             return _FALLBACK_CHOICES.copy()
+
+    async def generate_plain_text(
+        self,
+        system_prompt: str,
+        user_message: str,
+    ) -> str:
+        """
+        Single-turn chat: system + user message, return assistant text (e.g. Markdown).
+        """
+        messages = [
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_message),
+        ]
+
+        async def _invoke():
+            resp = await self._llm.ainvoke(messages)
+            return _extract_message_text(getattr(resp, "content", None))
+
+        try:
+            return await async_with_retry_and_timing(
+                logger,
+                "LLM generate_plain_text",
+                _invoke,
+                transient_exceptions=(ConnectionError, TimeoutError, OSError),
+            )
+        except Exception as e:
+            logger.exception("LLM generate_plain_text failed: %s", e)
+            raise
 
     def update_config(
         self, provider: str, model: str, temperature: float

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 from datetime import datetime
 from typing import List, Optional
 
@@ -31,6 +32,14 @@ from app.utils.exceptions import EntityNotFoundError
 from app.utils.logging import get_logger
 
 logger = get_logger()
+
+_DEFAULT_SESSION_ANALYSIS_PROMPT = (
+    "You are an expert in augmentative and alternative communication (AAC) "
+    "and assistive technology. Analyze the session data in the user message "
+    "(JSON). Write your response in Markdown with clear sections such as "
+    "summary, strengths, challenges, and recommendations. Be specific and "
+    "professional."
+)
 
 
 def step_to_response(step: SessionStep) -> SessionStepRead:
@@ -76,6 +85,7 @@ async def session_to_response(
         user_notes=session.user_notes,
         keyboard_layout_name=session.keyboard_layout_name,
         feedback=session.feedback_json,
+        ai_analysis_markdown=getattr(session, "ai_analysis_markdown", None),
         started_at=session.started_at,
         ended_at=session.ended_at,
         created_at=session.created_at,
@@ -228,6 +238,80 @@ class CommunicationSessionService:
         session.updated_at = datetime.utcnow()
         self._session.add(session)
         await self._session.commit()
+
+    async def run_ai_analysis(self, session_id: int) -> CommunicationSessionRead:
+        """Build session payload, call LLM with setup prompt_session_analysis, store Markdown."""
+        from app.services.llm import get_llm_service
+
+        session = await self._session.get(CommunicationSession, session_id)
+        if not session:
+            raise EntityNotFoundError("Session", session_id)
+
+        steps_statement = (
+            select(SessionStep)
+            .where(SessionStep.session_id == session_id)
+            .order_by(SessionStep.step_number)
+        )
+        result = await self._session.execute(steps_statement)
+        steps = list(result.scalars().all())
+
+        config = load_config()
+        system_prompt = (config.prompt_session_analysis or "").strip()
+        if not system_prompt:
+            system_prompt = _DEFAULT_SESSION_ANALYSIS_PROMPT
+
+        if config.provider not in ("openai", "anthropic"):
+            raise ValueError(
+                "Session analysis requires AI provider 'openai' or 'anthropic' in Setup."
+            )
+
+        session_payload = {
+            "session_context": {
+                "id": session.id,
+                "session_type": getattr(session, "session_type", "communication"),
+                "llm_model": session.llm_model,
+                "temperature": session.temperature,
+                "prompt": session.prompt,
+                "user_notes": session.user_notes,
+                "keyboard_layout_name": session.keyboard_layout_name,
+                "started_at": session.started_at.isoformat() if session.started_at else None,
+                "ended_at": session.ended_at.isoformat() if session.ended_at else None,
+            },
+            "caregiver_feedback": getattr(session, "feedback_json", None),
+            "steps": [
+                {
+                    "step_number": s.step_number,
+                    "message_role": s.message_role,
+                    "message_content": s.message_content,
+                    "choices": s.choices_json,
+                    "selected_choice_text": s.selected_choice_text,
+                    "activation_mode": s.activation_mode,
+                    "dwell_time_ms": s.dwell_time_ms,
+                    "timestamp": s.timestamp.isoformat() if s.timestamp else None,
+                }
+                for s in steps
+            ],
+        }
+        user_message = (
+            "Analyze the following session. Reply in Markdown only.\n\n"
+            + json.dumps(session_payload, ensure_ascii=False, indent=2, default=str)
+        )
+
+        llm_service = get_llm_service(
+            provider=config.provider,
+            model=config.model,
+            temperature=config.temperature,
+        )
+        markdown = await llm_service.generate_plain_text(system_prompt, user_message)
+        if not markdown:
+            raise RuntimeError("The language model returned an empty analysis.")
+
+        session.ai_analysis_markdown = markdown
+        session.updated_at = datetime.utcnow()
+        self._session.add(session)
+        await self._session.commit()
+        await self._session.refresh(session)
+        return await session_to_response(session, self._session)
 
 
 class CommunicationService:

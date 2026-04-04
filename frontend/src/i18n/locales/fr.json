@@ -386,7 +386,13 @@
     "click": "Clic",
     "gazeDwell": "Fixation du Regard",
     "errorLoading": "Échec du chargement de la session",
-    "errorEnding": "Échec de la fin de la session"
+    "errorEnding": "Échec de la fin de la session",
+    "runAiAnalysis": "Lancer l'analyse IA",
+    "runAiAnalysisAgain": "Relancer l'analyse IA",
+    "analyzing": "Analyse en cours…",
+    "aiAnalysis": "Analyse IA",
+    "aiAnalysisEmpty": "Pas encore d'analyse. Lancez l'analyse IA pour générer un rapport Markdown à partir des données et du retour sur la session.",
+    "aiAnalysisError": "Échec de l'analyse"
   },
   "keyboard": {
     "title": "Clavier Prédictif",

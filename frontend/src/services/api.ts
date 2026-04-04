@@ -203,6 +203,13 @@ export const sessionsAPI = {
     return response.data
   },
 
+  async analyze(sessionId: number): Promise<Record<string, unknown>> {
+    const response = await apiClient.post<Record<string, unknown>>(
+      `/communication/sessions/${sessionId}/analyze`,
+    )
+    return response.data
+  },
+
   async delete(sessionId: number): Promise<void> {
     await apiClient.delete(`/communication/sessions/${sessionId}`)
   },
