@@ -18,6 +18,10 @@ class KeyboardLayout(SQLModel, table=True):
     rows: int = Field(default=3, ge=1)
     columns: int = Field(default=3, ge=1)
     predictive_cells: int = Field(default=0, ge=0)
+    sort_order: int = Field(
+        default=0,
+        description="Display order (lower first); used on keyboard screen and setup list.",
+    )
     cells: Optional[List[List[str]]] = Field(default=None, sa_column=Column(SQLJSON))
     created_at: Optional[datetime] = Field(
         default_factory=datetime.utcnow,

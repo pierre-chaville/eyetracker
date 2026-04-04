@@ -14,47 +14,59 @@
             <p class="text-gray-600 dark:text-gray-400 text-sm">
               {{ $t('keyboard.description') }}
             </p>
-            <div class="mt-4 max-w-sm">
+            <div class="mt-4 w-full max-w-2xl">
               <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 {{ $t('keyboard.layoutLabel') }}
               </label>
-              <Listbox v-model="selectedLayoutId">
-                <div class="relative">
-                  <ListboxButton
-                    class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-left text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+              <p class="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                {{ $t('keyboard.layoutHint') }}
+              </p>
+              <div class="flex flex-col gap-3">
+                <button
+                  v-for="layout in sortedKeyboardLayouts"
+                  :key="layout.id"
+                  type="button"
+                  @click="selectedLayoutId = layout.id"
+                  class="w-full text-left rounded-xl border-2 px-5 py-4 transition-all min-h-[4.5rem] flex items-center gap-4 touch-manipulation active:scale-[0.99]"
+                  :class="selectedLayoutId === layout.id
+                    ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/25 ring-2 ring-primary-400/40'
+                    : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 hover:border-primary-300 dark:hover:border-primary-600'"
+                >
+                  <span
+                    class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border-2 text-sm font-bold"
+                    :class="selectedLayoutId === layout.id
+                      ? 'border-primary-600 bg-primary-600 text-white'
+                      : 'border-gray-300 dark:border-gray-500 text-gray-500 dark:text-gray-400'"
+                    aria-hidden="true"
                   >
-                    <span>
-                      {{ selectedLayout ? selectedLayout.name : $t('keyboard.layoutPlaceholder') }}
-                    </span>
-                  </ListboxButton>
-                  <ListboxOptions
-                    class="absolute z-10 mt-2 w-full rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-lg focus:outline-none max-h-60 overflow-auto"
-                  >
-                    <ListboxOption
-                      v-for="layout in keyboardLayouts"
-                      :key="layout.id"
-                      :value="layout.id"
-                      v-slot="{ active, selected }"
+                    <svg
+                      v-if="selectedLayoutId === layout.id"
+                      class="h-6 w-6"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      stroke-width="2.5"
                     >
-                      <div
-                        class="px-3 py-2 cursor-pointer"
-                        :class="[
-                          active ? 'bg-primary-50 dark:bg-primary-900/30' : '',
-                          selected ? 'font-semibold text-primary-700 dark:text-primary-300' : 'text-gray-700 dark:text-gray-200',
-                        ]"
-                      >
-                        <p>{{ layout.name }}</p>
-                        <p v-if="layout.description" class="text-xs text-gray-500 dark:text-gray-400">
-                          {{ layout.description }}
-                        </p>
-                      </div>
-                    </ListboxOption>
-                    <div v-if="keyboardLayouts.length === 0" class="px-3 py-2 text-sm text-gray-500 dark:text-gray-400">
-                      {{ $t('keyboard.layoutEmpty') }}
-                    </div>
-                  </ListboxOptions>
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </span>
+                  <div class="min-w-0 flex-1">
+                    <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ layout.name }}</p>
+                    <p
+                      v-if="layout.description"
+                      class="text-sm text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-2"
+                    >
+                      {{ layout.description }}
+                    </p>
+                  </div>
+                </button>
+                <div
+                  v-if="sortedKeyboardLayouts.length === 0"
+                  class="rounded-xl border-2 border-dashed border-gray-300 dark:border-gray-600 px-4 py-8 text-center text-sm text-gray-500 dark:text-gray-400"
+                >
+                  {{ $t('keyboard.layoutEmpty') }}
                 </div>
-              </Listbox>
+              </div>
               <p v-if="layoutError" class="text-xs text-red-600 dark:text-red-400 mt-2">
                 {{ layoutError }}
               </p>
@@ -225,7 +237,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount, inject, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/vue';
 import EyeTrackingGaze from '../components/EyeTrackingGaze.vue';
 import { useEyeTracking } from '../composables/useEyeTracking';
 import { useCalibration } from '../composables/useCalibration';
@@ -263,6 +274,15 @@ const lastTranscription = ref('');
 const keyboardLayouts = ref<KeyboardLayoutRead[]>([]);
 const selectedLayoutId = ref<number | null>(null);
 const layoutError = ref<string | null>(null);
+
+const sortedKeyboardLayouts = computed(() =>
+  [...keyboardLayouts.value].sort((a, b) => {
+    const ao = a.sort_order ?? 0;
+    const bo = b.sort_order ?? 0;
+    if (ao !== bo) return ao - bo;
+    return a.id - b.id;
+  }),
+);
 
 const selectedLayout = computed(() =>
   keyboardLayouts.value.find((layout) => layout.id === selectedLayoutId.value) ?? null,
@@ -604,8 +624,15 @@ const loadKeyboardLayouts = async () => {
   try {
     layoutError.value = null;
     keyboardLayouts.value = await keyboardLayoutsAPI.list();
-    if (!selectedLayoutId.value && keyboardLayouts.value.length > 0) {
-      selectedLayoutId.value = keyboardLayouts.value[0].id;
+    const sorted = sortedKeyboardLayouts.value;
+    if (!selectedLayoutId.value && sorted.length > 0) {
+      selectedLayoutId.value = sorted[0].id;
+    } else if (
+      selectedLayoutId.value != null &&
+      sorted.length > 0 &&
+      !sorted.some((l) => l.id === selectedLayoutId.value)
+    ) {
+      selectedLayoutId.value = sorted[0].id;
     }
   } catch (err) {
     layoutError.value = err instanceof Error ? err.message : t('keyboard.layoutError');

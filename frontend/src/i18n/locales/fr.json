@@ -240,7 +240,14 @@
       "deleted": "Disposition supprimée",
       "delete": "Supprimer",
       "update": "Mettre à jour",
-      "cancel": "Annuler"
+      "cancel": "Annuler",
+      "sortOrder": "Ordre d'affichage",
+      "sortOrderHelp": "Les nombres plus petits apparaissent en premier. Utilisez les flèches dans la liste ou modifiez cette valeur.",
+      "sortOrderNewHelp": "L'ordre est attribué automatiquement à la création.",
+      "moveUp": "Monter",
+      "moveDown": "Descendre",
+      "orderUpdated": "Ordre des claviers mis à jour",
+      "orderError": "Échec de la mise à jour de l'ordre"
     }
   },
   "calibration": {
@@ -279,6 +286,9 @@
     "noText": "Aucun texte pour le moment",
     "clear": "Tout effacer",
     "aacMode": "Pictogrammes AAC",
+    "aacDisplayLabel": "Contenu des cellules",
+    "aacTextOnly": "Texte seulement",
+    "aacPictograms": "Pictogrammes AAC",
     "searching": "Recherche..."
   },
   "caregivers": {
@@ -379,6 +389,7 @@
     "title": "Clavier Prédictif",
     "description": "Tapez en utilisant le suivi oculaire avec des suggestions de mots prédictifs.",
     "layoutLabel": "Disposition du clavier",
+    "layoutHint": "Appuyez sur une disposition pour la choisir (ordre défini dans la configuration).",
     "layoutPlaceholder": "Sélectionner une disposition",
     "layoutEmpty": "Aucune disposition disponible",
     "layoutError": "Échec du chargement des dispositions",

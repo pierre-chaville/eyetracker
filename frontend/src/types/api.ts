@@ -42,6 +42,7 @@ export interface KeyboardLayoutRead {
   rows: number
   columns: number
   predictive_cells: number
+  sort_order: number
   cells?: string[][] | null
   created_at: string
   updated_at: string

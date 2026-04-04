@@ -379,29 +379,56 @@
                       {{ $t('setup.keyboards.loading') }}
                     </div>
                     <div v-else class="space-y-2">
-                      <button
-                        v-for="layout in keyboardLayouts"
+                      <div
+                        v-for="(layout, layoutIndex) in sortedKeyboardLayouts"
                         :key="layout.id"
-                        type="button"
-                        @click="selectKeyboardLayout(layout)"
-                        class="w-full text-left px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        :class="selectedKeyboardId === layout.id ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-500' : ''"
+                        class="flex items-stretch gap-2 rounded-lg border border-gray-200 dark:border-gray-700"
+                        :class="selectedKeyboardId === layout.id ? 'bg-primary-50 dark:bg-primary-900/30 border-primary-500' : 'bg-white dark:bg-gray-800'"
                       >
-                        <div class="flex items-center justify-between">
-                          <div>
-                            <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ layout.name }}</p>
-                            <p v-if="layout.description" class="text-xs text-gray-500 dark:text-gray-400">{{ layout.description }}</p>
-                          </div>
+                        <div class="flex flex-col justify-center gap-0.5 py-1 pl-1 shrink-0 border-r border-gray-200 dark:border-gray-600">
                           <button
                             type="button"
-                            :disabled="!isEditMode"
-                            @click.stop="deleteKeyboardLayout(layout.id)"
-                            class="text-xs text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            :disabled="!isEditMode || layoutIndex === 0 || keyboardSaving"
+                            :title="$t('setup.keyboards.moveUp')"
+                            @click="moveKeyboardLayout(layout, 'up')"
+                            class="p-2 rounded-md border border-transparent hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
                           >
-                            {{ $t('setup.keyboards.delete') }}
+                            <ArrowUpIcon class="w-5 h-5" />
+                          </button>
+                          <button
+                            type="button"
+                            :disabled="!isEditMode || layoutIndex >= sortedKeyboardLayouts.length - 1 || keyboardSaving"
+                            :title="$t('setup.keyboards.moveDown')"
+                            @click="moveKeyboardLayout(layout, 'down')"
+                            class="p-2 rounded-md border border-transparent hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+                          >
+                            <ArrowDownIcon class="w-5 h-5" />
                           </button>
                         </div>
-                      </button>
+                        <div
+                          role="button"
+                          tabindex="0"
+                          class="flex-1 min-w-0 text-left px-3 py-2 hover:bg-gray-50/80 dark:hover:bg-gray-700/50 rounded-r-lg cursor-pointer"
+                          @click="selectKeyboardLayout(layout)"
+                          @keydown.enter.prevent="selectKeyboardLayout(layout)"
+                          @keydown.space.prevent="selectKeyboardLayout(layout)"
+                        >
+                          <div class="flex items-center justify-between gap-2">
+                            <div class="min-w-0">
+                              <p class="text-sm font-semibold text-gray-900 dark:text-white">{{ layout.name }}</p>
+                              <p v-if="layout.description" class="text-xs text-gray-500 dark:text-gray-400 truncate">{{ layout.description }}</p>
+                            </div>
+                            <button
+                              type="button"
+                              :disabled="!isEditMode"
+                              @click.stop="deleteKeyboardLayout(layout.id)"
+                              class="shrink-0 text-xs text-red-600 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {{ $t('setup.keyboards.delete') }}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
                       <p v-if="keyboardLayouts.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
                         {{ $t('setup.keyboards.empty') }}
                       </p>
@@ -422,6 +449,22 @@
                         :disabled="!isEditMode"
                         class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
                       />
+                    </div>
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        {{ $t('setup.keyboards.sortOrder') }}
+                      </label>
+                      <input
+                        v-model.number="keyboardForm.sort_order"
+                        type="number"
+                        min="0"
+                        step="1"
+                        :disabled="!isEditMode || !selectedKeyboardId"
+                        class="w-full max-w-xs px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 dark:disabled:bg-gray-800 disabled:cursor-not-allowed"
+                      />
+                      <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        {{ selectedKeyboardId ? $t('setup.keyboards.sortOrderHelp') : $t('setup.keyboards.sortOrderNewHelp') }}
+                      </p>
                     </div>
                     <div>
                       <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -546,10 +589,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/vue';
-import { PencilIcon } from '@heroicons/vue/24/outline';
+import { ArrowDownIcon, ArrowUpIcon, PencilIcon } from '@heroicons/vue/24/outline';
 import { configAPI, keyboardLayoutsAPI } from '../services/api';
 import type { KeyboardLayoutRead } from '../types/api';
 
@@ -606,8 +649,18 @@ const keyboardForm = ref({
   rows: 3,
   columns: 3,
   predictive_cells: 0,
+  sort_order: 0,
 });
 const cellsMatrix = ref<string[][]>([]);
+
+const sortedKeyboardLayouts = computed(() =>
+  [...keyboardLayouts.value].sort((a, b) => {
+    const ao = a.sort_order ?? 0;
+    const bo = b.sort_order ?? 0;
+    if (ao !== bo) return ao - bo;
+    return a.id - b.id;
+  }),
+);
 
 const loadConfig = async () => {
   try {
@@ -663,6 +716,7 @@ const resetKeyboardForm = () => {
     rows: 3,
     columns: 3,
     predictive_cells: 0,
+    sort_order: 0,
   };
   cellsMatrix.value = buildCellsMatrix(3, 3);
   keyboardError.value = null;
@@ -677,6 +731,7 @@ const selectKeyboardLayout = (layout: KeyboardLayoutRead) => {
     rows: layout.rows,
     columns: layout.columns,
     predictive_cells: layout.predictive_cells,
+    sort_order: layout.sort_order ?? 0,
   };
   cellsMatrix.value = buildCellsMatrix(layout.rows, layout.columns, layout.cells || undefined);
   keyboardError.value = null;
@@ -688,7 +743,7 @@ const saveKeyboardLayout = async () => {
   keyboardError.value = null;
   keyboardSuccess.value = null;
   try {
-    const payload = {
+    const payload: Record<string, unknown> = {
       name: keyboardForm.value.name,
       description: keyboardForm.value.description || null,
       rows: keyboardForm.value.rows,
@@ -698,6 +753,7 @@ const saveKeyboardLayout = async () => {
     };
 
     if (selectedKeyboardId.value) {
+      payload.sort_order = Number(keyboardForm.value.sort_order) || 0;
       await keyboardLayoutsAPI.update(selectedKeyboardId.value, payload);
       keyboardSuccess.value = t('setup.keyboards.updated');
     } else {
@@ -725,6 +781,29 @@ const deleteKeyboardLayout = async (layoutId: number) => {
     keyboardSuccess.value = t('setup.keyboards.deleted');
   } catch (err) {
     keyboardError.value = err instanceof Error ? err.message : t('setup.keyboards.deleteError');
+  }
+};
+
+const moveKeyboardLayout = async (layout: KeyboardLayoutRead, direction: 'up' | 'down') => {
+  const list = sortedKeyboardLayouts.value;
+  const idx = list.findIndex((l) => l.id === layout.id);
+  const otherIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (idx < 0 || otherIdx < 0 || otherIdx >= list.length) return;
+  const other = list[otherIdx];
+  const a = layout.sort_order ?? 0;
+  const b = other.sort_order ?? 0;
+  keyboardSaving.value = true;
+  keyboardError.value = null;
+  keyboardSuccess.value = null;
+  try {
+    await keyboardLayoutsAPI.update(layout.id, { sort_order: b });
+    await keyboardLayoutsAPI.update(other.id, { sort_order: a });
+    await loadKeyboardLayouts();
+    keyboardSuccess.value = t('setup.keyboards.orderUpdated');
+  } catch (err) {
+    keyboardError.value = err instanceof Error ? err.message : t('setup.keyboards.orderError');
+  } finally {
+    keyboardSaving.value = false;
   }
 };
 

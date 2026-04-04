@@ -6,43 +6,21 @@
       
       <!-- Speech-to-Text Control Panel (hidden in fullscreen) -->
       <div v-if="!isFullscreen" class="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 mb-6">
-        <div class="flex items-center justify-between">
-          <div>
-            <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-1">
-              {{ $t('communicate.speechToText') }}
-            </h2>
-            <p class="text-gray-600 dark:text-gray-400 text-sm">
-              {{ $t('communicate.speechToTextDescription') }}
-            </p>
-          </div>
-          <div class="flex items-center space-x-4">
-            <!-- AAC pictogram toggle -->
-            <label class="flex items-center space-x-2 cursor-pointer select-none">
-              <span class="text-sm font-medium text-gray-700 dark:text-gray-300">{{ $t('communicate.aacMode') }}</span>
-              <button
-                type="button"
-                role="switch"
-                :aria-checked="aacMode"
-                @click="aacMode = !aacMode"
-                :class="[
-                  'relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200',
-                  aacMode ? 'bg-indigo-600' : 'bg-gray-300 dark:bg-gray-600'
-                ]"
-              >
-                <span
-                  :class="[
-                    'inline-block h-4 w-4 rounded-full bg-white transition-transform duration-200',
-                    aacMode ? 'translate-x-6' : 'translate-x-1'
-                  ]"
-                />
-              </button>
-            </label>
-
+        <div class="flex flex-col gap-5">
+          <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div class="min-w-0 flex-1">
+              <h2 class="text-xl font-semibold text-gray-900 dark:text-white mb-1">
+                {{ $t('communicate.speechToText') }}
+              </h2>
+              <p class="text-gray-600 dark:text-gray-400 text-sm">
+                {{ $t('communicate.speechToTextDescription') }}
+              </p>
+            </div>
             <button
               @click="toggleSpeechToText"
               :disabled="isLoading"
               :class="[
-                'px-6 py-3 rounded-lg font-semibold transition-all duration-200',
+                'shrink-0 px-8 py-4 rounded-xl text-lg font-semibold transition-all duration-200 touch-manipulation min-h-[3.25rem] sm:self-center',
                 isActive
                   ? 'bg-red-600 hover:bg-red-700 text-white'
                   : 'bg-primary-600 hover:bg-primary-700 text-white',
@@ -53,6 +31,35 @@
               <span v-else-if="isActive">{{ $t('communicate.stop') }}</span>
               <span v-else>{{ $t('communicate.start') }}</span>
             </button>
+          </div>
+
+          <!-- Choice display: text only vs AAC (touch-friendly) -->
+          <div>
+            <p class="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              {{ $t('communicate.aacDisplayLabel') }}
+            </p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-3xl">
+              <button
+                type="button"
+                @click="aacMode = false"
+                class="rounded-xl border-2 px-5 py-4 text-left transition-all min-h-[4rem] touch-manipulation active:scale-[0.99]"
+                :class="!aacMode
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/25 ring-2 ring-primary-400/40'
+                  : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 hover:border-primary-300 dark:hover:border-primary-600'"
+              >
+                <span class="text-lg font-semibold text-gray-900 dark:text-white">{{ $t('communicate.aacTextOnly') }}</span>
+              </button>
+              <button
+                type="button"
+                @click="aacMode = true"
+                class="rounded-xl border-2 px-5 py-4 text-left transition-all min-h-[4rem] touch-manipulation active:scale-[0.99]"
+                :class="aacMode
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/25 ring-2 ring-primary-400/40'
+                  : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 hover:border-primary-300 dark:hover:border-primary-600'"
+              >
+                <span class="text-lg font-semibold text-gray-900 dark:text-white">{{ $t('communicate.aacPictograms') }}</span>
+              </button>
+            </div>
           </div>
         </div>
         

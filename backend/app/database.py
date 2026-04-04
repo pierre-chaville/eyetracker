@@ -78,6 +78,12 @@ def _migrate_schema(sync_conn) -> None:
             if col_name not in existing:
                 sync_conn.execute(text(f"ALTER TABLE session_steps ADD COLUMN {col_name} {col_def}"))
 
+    if "keyboard_layouts" in tables:
+        existing = [col["name"] for col in inspector.get_columns("keyboard_layouts")]
+        if "sort_order" not in existing:
+            sync_conn.execute(text("ALTER TABLE keyboard_layouts ADD COLUMN sort_order INTEGER DEFAULT 0"))
+            sync_conn.execute(text("UPDATE keyboard_layouts SET sort_order = id"))
+
 
 async def create_db_and_tables() -> None:
     """Create database and tables (async)."""

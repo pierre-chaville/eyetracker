@@ -16,11 +16,15 @@ class KeyboardLayoutBase(BaseModel):
 
 
 class KeyboardLayoutCreate(KeyboardLayoutBase):
-    pass
+    sort_order: Optional[int] = PydanticField(
+        default=None,
+        description="If omitted, appended after existing layouts.",
+    )
 
 
 class KeyboardLayoutRead(KeyboardLayoutBase):
     id: int
+    sort_order: int = 0
     created_at: datetime
     updated_at: datetime
 
@@ -35,3 +39,4 @@ class KeyboardLayoutUpdate(BaseModel):
     columns: Optional[int] = PydanticField(None, ge=1)
     predictive_cells: Optional[int] = PydanticField(None, ge=0)
     cells: Optional[List[List[str]]] = None
+    sort_order: Optional[int] = None

@@ -240,7 +240,14 @@
       "deleted": "Keyboard layout deleted",
       "delete": "Delete",
       "update": "Update",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "sortOrder": "Sort order",
+      "sortOrderHelp": "Lower numbers appear first. Use arrows in the list to swap order, or edit this value.",
+      "sortOrderNewHelp": "Order is assigned automatically when you create the layout.",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "orderUpdated": "Keyboard order updated",
+      "orderError": "Failed to update keyboard order"
     }
   },
   "calibration": {
@@ -279,6 +286,9 @@
     "noText": "No text yet",
     "clear": "Clear All",
     "aacMode": "AAC Pictograms",
+    "aacDisplayLabel": "Choices in cells",
+    "aacTextOnly": "Text only",
+    "aacPictograms": "AAC Pictograms",
     "searching": "Searching..."
   },
   "caregivers": {
@@ -378,7 +388,8 @@
   "keyboard": {
     "title": "Predictive Keyboard",
     "description": "Type using eye tracking with predictive word suggestions.",
-    "layoutLabel": "Keyboard Layout",
+    "layoutLabel": "Keyboard layout",
+    "layoutHint": "Tap a layout to select it (order follows Setup).",
     "layoutPlaceholder": "Select a layout",
     "layoutEmpty": "No layouts available",
     "layoutError": "Failed to load keyboard layouts",
