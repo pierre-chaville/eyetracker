@@ -270,7 +270,10 @@
     "gazeSamples": "Échantillons de regard",
     "averageGaze": "Regard moyen",
     "calibrationApplied": "Calibration appliquée",
-    "coefficientsSaved": "Coefficients affines enregistrés"
+    "coefficientsSaved": "Coefficients affines enregistrés",
+    "reviewTitle": "Précision de la calibration",
+    "reviewHint": "Les points cyan sont des échantillons bruts du regard. Les cercles ambre sont centrés sur la médiane géométrique du regard ; le diamètre vaut deux fois la distance médiane à ce centre (plus serré = plus cohérent). La croix blanche est la cible de calibration.",
+    "reviewDone": "Terminer"
   },
   "communicate": {
     "speechToText": "Communication Intelligente par le Regard",

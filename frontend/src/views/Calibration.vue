@@ -72,6 +72,51 @@
         ></div>
       </div>
 
+      <!-- Post-calibration review: targets, raw gaze dots, spread circles (geometric median ± median distance) -->
+      <div
+        v-if="calibrationReviewVisible"
+        class="fixed inset-0 z-[60] bg-gray-950/92 pointer-events-none"
+      >
+        <div class="pointer-events-auto absolute top-4 left-0 right-0 text-center px-4 z-[70]">
+          <p class="text-white text-lg font-semibold">{{ $t('calibration.reviewTitle') }}</p>
+          <p class="text-gray-300 text-sm mt-2 max-w-xl mx-auto">{{ $t('calibration.reviewHint') }}</p>
+          <button
+            type="button"
+            @click="dismissCalibrationReview"
+            class="mt-5 px-8 py-3 rounded-xl bg-primary-600 hover:bg-primary-700 text-white font-semibold shadow-lg touch-manipulation"
+          >
+            {{ $t('calibration.reviewDone') }}
+          </button>
+        </div>
+        <div class="absolute inset-0 pointer-events-none">
+          <template v-for="(pair, idx) in calibrationReviewPairs" :key="idx">
+            <!-- Raw gaze samples -->
+            <div
+              v-for="(s, si) in pair.raw.samplesData"
+              :key="`s-${idx}-${si}`"
+              class="absolute w-2 h-2 rounded-full bg-cyan-400/85 -translate-x-1/2 -translate-y-1/2 z-[10]"
+              :style="{ left: `${s.x}px`, top: `${s.y}px` }"
+            />
+            <!-- Circle: center = geometric median gaze, diameter = 2 × median distance (precision) -->
+            <div
+              class="absolute rounded-full border-2 border-amber-400/95 bg-amber-400/[0.12] -translate-x-1/2 -translate-y-1/2 z-[20] box-border"
+              :style="reviewCircleStyle(pair.processed)"
+            />
+            <!-- Calibration target: crosshair (circle = median gaze + spread) -->
+            <div
+              class="absolute z-[30] -translate-x-1/2 -translate-y-1/2 w-0 h-0"
+              :style="{ left: `${pair.processed.targetX}px`, top: `${pair.processed.targetY}px` }"
+            >
+              <div
+                class="absolute left-1/2 top-1/2 h-9 w-px -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_3px_rgba(0,0,0,0.9)]"
+              />
+              <div
+                class="absolute left-1/2 top-1/2 w-9 h-px -translate-x-1/2 -translate-y-1/2 rounded-full bg-white shadow-[0_0_3px_rgba(0,0,0,0.9)]"
+              />
+            </div>
+          </template>
+        </div>
+      </div>
 
     </div>
   </div>
@@ -112,8 +157,13 @@ interface CalibrationPointData {
 }
 
 interface ProcessedCalibrationPoint {
+  position: CalibrationPosition
   targetX: number
   targetY: number
+  averageGazeX: number
+  averageGazeY: number
+  gaze_spread_diameter: number
+  sampleCount?: number
 }
 
 interface ProcessedCalibrationData {
@@ -139,6 +189,43 @@ const circleColor = ref('#3b82f6'); // Primary blue
 const calibrationData = ref<CalibrationPointData[]>([]);
 const selectedUser = ref<UserRead | null>(null);
 const processedCalibrationData = ref<ProcessedCalibrationData | null>(null); // Store processed calibration response
+
+/** Fullscreen review after successful process: raw samples + API metrics */
+const calibrationReviewVisible = ref(false);
+const calibrationReviewRaw = ref<CalibrationPointData[]>([]);
+const MIN_REVIEW_CIRCLE_PX = 14;
+
+const calibrationReviewPairs = computed(() => {
+  const raw = calibrationReviewRaw.value;
+  const procList = processedCalibrationData.value?.points ?? [];
+  if (!raw.length || !procList.length) return [];
+
+  // Pair by target + position label — backend may drop points with no valid samples
+  return raw
+    .map((r) => {
+      const processed = procList.find(
+        (p) =>
+          p.targetX === r.targetX &&
+          p.targetY === r.targetY &&
+          p.position?.label === r.position.label,
+      );
+      return processed ? { raw: r, processed } : null;
+    })
+    .filter(
+      (pair): pair is { raw: CalibrationPointData; processed: ProcessedCalibrationPoint } =>
+        pair !== null,
+    );
+});
+
+const reviewCircleStyle = (p: ProcessedCalibrationPoint) => {
+  const d = Math.max(p.gaze_spread_diameter ?? 0, MIN_REVIEW_CIRCLE_PX);
+  return {
+    left: `${p.averageGazeX}px`,
+    top: `${p.averageGazeY}px`,
+    width: `${d}px`,
+    height: `${d}px`,
+  };
+};
 
 // Calibration positions (5 points: center, top-left, top-right, bottom-right, bottom-left)
 const calibrationPositions = ref<CalibrationPosition[]>([]);
@@ -358,7 +445,8 @@ const startCalibrationPoint = (positionIndex) => {
 
 const finishCalibration = async () => {
   isCalibrating.value = false;
-  
+  currentPosition.value = null;
+
   if (selectedUser.value && calibrationData.value.length > 0) {
     try {
       const calibrationRequest = {
@@ -371,10 +459,21 @@ const finishCalibration = async () => {
           samples: point.samplesData,
         })),
       };
-      
+
       const response = await calibrationAPI.process(calibrationRequest);
       console.log('Calibration processed and saved:', response);
-      processedCalibrationData.value = response as unknown as ProcessedCalibrationData;
+      const data = response as unknown as ProcessedCalibrationData;
+      processedCalibrationData.value = data;
+
+      if (data.points?.length) {
+        calibrationReviewRaw.value = calibrationData.value.map(p => ({
+          ...p,
+          samplesData: [...p.samplesData],
+        }));
+        calibrationData.value = [];
+        calibrationReviewVisible.value = true;
+        return;
+      }
     } catch (error) {
       console.error('Error processing calibration data:', error);
       alert('Error saving calibration data. Please try again.');
@@ -384,22 +483,30 @@ const finishCalibration = async () => {
   validateCalibration();
 };
 
+const dismissCalibrationReview = () => {
+  calibrationReviewVisible.value = false;
+  calibrationReviewRaw.value = [];
+  validateCalibration();
+};
+
 const validateCalibration = () => {
   // Calibration is already saved, just navigate away or show success
   // Re-enable calibration transformation after calibration
   if (skipCalibration) {
     skipCalibration.value = false;
   }
-  
+
   // Reset calibration state in App.vue to show sidebar
   isCalibratingApp.value = false;
-  
+
   // Exit fullscreen mode
   exitFullscreen();
-  
+
   isCalibrating.value = false;
   currentPosition.value = null;
   calibrationData.value = [];
+  calibrationReviewVisible.value = false;
+  calibrationReviewRaw.value = [];
   processedCalibrationData.value = null;
   circleSize.value = 200;
   
@@ -496,7 +603,7 @@ onMounted(() => {
       msFullscreenElement?: Element | null
     };
     if (!doc.fullscreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
-      if (isCalibrating.value) {
+      if (isCalibrating.value || calibrationReviewVisible.value) {
         resetCalibration();
       }
     }

@@ -217,7 +217,7 @@ namespace HelloApp
                                 valid = true
                             };
 
-                            Console.WriteLine($"Gaze: ({lastGazeX:F3}, {lastGazeY:F3}) => Pixel: ({pixelX}, {pixelY})");
+                            // Console.WriteLine($"Gaze: ({lastGazeX:F3}, {lastGazeY:F3}) => Pixel: ({pixelX}, {pixelY})");
 
                             string json = JsonSerializer.Serialize(data);
 

@@ -270,7 +270,10 @@
     "gazeSamples": "Gaze Samples",
     "averageGaze": "Average Gaze",
     "calibrationApplied": "Calibration Applied",
-    "coefficientsSaved": "Affine coefficients saved"
+    "coefficientsSaved": "Affine coefficients saved",
+    "reviewTitle": "Calibration precision",
+    "reviewHint": "Cyan dots are raw gaze samples. Amber circles are centered on the geometric median gaze; diameter is twice the median distance to that center (tighter = more consistent). White cross is the calibration target.",
+    "reviewDone": "Done"
   },
   "communicate": {
     "speechToText": "Intelligent Eye Communication",

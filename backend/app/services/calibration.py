@@ -9,6 +9,7 @@ This module handles:
 from __future__ import annotations
 
 import json
+import math
 from datetime import datetime
 from typing import Optional, List, Tuple
 
@@ -53,6 +54,7 @@ class CalibrationPointResult(BaseModel):
     sampleCount: int
     offsetX: float
     offsetY: float
+    gaze_spread_diameter: float
 
 
 class AffineCoefficients(BaseModel):
@@ -202,6 +204,14 @@ async def process_calibration_data(
 
         avg_gaze_x, avg_gaze_y = calculate_geometric_median(valid_samples)
 
+        distances = [
+            math.hypot(float(s["x"]) - avg_gaze_x, float(s["y"]) - avg_gaze_y)
+            for s in valid_samples
+        ]
+        median_dist = float(np.median(distances)) if distances else 0.0
+        # Diameter = 2 × median distance to geometric median (robust precision indicator)
+        gaze_spread_diameter = float(2.0 * median_dist)
+
         screen_samples = [
             s for s in valid_samples if s.get("screenX") is not None and s.get("screenY") is not None
         ]
@@ -223,6 +233,7 @@ async def process_calibration_data(
                 sampleCount=len(valid_samples),
                 offsetX=offset_x,
                 offsetY=offset_y,
+                gaze_spread_diameter=gaze_spread_diameter,
             )
         )
 
