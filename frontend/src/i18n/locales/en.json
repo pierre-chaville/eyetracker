@@ -20,7 +20,6 @@
     "caregivers": "Caregivers",
     "setup": "Setup",
     "exit": "Exit",
-    "exitConfirm": "Are you sure you want to close the application?",
     "exitBlockedTitle": "Close the application",
     "exitBlockedBody": "The window could not be closed automatically. Tap the button below—you do not need a keyboard.",
     "exitCloseAgain": "Close window"

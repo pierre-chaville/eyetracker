@@ -106,6 +106,7 @@ import ThemeSwitcher from './ThemeSwitcher.vue';
 import LanguageSwitcher from './LanguageSwitcher.vue';
 import { useI18n } from 'vue-i18n';
 import { isDocumentElementFullscreen, safeExitFullscreen } from '../utils/fullscreen';
+import { isWebView2Host, requestHostClose } from '../utils/hostBridge';
 
 defineProps({
   isOpen: {
@@ -232,8 +233,6 @@ const ensureDocumentFullscreenExited = (): Promise<void> => {
 };
 
 const exitApp = async () => {
-  if (!confirm(t('sidebar.exitConfirm'))) return;
-
   await ensureDocumentFullscreenExited();
   // Let the compositor finish leaving fullscreen before close (helps Chrome --app).
   await new Promise<void>((resolve) => {
@@ -245,6 +244,11 @@ const exitApp = async () => {
     window.focus();
   } catch {
     /* ignore */
+  }
+
+  if (isWebView2Host()) {
+    requestHostClose();
+    return;
   }
 
   window.close();
@@ -270,6 +274,10 @@ const exitApp = async () => {
         window.focus();
       } catch {
         /* ignore */
+      }
+      if (isWebView2Host()) {
+        requestHostClose();
+        return;
       }
       window.close();
       setTimeout(() => window.close(), 200);

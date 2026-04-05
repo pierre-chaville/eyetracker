@@ -20,7 +20,6 @@
     "caregivers": "Aidants",
     "setup": "Configuration",
     "exit": "Quitter",
-    "exitConfirm": "Voulez-vous vraiment fermer l'application ?",
     "exitBlockedTitle": "Fermer l’application",
     "exitBlockedBody": "La fenêtre n’a pas pu se fermer automatiquement. Touchez le bouton ci-dessous—sans clavier.",
     "exitCloseAgain": "Fermer la fenêtre"

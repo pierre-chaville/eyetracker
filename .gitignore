@@ -56,5 +56,9 @@ bridge/bin/
 bridge/obj/
 bridge/GazeSpeakerInterop.cs
 
+# WebView2 host
+host/IrisWebView2/bin/
+host/IrisWebView2/obj/
+
 # Browser kiosk profile
 .browser-profile/

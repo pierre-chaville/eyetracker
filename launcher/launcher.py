@@ -6,6 +6,7 @@ Components managed:
   • Backend   – Python FastAPI (uvicorn) on port 8080
   • Frontend  – Vue / Vite dev server on port 5173
   • Bridge    – C# .NET Tobii gaze WebSocket bridge on port 8765
+  • Host      – Windows WebView2 shell (host/IrisWebView2) for “Open Browser”
 """
 
 from __future__ import annotations
@@ -36,6 +37,13 @@ PROJECT_ROOT = LAUNCHER_DIR.parent
 BACKEND_DIR = PROJECT_ROOT / "backend"
 FRONTEND_DIR = PROJECT_ROOT / "frontend"
 BRIDGE_DIR = PROJECT_ROOT / "bridge"
+HOST_WEBVIEW2_CSPROJ = PROJECT_ROOT / "host" / "IrisWebView2" / "IrisWebView2.csproj"
+_HOST_WEBVIEW2_EXE_RELEASE = (
+    PROJECT_ROOT / "host" / "IrisWebView2" / "bin" / "Release" / "net8.0-windows" / "IrisWebView2.exe"
+)
+_HOST_WEBVIEW2_EXE_DEBUG = (
+    PROJECT_ROOT / "host" / "IrisWebView2" / "bin" / "Debug" / "net8.0-windows" / "IrisWebView2.exe"
+)
 
 VENV_PYTHON = BACKEND_DIR / "venv" / "Scripts" / "python.exe"
 SYSTEM_PYTHON = sys.executable
@@ -577,13 +585,61 @@ class LauncherApp:
 
     def _open_browser(self):
         url = "http://localhost:5173"
+        if sys.platform == "win32" and (
+            _HOST_WEBVIEW2_EXE_RELEASE.is_file()
+            or _HOST_WEBVIEW2_EXE_DEBUG.is_file()
+            or HOST_WEBVIEW2_CSPROJ.is_file()
+        ):
+            creation = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
+            try:
+                if _HOST_WEBVIEW2_EXE_RELEASE.is_file():
+                    exe = _HOST_WEBVIEW2_EXE_RELEASE
+                    self._system_log(f"Opening {url} in WebView2 host…")
+                    subprocess.Popen(
+                        [str(exe), url],
+                        cwd=str(exe.parent),
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        creationflags=creation,
+                    )
+                elif _HOST_WEBVIEW2_EXE_DEBUG.is_file():
+                    exe = _HOST_WEBVIEW2_EXE_DEBUG
+                    self._system_log(f"Opening {url} in WebView2 host (Debug build)…")
+                    subprocess.Popen(
+                        [str(exe), url],
+                        cwd=str(exe.parent),
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        creationflags=creation,
+                    )
+                else:
+                    self._system_log(f"Opening {url} in WebView2 host (dotnet run; first build may take a moment)…")
+                    subprocess.Popen(
+                        [
+                            DOTNET_CMD,
+                            "run",
+                            "--project",
+                            str(HOST_WEBVIEW2_CSPROJ),
+                            "--",
+                            url,
+                        ],
+                        cwd=str(PROJECT_ROOT),
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        creationflags=creation,
+                    )
+            except OSError as exc:
+                self._system_log(f"WebView2 host failed ({exc}); falling back to browser.")
+                self._open_browser_chrome_fallback(url)
+            return
+        self._open_browser_chrome_fallback(url)
+
+    def _open_browser_chrome_fallback(self, url: str) -> None:
         browser = _find_browser()
         if browser:
-            # Use a dedicated profile so Chrome/Edge launches a fresh instance
-            # that respects --kiosk (ignored when attaching to an existing window)
             profile_dir = PROJECT_ROOT / ".browser-profile"
             profile_dir.mkdir(exist_ok=True)
-            self._system_log(f"Opening {url} in fullscreen app mode")
+            self._system_log(f"Opening {url} in fullscreen app mode (Chrome/Edge)")
             subprocess.Popen(
                 [browser, f"--app={url}", "--start-fullscreen",
                  f"--user-data-dir={profile_dir}"],
