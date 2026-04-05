@@ -9,6 +9,8 @@ communication flow, calibration, data model, backend, and frontend structure.
 - **Backend**: FastAPI app under `backend/app/` with routers, services, models, and schemas.
 - **Database**: SQLite via SQLModel (`backend/app/database.py`).
 - **Real-time**: WebSocket endpoint `/ws/speech-to-text` for speech-to-text event streaming.
+- **Launcher**: Python/Tkinter app under `launcher/` to start/stop services and open the UI.
+- **Desktop shell (Windows)**: `host/IrisWebView2/` — a small .NET 8 WinForms + **WebView2** window that loads the Vite URL, borderless maximized, and closes when the app sends a host message (reliable **Exit** on touch kiosks). See [`launcher/README.md`](../launcher/README.md) for behavior, build steps, and fallbacks.
 
 Backend structure:
 
@@ -21,7 +23,7 @@ Backend structure:
 
 ### User Workflow
 
-1. **Open app**: User lands on home/dashboard.
+1. **Open app**: User lands on home/dashboard (typically via the launcher’s **Open Browser** / WebView2 host or a browser).
 2. **Calibration**: User calibrates eye tracking (optional but recommended).
 3. **Communication**:
    - User starts speech-to-text.
