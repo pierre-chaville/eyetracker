@@ -244,6 +244,7 @@ import { useSTTEvents } from '../composables/useSTTEvents';
 import { MicrophoneIcon } from '@heroicons/vue/24/solid';
 import SessionFeedbackForm from '../components/SessionFeedbackForm.vue';
 import { configAPI, keyboardAPI, keyboardLayoutsAPI, speechToTextAPI, usersAPI } from '../services/api';
+import { safeExitFullscreen } from '../utils/fullscreen';
 import type { KeyboardLayoutRead } from '../types/api';
 
 const { t } = useI18n();
@@ -937,19 +938,8 @@ const enterFullscreen = async () => {
 };
 
 const exitFullscreen = () => {
-  try {
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-    } else if (document.webkitExitFullscreen) {
-      document.webkitExitFullscreen();
-    } else if (document.msExitFullscreen) {
-      document.msExitFullscreen();
-    }
-    isFullscreen.value = false;
-  } catch (error) {
-    console.warn('Could not exit fullscreen mode:', error);
-    isFullscreen.value = false;
-  }
+  void safeExitFullscreen();
+  isFullscreen.value = false;
 };
 
 // Eye tracking detection

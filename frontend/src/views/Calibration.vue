@@ -126,6 +126,7 @@
 import { ref, computed, onMounted, onBeforeUnmount, inject, type Ref } from 'vue';
 import { useEyeTracking } from '../composables/useEyeTracking';
 import { usersAPI, calibrationAPI } from '../services/api';
+import { safeExitFullscreen } from '../utils/fullscreen';
 import { useI18n } from 'vue-i18n';
 import type { UserRead } from '../types/api';
 import type { CalibrationCoefficients } from '../types/tracking';
@@ -526,21 +527,7 @@ const validateCalibration = () => {
 };
 
 const exitFullscreen = () => {
-  try {
-    const doc = document as Document & {
-      webkitExitFullscreen?: () => Promise<void>
-      msExitFullscreen?: () => Promise<void>
-    };
-    if (doc.exitFullscreen) {
-      doc.exitFullscreen();
-    } else if (doc.webkitExitFullscreen) {
-      doc.webkitExitFullscreen();
-    } else if (doc.msExitFullscreen) {
-      doc.msExitFullscreen();
-    }
-  } catch (error) {
-    console.warn('Could not exit fullscreen mode:', error);
-  }
+  void safeExitFullscreen();
 };
 
 const resetCalibration = () => {

@@ -159,6 +159,7 @@ import { EyeIcon } from '@heroicons/vue/24/outline';
 import { useEyeTracking } from '../composables/useEyeTracking';
 import { useCalibration } from '../composables/useCalibration';
 import EyeTrackingGaze from '../components/EyeTrackingGaze.vue';
+import { isDocumentElementFullscreen, safeExitFullscreen } from '../utils/fullscreen';
 
 const trackingArea = ref<HTMLElement | null>(null);
 const headerElement = ref<HTMLElement | null>(null);
@@ -254,35 +255,17 @@ const startEyeTracking = async () => {
 };
 
 const exitFullscreen = () => {
-  try {
-    const doc = document as Document & {
-      webkitExitFullscreen?: () => Promise<void>
-      msExitFullscreen?: () => Promise<void>
-    };
-    if (doc.exitFullscreen) {
-      doc.exitFullscreen();
-    } else if (doc.webkitExitFullscreen) {
-      doc.webkitExitFullscreen();
-    } else if (doc.msExitFullscreen) {
-      doc.msExitFullscreen();
-    }
-  } catch (error) {
-    console.warn('Could not exit fullscreen mode:', error);
-  }
+  void safeExitFullscreen();
 };
 
 const stopEyeTracking = () => {
-  // Hide animal icon when stopping
   showAnimal.value = false;
-  
-  // Reset fullscreen state in App.vue to show sidebar
   isEyeTrackingFullscreenApp.value = false;
-  
-  // Exit fullscreen mode
-  exitFullscreen();
-  
+  // Avoid exitFullscreen() when user already left via ESC (prevents "Document not active")
+  if (isDocumentElementFullscreen()) {
+    void safeExitFullscreen();
+  }
   isFullscreen.value = false;
-  // Update fullscreen state in composable
   if (trackingIsFullscreen) {
     trackingIsFullscreen.value = false;
   }

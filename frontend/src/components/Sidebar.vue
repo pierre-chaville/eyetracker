@@ -105,6 +105,7 @@ import {
 import ThemeSwitcher from './ThemeSwitcher.vue';
 import LanguageSwitcher from './LanguageSwitcher.vue';
 import { useI18n } from 'vue-i18n';
+import { isDocumentElementFullscreen, safeExitFullscreen } from '../utils/fullscreen';
 
 defineProps({
   isOpen: {
@@ -177,31 +178,106 @@ const isActive = (path) => {
   return route.path.startsWith(path);
 };
 
+const escapeHtml = (s: string) =>
+  s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+
+/**
+ * Leave the Fullscreen API cleanly (all vendor variants). Browsers launched
+ * with --app / after requestFullscreen() may not honor window.close() until
+ * this completes; do not navigate to about:blank — that destroys the app and
+ * leaves a blank page when close() is still blocked.
+ */
+const ensureDocumentFullscreenExited = (): Promise<void> => {
+  if (!isDocumentElementFullscreen()) {
+    return Promise.resolve();
+  }
+
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      clearTimeout(safetyTimer);
+      document.removeEventListener('fullscreenchange', onFsChange);
+      document.removeEventListener('webkitfullscreenchange', onFsChange);
+      document.removeEventListener('MSFullscreenChange', onFsChange);
+      resolve();
+    };
+
+    const onFsChange = () => {
+      if (!isDocumentElementFullscreen()) {
+        finish();
+      }
+    };
+
+    document.addEventListener('fullscreenchange', onFsChange);
+    document.addEventListener('webkitfullscreenchange', onFsChange);
+    document.addEventListener('MSFullscreenChange', onFsChange);
+
+    const safetyTimer = window.setTimeout(finish, 800);
+
+    const runExit = async () => {
+      await safeExitFullscreen();
+      if (!isDocumentElementFullscreen()) {
+        finish();
+      }
+    };
+
+    void runExit();
+  });
+};
+
 const exitApp = async () => {
   if (!confirm(t('sidebar.exitConfirm'))) return;
 
-  // Exit any active Fullscreen API state first — this restores the
-  // window to its original "script-opened" state so window.close() works.
-  try {
-    if (document.fullscreenElement) {
-      await document.exitFullscreen();
-    }
-  } catch (_) { /* ignore */ }
+  await ensureDocumentFullscreenExited();
+  // Let the compositor finish leaving fullscreen before close (helps Chrome --app).
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+  });
 
-  // Primary: works in kiosk / --app mode
+  // Restore focus to this document (e.g. after DevTools) so close() / fullscreen teardown behave.
+  try {
+    window.focus();
+  } catch {
+    /* ignore */
+  }
+
   window.close();
 
-  // Fallback after a short delay (in case window.close was blocked)
   setTimeout(() => {
-    // Re-open current tab as self-reference, then close
-    window.open('about:blank', '_self');
     window.close();
-  }, 400);
+  }, 250);
 
-  // Final fallback: blank the page so the user knows the app stopped
+  // If the window is still open (timers only run if the browsing context survives),
+  // show a touch-friendly screen: a tap is a user gesture and often allows window.close().
   setTimeout(() => {
-    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;background:#1e1e2e;color:#cdd6f4;font-family:sans-serif;font-size:1.5rem">' + t('sidebar.exitMessage') + '</div>';
-  }, 800);
+    const title = escapeHtml(t('sidebar.exitBlockedTitle'));
+    const body = escapeHtml(t('sidebar.exitBlockedBody'));
+    const btnLabel = escapeHtml(t('sidebar.exitCloseAgain'));
+    document.body.innerHTML = `
+      <div style="box-sizing:border-box;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:clamp(1rem,4vw,2.5rem);background:#1e1e2e;color:#cdd6f4;font-family:system-ui,-apple-system,'Segoe UI',sans-serif;text-align:center">
+        <h1 style="margin:0 0 1rem;font-size:clamp(1.35rem,4vw,1.85rem);font-weight:700;line-height:1.25">${title}</h1>
+        <p style="margin:0 0 2rem;max-width:28rem;font-size:clamp(1.05rem,3vw,1.25rem);line-height:1.5;opacity:.95">${body}</p>
+        <button type="button" id="exit-fallback-close" style="touch-action:manipulation;-webkit-tap-highlight-color:transparent;min-height:4rem;min-width:min(100%,18rem);padding:1rem 1.75rem;border:none;border-radius:1rem;background:#89b4fa;color:#11111b;font-size:clamp(1.1rem,3vw,1.35rem);font-weight:700;cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35)">${btnLabel}</button>
+      </div>`;
+    const tryCloseFromGesture = () => {
+      try {
+        window.focus();
+      } catch {
+        /* ignore */
+      }
+      window.close();
+      setTimeout(() => window.close(), 200);
+    };
+    document.getElementById('exit-fallback-close')?.addEventListener('click', tryCloseFromGesture, {
+      passive: true,
+    });
+  }, 700);
 };
 </script>
 

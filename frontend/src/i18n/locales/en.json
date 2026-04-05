@@ -21,7 +21,9 @@
     "setup": "Setup",
     "exit": "Exit",
     "exitConfirm": "Are you sure you want to close the application?",
-    "exitMessage": "You can close this tab."
+    "exitBlockedTitle": "Close the application",
+    "exitBlockedBody": "The window could not be closed automatically. Tap the button below—you do not need a keyboard.",
+    "exitCloseAgain": "Close window"
   },
   "home": {
     "title": "Iris",

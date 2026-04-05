@@ -356,6 +356,7 @@ import EyeTrackingGaze from '../components/EyeTrackingGaze.vue';
 import ChoiceCell from '../components/ChoiceCell.vue';
 import SessionFeedbackForm from '../components/SessionFeedbackForm.vue';
 import { communicationAPI, configAPI, sessionsAPI, speechToTextAPI, usersAPI } from '../services/api';
+import { safeExitFullscreen } from '../utils/fullscreen';
 import type { Choice } from '../types/api';
 
 const { t } = useI18n();
@@ -1033,23 +1034,8 @@ const enterFullscreen = async () => {
 };
 
 const exitFullscreen = () => {
-  try {
-    const doc = document as Document & {
-      webkitExitFullscreen?: () => Promise<void>
-      msExitFullscreen?: () => Promise<void>
-    };
-    if (doc.exitFullscreen) {
-      doc.exitFullscreen();
-    } else if (doc.webkitExitFullscreen) {
-      doc.webkitExitFullscreen();
-    } else if (doc.msExitFullscreen) {
-      doc.msExitFullscreen();
-    }
-    isFullscreen.value = false;
-  } catch (error) {
-    console.warn('Could not exit fullscreen mode:', error);
-    isFullscreen.value = false;
-  }
+  void safeExitFullscreen();
+  isFullscreen.value = false;
 };
 
 const handleFullscreenChange = () => {
